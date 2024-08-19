@@ -1,8 +1,9 @@
-# Soroban Project
+# EquitX
 
 ## Project Structure
 
-This repository uses the recommended structure for a Soroban project:
+This repository uses the recommended structure for a stellar-cli project:
+
 ```text
 .
 ├── contracts
@@ -15,15 +16,16 @@ This repository uses the recommended structure for a Soroban project:
 └── README.md
 ```
 
-- New Soroban contracts can be put in `contracts`, each in their own directory. There is already a `hello_world` contract in there to get you started.
+- New stellar-cli contracts can be put in `contracts`, each in their own directory. There is already a `hello_world` contract in there to get you started.
 - If you initialized this project with any other example contracts via `--with-example`, those contracts will be in the `contracts` directory as well.
 - Contracts should have their own `Cargo.toml` files that rely on the top-level `Cargo.toml` workspace for their dependencies.
 - Frontend libraries can be added to the top-level directory as well. If you initialized this project with a frontend template via `--frontend-template` you will have those files already included.
 
 ---
+
 <!-- The following is the Frontend Template's README.md -->
 
-# Loam's Frontend Template for Soroban, using Astro
+# Loam's Frontend Template for stellar-cli, using Astro
 
 Under active development.
 
