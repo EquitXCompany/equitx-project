@@ -716,9 +716,9 @@ dependencies = [
 
 [[package]]
 name = "loam-sdk"
-version = "0.6.12"
+version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bab14814c942cd57bf5ae495945a108d2634b9d709e1c813e9c6a723ea11146"
+checksum = "0fe0b377c89b7a457e17357958f17525a15828ce2bf44be95f8d6147f9764a43"
 dependencies = [
  "loam-sdk-macro",
  "loam-soroban-sdk",
@@ -744,9 +744,9 @@ dependencies = [
 
 [[package]]
 name = "loam-soroban-sdk"
-version = "0.6.12"
+version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dacdda50e1128c874e0dfe66ec8e3a1d9741ab9cd7520408720141e52c8ff6b2"
+checksum = "566d0b3f28e8408954886212faeec983c197651b2f2b9137ea7b494a5590db52"
 dependencies = [
  "loam-sdk-macro",
  "soroban-sdk",
@@ -1682,6 +1682,14 @@ name = "windows_x86_64_msvc"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
+
+[[package]]
+name = "xasset"
+version = "0.0.0"
+dependencies = [
+ "loam-sdk",
+ "loam-subcontract-core",
+]
 
 [[package]]
 name = "zeroize"

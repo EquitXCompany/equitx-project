@@ -94,7 +94,6 @@ impl IsSep40 for DataFeed {
     }
 
     fn lastprice(&self, asset: Asset) -> Option<PriceData> {
-        let env = env();
         let asset = self.assets.get(asset.clone())?;
         let timestamp = asset.keys().last()?;
         let price = asset.get(timestamp)?;
