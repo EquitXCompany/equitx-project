@@ -1,17 +1,16 @@
-### Development environment configuration
+[development]
+accounts = ["equitx"]
+
 [development.network]
 rpc-url = "http://localhost:8000/rpc"
 network-passphrase = "Standalone Network ; February 2017"
 
-[[development.accounts]]
-name = "me"
-
 [development.contracts.data_feed]
 client = true
 init = """
-admin_set --new-admin me
-sep40_init --resolution 300000 --assets '[{"Stellar": "$(stellar contract id asset --asset native)"} ]' --decimals 14 --base '{"Stellar":"$(stellar contract id asset --asset native)"}'
-set_asset_price --price 10000000000000 --asset '{"Stellar": "$(stellar contract id asset --asset native)"}' --timestamp "$(date +%s)"
+admin_set --new-admin equitx
+sep40_init --resolution 300 --assets '[{"Other":"USD"},{"Other":"XLM"}]' --decimals 14 --base '{"Other":"USD"}'
+set_asset_price --price 10000000000000 --asset '{"Other":"USD"}' --timestamp "$(date +%s)"
 """
 
 [development.contracts.xasset]
@@ -20,6 +19,16 @@ client = true
 
 # Currently no CLI command to get the contract ID from the `data_feed` alias, so we're hard-coding the alias for now
 init = """
-admin_set --new-admin me
-set_peg --to "data_feed:"'{"Stellar": "$(stellar contract id asset --asset native)"}'
+admin_set --new-admin equitx
+set_peg --to 'data_feed:{"Other":"USD"}'
 """
+
+[staging]
+accounts = ["equitx"]
+
+[staging.network]
+rpc_url = "https://soroban-testnet.stellar.org"
+network_passphrase = "Test SDF Network ; September 2015"
+
+# [contracts]
+# data_feed = "CBKZFI26PDCZUJ5HYYKVB5BWCNYUSNA5LVL4R2JTRVSOB4XEP7Y34OPN"
