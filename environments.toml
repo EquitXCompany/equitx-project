@@ -13,3 +13,13 @@ admin_set --new-admin me
 sep40_init --resolution 300000 --assets '[{"Stellar": "$(stellar contract id asset --asset native)"} ]' --decimals 14 --base '{"Stellar":"$(stellar contract id asset --asset native)"}'
 set_asset_price --price 10000000000000 --asset '{"Stellar": "$(stellar contract id asset --asset native)"}' --timestamp "$(date +%s)"
 """
+
+[development.contracts.xasset]
+client = true
+
+
+# Currently no CLI command to get the contract ID from the `data_feed` alias, so we're hard-coding the alias for now
+init = """
+admin_set --new-admin me
+set_peg --to "data_feed:"'{"Stellar": "$(stellar contract id asset --asset native)"}'
+"""

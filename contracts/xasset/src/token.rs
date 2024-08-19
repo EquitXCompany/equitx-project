@@ -3,7 +3,7 @@ use loam_sdk::{
     IntoKey,
 };
 
-use crate::collateralized::{IsCollateralized, IsCollateralizedAdmin, CDP};
+use crate::collateralized::{IsCDPAdmin, IsCollateralized, CDP};
 use crate::Contract;
 
 #[contracttype]
@@ -42,8 +42,12 @@ impl IsCollateralized for Token {
     // }
 }
 
-impl IsCollateralizedAdmin for Token {
-    fn set_minimum_collateralization_ratio(&mut self, new_ratio: u32) -> u32 {
+impl IsCDPAdmin for Token {
+    fn set_peg(&mut self, to: String) {
+        Contract::require_auth();
+        self.pegged_to = to;
+    }
+    fn set_min_collat_ratio(&mut self, new_ratio: u32) -> u32 {
         Contract::require_auth();
         self.min_collat_ratio = new_ratio;
         new_ratio

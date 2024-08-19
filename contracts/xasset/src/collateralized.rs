@@ -24,7 +24,14 @@ pub struct CDP {
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
 pub trait IsCollateralized {
-    /// Oracle ID & which asset from Oracle this tracks. Might be worth storing these as separate fields?
+    /// Oracle ID & which asset from Oracle this tracks. Format: `contract_id:asset_id`
+    ///
+    /// Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR:{"Stellar":"CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4"}`
+    ///
+    /// This allows calling the Oracle contract to get the price of the asset:
+    ///
+    ///     stellar contract invoke --id CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR \
+    ///       -- lastprice --asset '{"Stellar":"CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4"}'
     fn pegged_to(&self) -> loam_sdk::soroban_sdk::String;
 
     /// Basis points. Default: 110%
@@ -43,7 +50,10 @@ pub trait IsCollateralized {
 #[subcontract]
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
-pub trait IsCollateralizedAdmin {
+pub trait IsCDPAdmin {
+    /// Set the oracle contract & asset this asset is pegged to. Only callable by admin.
+    fn set_peg(&mut self, to: loam_sdk::soroban_sdk::String);
+
     /// Only callable by admin.
     ///
     /// # Considerations
@@ -53,5 +63,5 @@ pub trait IsCollateralizedAdmin {
     ///
     /// Should we return anything? Right now it just returns `new_ratio` which seems... maybe
     /// useless?
-    fn set_minimum_collateralization_ratio(&mut self, new_ratio: u32) -> u32;
+    fn set_min_collat_ratio(&mut self, new_ratio: u32) -> u32;
 }
