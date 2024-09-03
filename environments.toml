@@ -17,8 +17,8 @@ set_asset_price --price 10000000000000 --asset '{"Other":"XLM"}' --timestamp "$(
 client = true
 init = """
 admin_set --new-admin equitx
-set_pegged_contract --to "$(cat .soroban/contract-ids/data_feed.json | sed 's/[^A-Z]//g' | tail -r -c 45)"
-set_pegged_asset --to '{"Other":"XLM"}'
+set_pegged_contract --to "$(stellar contract alias show data_feed)"
+set_pegged_asset --to '{"Other":"USD"}'
 """
 
 [staging]
