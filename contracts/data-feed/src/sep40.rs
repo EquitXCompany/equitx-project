@@ -1,24 +1,8 @@
+use crate::{Asset, PriceData};
 use loam_sdk::{
-    soroban_sdk::{self, Lazy, Vec},
+    soroban_sdk::{Lazy, Vec},
     subcontract,
 };
-
-//quoted asset definition
-#[loam_sdk::soroban_sdk::contracttype]
-#[derive(Clone)]
-pub enum Asset {
-    /// Can be a Stellar Classic or Soroban asset
-    Stellar(loam_sdk::soroban_sdk::Address),
-    /// For any external tokens/assets/symbols
-    Other(loam_sdk::soroban_sdk::Symbol),
-}
-
-/// Price record definition
-#[loam_sdk::soroban_sdk::contracttype]
-pub struct PriceData {
-    pub price: i128,    //asset price at given point in time
-    pub timestamp: u64, //recording timestamp
-}
 
 #[subcontract]
 /// Oracle Consumer Interface from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0040.md

@@ -3,26 +3,7 @@ use loam_sdk::{
     subcontract,
 };
 
-// FIXME: This is copy-pasted from `data_feed`!
-// Need to figure out a way to reuse.
-//quoted asset definition
-#[loam_sdk::soroban_sdk::contracttype]
-#[derive(Clone)]
-pub enum Asset {
-    /// Can be a Stellar Classic or Soroban asset
-    Stellar(loam_sdk::soroban_sdk::Address),
-    /// For any external tokens/assets/symbols
-    Other(loam_sdk::soroban_sdk::Symbol),
-}
-
-// FIXME: This is copy-pasted from `data_feed`!
-// Need to figure out a way to reuse.
-/// Price record definition
-#[loam_sdk::soroban_sdk::contracttype]
-pub struct PriceData {
-    pub price: i128,    //asset price at given point in time
-    pub timestamp: u64, //recording timestamp
-}
+use crate::data_feed;
 
 #[loam_sdk::soroban_sdk::contracttype]
 /// Descriptions of these on page 5 of Indigo white paper
@@ -75,7 +56,7 @@ pub trait IsCollateralized {
     ///
     ///     stellar contract invoke --id CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR \
     ///       -- lastprice --asset '{"Stellar":"CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4"}'
-    fn pegged_asset(&self) -> Asset;
+    fn pegged_asset(&self) -> data_feed::Asset;
 
     /// Basis points. Default: 110%
     ///
@@ -84,8 +65,8 @@ pub trait IsCollateralized {
     /// u16 would suffice, but Soroban SDK doesn't support it 🥴
     fn minimum_collateralization_ratio(&self) -> u32;
 
-    // /// Get the most recent price for the pegged asset
-    // fn lastprice(&self) -> Option<equitx_types::PriceData>;
+    /// Get the most recent price for the pegged asset
+    fn lastprice(&self) -> Option<data_feed::PriceData>;
 
     // /// each Address can only have one CDP per Asset. Given that you can adjust your CDPs freely, that seems fine?
     // fn get_cdp(&self, loam_sdk::soroban_sdk::Address) -> CDP;
@@ -103,7 +84,7 @@ pub trait IsCDPAdmin {
     fn set_pegged_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
 
     /// Set the asset this asset is pegged to. Only callable by admin.
-    fn set_pegged_asset(&mut self, to: Asset);
+    fn set_pegged_asset(&mut self, to: data_feed::Asset);
 
     /// Only callable by admin.
     ///

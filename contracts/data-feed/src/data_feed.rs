@@ -3,8 +3,9 @@ use loam_sdk::{
     vec, IntoKey,
 };
 
-use crate::sep40::{Asset, IsSep40, IsSep40Admin, PriceData};
+use crate::sep40::{IsSep40, IsSep40Admin};
 use crate::Contract;
+use crate::{Asset, PriceData};
 
 #[contracttype]
 #[derive(IntoKey)]
