@@ -3,9 +3,12 @@ use loam_sdk::{
     IntoKey,
 };
 
-use crate::collateralized::{IsCDPAdmin, IsCollateralized, CDP};
 use crate::data_feed;
 use crate::Contract;
+use crate::{
+    collateralized::{IsCDPAdmin, IsCollateralized, CDP},
+    PriceData,
+};
 
 #[contracttype]
 #[derive(IntoKey)]
@@ -13,7 +16,7 @@ pub struct Token {
     /// Oracle contract ID this asset tracks.
     pegged_contract: Address,
     /// Oracle asset ID this asset tracks.
-    pegged_asset: data_feed::Asset,
+    pegged_asset: Symbol,
     /// basis points; default 110%; updateable by admin
     min_collat_ratio: u32,
     /// each Address can only have one CDP per Asset. Given that you can adjust your CDPs freely, that seems fine?
@@ -26,7 +29,7 @@ impl Default for Token {
     fn default() -> Self {
         Token {
             pegged_contract: env().current_contract_address(),
-            pegged_asset: data_feed::Asset::Other(Symbol::new(env(), "XLM")),
+            pegged_asset: Symbol::new(env(), "XLM"),
             min_collat_ratio: 110,
             cdps: Map::new(env()),
         }
@@ -37,17 +40,21 @@ impl IsCollateralized for Token {
     fn pegged_contract(&self) -> Address {
         self.pegged_contract.clone()
     }
-    fn pegged_asset(&self) -> data_feed::Asset {
+    fn pegged_asset(&self) -> Symbol {
         self.pegged_asset.clone()
     }
     fn minimum_collateralization_ratio(&self) -> u32 {
         self.min_collat_ratio
     }
 
-    fn lastprice(&self) -> Option<data_feed::PriceData> {
+    fn lastprice(&self) -> Option<PriceData> {
+        let env = env();
         let contract = &self.pegged_contract;
         let asset = &self.pegged_asset;
-        data_feed::Client::new(env(), contract).lastprice(asset)
+        let client = data_feed::Client::new(env, contract);
+        let data_feed::PriceData { price, timestamp } =
+            client.lastprice(&data_feed::Asset::Other(asset.clone()))?;
+        Some(PriceData { price, timestamp })
     }
     // fn add_collateral(&self, cdp: CDP) -> CDP {
     //     self.cdps.get(address)
@@ -67,7 +74,7 @@ impl IsCDPAdmin for Token {
         Contract::require_auth();
         self.pegged_contract = to;
     }
-    fn set_pegged_asset(&mut self, to: data_feed::Asset) {
+    fn set_pegged_asset(&mut self, to: Symbol) {
         Contract::require_auth();
         self.pegged_asset = to;
     }

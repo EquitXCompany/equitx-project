@@ -18,7 +18,7 @@ client = true
 init = """
 admin_set --new-admin equitx
 set_pegged_contract --to "$(stellar contract alias show data_feed)"
-set_pegged_asset --to '{"Other":"USD"}'
+set_pegged_asset --to XLM
 """
 
 [staging]
