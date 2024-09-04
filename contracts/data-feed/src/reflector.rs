@@ -1,4 +1,4 @@
-use crate::sep40::{Asset, PriceData};
+use crate::{Asset, PriceData};
 use loam_sdk::{
     soroban_sdk::{Lazy, Vec},
     subcontract,

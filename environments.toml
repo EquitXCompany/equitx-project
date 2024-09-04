@@ -10,17 +10,15 @@ client = true
 init = """
 admin_set --new-admin equitx
 sep40_init --resolution 300 --assets '[{"Other":"USD"},{"Other":"XLM"}]' --decimals 14 --base '{"Other":"USD"}'
-set_asset_price --price 10000000000000 --asset '{"Other":"USD"}' --timestamp "$(date +%s)"
+set_asset_price --price 10000000000000 --asset '{"Other":"XLM"}' --timestamp "$(date +%s)"
 """
 
 [development.contracts.xasset]
 client = true
-
-
-# Currently no CLI command to get the contract ID from the `data_feed` alias, so we're hard-coding the alias for now
 init = """
 admin_set --new-admin equitx
-set_peg --to 'data_feed:{"Other":"USD"}'
+set_pegged_contract --to "$(stellar contract alias show data_feed)"
+set_pegged_asset --to XLM
 """
 
 [staging]

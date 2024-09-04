@@ -1,12 +1,30 @@
 #![no_std]
-use collateralized::{CDPAdmin, Collateralized};
-use loam_sdk::derive_contract;
+use collateralized::{CDPAdmin, Collateralized, CDP};
+use loam_sdk::{
+    derive_contract,
+    soroban_sdk::{self, Symbol},
+};
 use loam_subcontract_core::{admin::Admin, Core};
 use token::Token;
 
 pub mod collateralized;
 pub mod stability_pool;
 pub mod token;
+
+// FIXME: copied from data_feed; find way to reuse
+#[loam_sdk::soroban_sdk::contracttype]
+pub struct PriceData {
+    pub price: i128,    //asset price at given point in time
+    pub timestamp: u64, //recording timestamp
+}
+
+pub mod data_feed {
+    use loam_sdk::soroban_sdk;
+
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/data_feed.wasm"
+    );
+}
 
 #[derive_contract(Core(Admin), Collateralized(Token), CDPAdmin(Token))]
 pub struct Contract;
