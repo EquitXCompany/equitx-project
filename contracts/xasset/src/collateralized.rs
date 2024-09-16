@@ -71,9 +71,9 @@ pub trait IsCollateralized {
 
     fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128);
 
-    fn cdp(&self, lender: Address) -> Option<CDP>;
+    fn cdp(&self, lender: Address) -> CDP;
 
-    fn cdps(&self) -> Option<soroban_sdk::Vec<CDP>>;
+    fn cdps(&self) -> soroban_sdk::Vec<CDP>;
 
     fn freeze_cdp(&mut self, lender: Address);
 }

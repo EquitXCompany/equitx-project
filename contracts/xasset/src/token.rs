@@ -120,21 +120,21 @@ impl IsCollateralized for Token {
             .set(lender, CDPInternal::new(collateral, asset_lent));
     }
 
-    fn cdp(&self, lender: Address) -> Option<CDP> {
-        let cdp = self.cdps.get(lender.clone())?;
-        let lastprice = self.lastprice()?;
+    fn cdp(&self, lender: Address) -> CDP {
+        let cdp = self.cdps.get(lender.clone()).expect("CDP not found");
+        let lastprice = self.lastprice().expect("No price data");
         let decimals = self.decimals_oracle();
-        Some(self.decorate(cdp, lender, lastprice.price, decimals))
+        self.decorate(cdp, lender, lastprice.price, decimals)
     }
 
-    fn cdps(&self) -> Option<Vec<CDP>> {
+    fn cdps(&self) -> Vec<CDP> {
         let mut cdps: Vec<CDP> = Vec::new(env());
-        let lastprice = self.lastprice()?;
+        let lastprice = self.lastprice().expect("No price data");
         let decimals = self.decimals_oracle();
         self.cdps
             .iter()
             .for_each(|(k, v)| cdps.push_back(self.decorate(v, k, lastprice.price, decimals)));
-        Some(cdps)
+        cdps
     }
 
     fn freeze_cdp(&mut self, lender: Address) {
