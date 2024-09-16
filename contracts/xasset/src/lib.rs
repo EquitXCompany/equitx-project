@@ -2,7 +2,7 @@
 use collateralized::{CDPAdmin, Collateralized, CDP};
 use loam_sdk::{
     derive_contract,
-    soroban_sdk::{self, Symbol},
+    soroban_sdk::{self, Address, Symbol},
 };
 use loam_subcontract_core::{admin::Admin, Core};
 use token::Token;

@@ -1,5 +1,5 @@
 use loam_sdk::{
-    soroban_sdk::{self, Lazy, Symbol},
+    soroban_sdk::{self, Address, Lazy, Symbol},
     subcontract,
 };
 
@@ -22,14 +22,14 @@ pub enum CDPStatus {
 #[loam_sdk::soroban_sdk::contracttype]
 /// Collateralized Debt Position for a specific account
 pub struct CDP {
-    pub xlm_deposited: u128,
-    pub asset_lent: u128,
+    pub xlm_deposited: i128,
+    pub asset_lent: i128,
     pub status: CDPStatus,
 }
 
 impl CDP {
     #[must_use]
-    pub fn new(xlm_deposited: u128, asset_lent: u128) -> Self {
+    pub fn new(xlm_deposited: i128, asset_lent: i128) -> Self {
         CDP {
             xlm_deposited,
             asset_lent,
@@ -68,18 +68,30 @@ pub trait IsCollateralized {
     /// Get the most recent price for the pegged asset
     fn lastprice(&self) -> Option<PriceData>;
 
+    /// Get the number of decimals used by the pegged oracle contract
+    fn decimals_oracle(&self) -> u32;
+
     // /// each Address can only have one CDP per Asset. Given that you can adjust your CDPs freely, that seems fine?
     // fn get_cdp(&self, loam_sdk::soroban_sdk::Address) -> CDP;
 
     // fn add_collateral(&self, cdp: CDP);
 
-    fn open_cdp(&self, asset_lent: u128) -> CDP;
+    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128);
+
+    fn cdp_collat_ratio(&self, lender: Address) -> Option<u32>;
+
+    fn cdp(&self, lender: Address) -> Option<CDP>;
+
+    fn freeze_cdp(&mut self, lender: Address);
 }
 
 #[subcontract]
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
 pub trait IsCDPAdmin {
+    /// Set the address of the XLM contract
+    fn set_xlm_address(&mut self, to: loam_sdk::soroban_sdk::Address);
+
     /// Set the oracle contract. Only callable by admin.
     fn set_pegged_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
 

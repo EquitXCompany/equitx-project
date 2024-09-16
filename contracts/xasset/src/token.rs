@@ -1,18 +1,22 @@
 use loam_sdk::{
-    soroban_sdk::{self, contracttype, env, Address, Map, Symbol},
+    soroban_sdk::{self, contracttype, env, token, Address, Map, Symbol},
     IntoKey,
 };
 
-use crate::data_feed;
 use crate::Contract;
+use crate::{collateralized::CDPStatus, data_feed};
 use crate::{
     collateralized::{IsCDPAdmin, IsCollateralized, CDP},
     PriceData,
 };
 
+const BASIS_POINTS: i128 = 10_000;
+
 #[contracttype]
 #[derive(IntoKey)]
 pub struct Token {
+    /// XLM Address
+    xlm_address: Address,
     /// Oracle contract ID this asset tracks.
     pegged_contract: Address,
     /// Oracle asset ID this asset tracks.
@@ -28,9 +32,10 @@ pub struct Token {
 impl Default for Token {
     fn default() -> Self {
         Token {
+            xlm_address: env().current_contract_address(),
             pegged_contract: env().current_contract_address(),
             pegged_asset: Symbol::new(env(), "XLM"),
-            min_collat_ratio: 110,
+            min_collat_ratio: 11000,
             cdps: Map::new(env()),
         }
     }
@@ -56,20 +61,112 @@ impl IsCollateralized for Token {
             client.lastprice(&data_feed::Asset::Other(asset.clone()))?;
         Some(PriceData { price, timestamp })
     }
+
+    fn decimals_oracle(&self) -> u32 {
+        let env = env();
+        let contract = &self.pegged_contract;
+        let client = data_feed::Client::new(env, contract);
+        client.decimals()
+    }
     // fn add_collateral(&self, cdp: CDP) -> CDP {
     //     self.cdps.get(address)
     // }
     //
-    fn open_cdp(&self, asset_lent: u128) -> CDP {
-        // 1. check if sender already has a CDP
+    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) {
+        lender.require_auth();
+
+        let env = env();
+
+        // 1. check if lender already has a CDP
+        if self.cdps.contains_key(lender.clone()) {
+            panic!("CDP already exists for this lender");
+        }
+
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
-        // 3. transfer attached XLM to... this contract?
-        // 4. create CDP
-        CDP::new(0, asset_lent)
+        // FIXME: do we need a Client and cross-contract call to self?
+        // let PriceData { price, .. } = self.lastprice().expect("No price data");
+        // let ratio = collateral / (asset_lent * price);
+        // if ratio < self.min_collat_ratio as i128 {
+        //     panic!("Insufficient collateralization ratio");
+        // }
+
+        // 3. transfer attached XLM to this contract
+        let client = token::Client::new(env, &self.xlm_address);
+        client.transfer(&lender, &env.current_contract_address(), &collateral);
+
+        // 4. FIXME mint `asset_lent` of this token to `address`
+
+        // 5. create CDP
+        self.cdps.set(lender, CDP::new(collateral, asset_lent));
+    }
+
+    /// Collateralization Ratio of a CDP for a given Lender. Returned in basis points (divide by
+    /// 100 to get percentage).
+    fn cdp_collat_ratio(&self, lender: Address) -> Option<u32> {
+        let cdp = self.cdps.get(lender)?;
+        let PriceData {
+            price: price_from_oracle,
+            ..
+        } = self.lastprice()?;
+
+        // Need to divide in a way that never has a decimal, so decimals don't get truncated (or
+        // that has only truncatable decimals as of the final operation).
+        //
+        // ratio = BASIS_POINTS * XLM locked / (USD minted * XLM price)
+        //
+        //   and: XLM price = price_from_oracle / decimals_oracle
+        //   so that:
+        //
+        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / (USD minted * price_from_oracle)
+        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / USD minted / price_from_oracle
+        Some(
+            (BASIS_POINTS * cdp.xlm_deposited * 10i128.pow(self.decimals_oracle())
+                / cdp.asset_lent
+                / price_from_oracle) as u32,
+        )
+    }
+
+    fn cdp(&self, lender: Address) -> Option<CDP> {
+        let cdp = self.cdps.get(lender.clone())?;
+        match cdp.status {
+            CDPStatus::Open => {
+                let cdp_ratio = self.cdp_collat_ratio(lender)?;
+                if cdp_ratio < self.min_collat_ratio {
+                    Some(CDP {
+                        xlm_deposited: cdp.xlm_deposited,
+                        asset_lent: cdp.asset_lent,
+                        status: CDPStatus::Insolvent,
+                    })
+                } else {
+                    Some(cdp)
+                }
+            }
+            _ => Some(cdp),
+        }
+    }
+
+    fn freeze_cdp(&mut self, lender: Address) {
+        let cdp = self.cdp(lender.clone()).expect("CDP not found");
+        if matches!(cdp.status, CDPStatus::Insolvent) {
+            self.cdps.set(
+                lender,
+                CDP {
+                    xlm_deposited: cdp.xlm_deposited,
+                    asset_lent: cdp.asset_lent,
+                    status: CDPStatus::Frozen,
+                },
+            );
+        } else {
+            panic!("CDP not insolvent");
+        }
     }
 }
 
 impl IsCDPAdmin for Token {
+    fn set_xlm_address(&mut self, to: Address) {
+        Contract::require_auth();
+        self.xlm_address = to;
+    }
     fn set_pegged_contract(&mut self, to: Address) {
         Contract::require_auth();
         self.pegged_contract = to;
