@@ -1,5 +1,5 @@
 [development]
-accounts = ["equitx", "alice"]
+accounts = ["equitx", "alice", "bob"]
 
 [development.network]
 rpc-url = "http://localhost:8000/rpc"
@@ -21,6 +21,8 @@ set_xlm_address --to "$(stellar contract id asset --asset native)"
 set_pegged_contract --to "$(stellar contract alias show data_feed)"
 set_pegged_asset --to XLM
 STELLAR_ACCOUNT=alice open_cdp --lender alice --collateral 1700000000 --asset-lent 10000000000
+STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 10000000000
+set_min_collat_ratio --to 15000
 """
 
 [staging]

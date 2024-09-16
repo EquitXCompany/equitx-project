@@ -6,6 +6,7 @@ use loam_sdk::{
 use crate::PriceData;
 
 #[loam_sdk::soroban_sdk::contracttype]
+#[derive(Clone)]
 /// Descriptions of these on page 5 of Indigo white paper
 pub enum CDPStatus {
     /// A CDP that is fully collateralized, with its CR value above the iAsset’s MCR. Open CDPs remain fully usable by their owners.
@@ -20,22 +21,14 @@ pub enum CDPStatus {
 }
 
 #[loam_sdk::soroban_sdk::contracttype]
+#[derive(Clone)]
 /// Collateralized Debt Position for a specific account
 pub struct CDP {
+    pub owner: Address,
     pub xlm_deposited: i128,
     pub asset_lent: i128,
     pub status: CDPStatus,
-}
-
-impl CDP {
-    #[must_use]
-    pub fn new(xlm_deposited: i128, asset_lent: i128) -> Self {
-        CDP {
-            xlm_deposited,
-            asset_lent,
-            status: CDPStatus::Open,
-        }
-    }
+    pub collateralization_ratio: u32,
 }
 
 #[subcontract]
@@ -78,9 +71,9 @@ pub trait IsCollateralized {
 
     fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128);
 
-    fn cdp_collat_ratio(&self, lender: Address) -> Option<u32>;
-
     fn cdp(&self, lender: Address) -> Option<CDP>;
+
+    fn cdps(&self) -> Option<soroban_sdk::Vec<CDP>>;
 
     fn freeze_cdp(&mut self, lender: Address);
 }

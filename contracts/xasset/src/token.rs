@@ -1,5 +1,5 @@
 use loam_sdk::{
-    soroban_sdk::{self, contracttype, env, token, Address, Map, Symbol},
+    soroban_sdk::{self, contracttype, env, token, Address, Map, Symbol, Vec},
     IntoKey,
 };
 
@@ -13,6 +13,25 @@ use crate::{
 const BASIS_POINTS: i128 = 10_000;
 
 #[contracttype]
+#[derive(Clone)]
+pub struct CDPInternal {
+    pub xlm_deposited: i128,
+    pub asset_lent: i128,
+    pub status: CDPStatus,
+}
+
+impl CDPInternal {
+    #[must_use]
+    pub fn new(xlm_deposited: i128, asset_lent: i128) -> Self {
+        CDPInternal {
+            xlm_deposited,
+            asset_lent,
+            status: CDPStatus::Open,
+        }
+    }
+}
+
+#[contracttype]
 #[derive(IntoKey)]
 pub struct Token {
     /// XLM Address
@@ -24,7 +43,7 @@ pub struct Token {
     /// basis points; default 110%; updateable by admin
     min_collat_ratio: u32,
     /// each Address can only have one CDP per Asset. Given that you can adjust your CDPs freely, that seems fine?
-    cdps: Map<Address, CDP>,
+    cdps: Map<Address, CDPInternal>,
 }
 
 /// Loam SDK currently requires us to implement `Default`. This is nonsense and will be fixed in
@@ -97,52 +116,25 @@ impl IsCollateralized for Token {
         // 4. FIXME mint `asset_lent` of this token to `address`
 
         // 5. create CDP
-        self.cdps.set(lender, CDP::new(collateral, asset_lent));
-    }
-
-    /// Collateralization Ratio of a CDP for a given Lender. Returned in basis points (divide by
-    /// 100 to get percentage).
-    fn cdp_collat_ratio(&self, lender: Address) -> Option<u32> {
-        let cdp = self.cdps.get(lender)?;
-        let PriceData {
-            price: price_from_oracle,
-            ..
-        } = self.lastprice()?;
-
-        // Need to divide in a way that never has a decimal, so decimals don't get truncated (or
-        // that has only truncatable decimals as of the final operation).
-        //
-        // ratio = BASIS_POINTS * XLM locked / (USD minted * XLM price)
-        //
-        //   and: XLM price = price_from_oracle / decimals_oracle
-        //   so that:
-        //
-        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / (USD minted * price_from_oracle)
-        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / USD minted / price_from_oracle
-        Some(
-            (BASIS_POINTS * cdp.xlm_deposited * 10i128.pow(self.decimals_oracle())
-                / cdp.asset_lent
-                / price_from_oracle) as u32,
-        )
+        self.cdps
+            .set(lender, CDPInternal::new(collateral, asset_lent));
     }
 
     fn cdp(&self, lender: Address) -> Option<CDP> {
         let cdp = self.cdps.get(lender.clone())?;
-        match cdp.status {
-            CDPStatus::Open => {
-                let cdp_ratio = self.cdp_collat_ratio(lender)?;
-                if cdp_ratio < self.min_collat_ratio {
-                    Some(CDP {
-                        xlm_deposited: cdp.xlm_deposited,
-                        asset_lent: cdp.asset_lent,
-                        status: CDPStatus::Insolvent,
-                    })
-                } else {
-                    Some(cdp)
-                }
-            }
-            _ => Some(cdp),
-        }
+        let lastprice = self.lastprice()?;
+        let decimals = self.decimals_oracle();
+        Some(self.decorate(cdp, lender, lastprice.price, decimals))
+    }
+
+    fn cdps(&self) -> Option<Vec<CDP>> {
+        let mut cdps: Vec<CDP> = Vec::new(env());
+        let lastprice = self.lastprice()?;
+        let decimals = self.decimals_oracle();
+        self.cdps
+            .iter()
+            .for_each(|(k, v)| cdps.push_back(self.decorate(v, k, lastprice.price, decimals)));
+        Some(cdps)
     }
 
     fn freeze_cdp(&mut self, lender: Address) {
@@ -150,7 +142,7 @@ impl IsCollateralized for Token {
         if matches!(cdp.status, CDPStatus::Insolvent) {
             self.cdps.set(
                 lender,
-                CDP {
+                CDPInternal {
                     xlm_deposited: cdp.xlm_deposited,
                     asset_lent: cdp.asset_lent,
                     status: CDPStatus::Frozen,
@@ -179,5 +171,45 @@ impl IsCDPAdmin for Token {
         Contract::require_auth();
         self.min_collat_ratio = to;
         to
+    }
+}
+
+impl Token {
+    /// Decorate a CDPInternal with the collateralization ratio. Also check if the CDP is insolvent.
+    fn decorate(
+        &self,
+        cdp: CDPInternal,
+        owner: Address,
+        price_from_oracle: i128,
+        decimals_oracle: u32,
+    ) -> CDP {
+        // Need to divide in a way that never has a decimal, so decimals don't get truncated (or
+        // that has only truncatable decimals as of the final operation).
+        //
+        // ratio = BASIS_POINTS * XLM locked / (USD minted * XLM price)
+        //
+        //   and: XLM price = price_from_oracle / decimals_oracle
+        //   so that:
+        //
+        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / (USD minted * price_from_oracle)
+        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / USD minted / price_from_oracle
+        let collateralization_ratio =
+            (BASIS_POINTS * cdp.xlm_deposited * 10i128.pow(decimals_oracle)
+                / cdp.asset_lent
+                / price_from_oracle) as u32;
+
+        CDP {
+            owner,
+            xlm_deposited: cdp.xlm_deposited,
+            asset_lent: cdp.asset_lent,
+            collateralization_ratio,
+            status: if matches!(cdp.status, CDPStatus::Open)
+                && collateralization_ratio < self.min_collat_ratio
+            {
+                CDPStatus::Insolvent
+            } else {
+                cdp.status
+            },
+        }
     }
 }
