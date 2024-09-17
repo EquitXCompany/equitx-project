@@ -1,7 +1,7 @@
 import { useLoaderData, Outlet } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
-import type { CDP } from "xasset";
+import Connect from "../../components/connect";
 
 export const loader: LoaderFunction = async (): Promise<number> => {
   const tx = await xasset.minimum_collateralization_ratio();
@@ -23,6 +23,7 @@ function Root() {
       >
         XLM↔USD Pool
       </h1>
+      <Connect />
       {ratio && (
         <p style={{ textAlign: "center" }}>
           minimum collateralization ratio: {ratio / 100}%
