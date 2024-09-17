@@ -59,7 +59,7 @@ pub trait IsCollateralized {
     fn minimum_collateralization_ratio(&self) -> u32;
 
     /// Get the most recent price for the pegged asset
-    fn lastprice(&self) -> Option<PriceData>;
+    fn lastprice(&self) -> PriceData;
 
     /// Get the number of decimals used by the pegged oracle contract
     fn decimals_oracle(&self) -> u32;

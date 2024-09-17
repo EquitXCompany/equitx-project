@@ -71,14 +71,15 @@ impl IsCollateralized for Token {
         self.min_collat_ratio
     }
 
-    fn lastprice(&self) -> Option<PriceData> {
+    fn lastprice(&self) -> PriceData {
         let env = env();
         let contract = &self.pegged_contract;
         let asset = &self.pegged_asset;
         let client = data_feed::Client::new(env, contract);
-        let data_feed::PriceData { price, timestamp } =
-            client.lastprice(&data_feed::Asset::Other(asset.clone()))?;
-        Some(PriceData { price, timestamp })
+        let data_feed::PriceData { price, timestamp } = client
+            .lastprice(&data_feed::Asset::Other(asset.clone()))
+            .expect("No price data");
+        PriceData { price, timestamp }
     }
 
     fn decimals_oracle(&self) -> u32 {
@@ -122,14 +123,14 @@ impl IsCollateralized for Token {
 
     fn cdp(&self, lender: Address) -> CDP {
         let cdp = self.cdps.get(lender.clone()).expect("CDP not found");
-        let lastprice = self.lastprice().expect("No price data");
+        let lastprice = self.lastprice();
         let decimals = self.decimals_oracle();
         self.decorate(cdp, lender, lastprice.price, decimals)
     }
 
     fn cdps(&self) -> Vec<CDP> {
         let mut cdps: Vec<CDP> = Vec::new(env());
-        let lastprice = self.lastprice().expect("No price data");
+        let lastprice = self.lastprice();
         let decimals = self.decimals_oracle();
         self.cdps
             .iter()
