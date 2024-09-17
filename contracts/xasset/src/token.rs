@@ -138,7 +138,7 @@ impl IsCollateralized for Token {
     }
 
     fn freeze_cdp(&mut self, lender: Address) {
-        let cdp = self.cdp(lender.clone()).expect("CDP not found");
+        let cdp = self.cdp(lender.clone());
         if matches!(cdp.status, CDPStatus::Insolvent) {
             self.cdps.set(
                 lender,
@@ -179,7 +179,7 @@ impl Token {
     fn decorate(
         &self,
         cdp: CDPInternal,
-        owner: Address,
+        lender: Address,
         price_from_oracle: i128,
         decimals_oracle: u32,
     ) -> CDP {
@@ -199,7 +199,7 @@ impl Token {
                 / price_from_oracle) as u32;
 
         CDP {
-            owner,
+            lender,
             xlm_deposited: cdp.xlm_deposited,
             asset_lent: cdp.asset_lent,
             collateralization_ratio,

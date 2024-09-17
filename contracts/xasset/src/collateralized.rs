@@ -9,12 +9,12 @@ use crate::PriceData;
 #[derive(Clone)]
 /// Descriptions of these on page 5 of Indigo white paper
 pub enum CDPStatus {
-    /// A CDP that is fully collateralized, with its CR value above the iAsset’s MCR. Open CDPs remain fully usable by their owners.
+    /// A CDP that is fully collateralized, with its CR value above the iAsset’s MCR. Open CDPs remain fully usable by their lenders.
     Open,
-    /// A CDP that is undercollateralized, with its CR value below the iAsset’s MCR. Insolvent CDPs remain fully usable by their owners but eligible to be frozen by any user.
+    /// A CDP that is undercollateralized, with its CR value below the iAsset’s MCR. Insolvent CDPs remain fully usable by their lenders but eligible to be frozen by any user.
     /// Consideration: does `Insolvent` need to be hard-coded? Or can it be calculated on-demand while data's small and as part of our eventual indexing layer once data's big?
     Insolvent,
-    /// A CDP that has been confiscated by the protocol and no longer has an owner. A CDP becomes frozen after a user successfully submits a request against an insolvent CDP. Frozen CDPs cannot be used by their former owners.
+    /// A CDP that has been confiscated by the protocol and no longer has an lender. A CDP becomes frozen after a user successfully submits a request against an insolvent CDP. Frozen CDPs cannot be used by their former lenders.
     Frozen,
     /// A CDP whose CR value is zero, no longer having any collateral or debt. A CDP is closed after all its debt is repaid and its collateral is withdrawn.
     Closed,
@@ -24,7 +24,7 @@ pub enum CDPStatus {
 #[derive(Clone)]
 /// Collateralized Debt Position for a specific account
 pub struct CDP {
-    pub owner: Address,
+    pub lender: Address,
     pub xlm_deposited: i128,
     pub asset_lent: i128,
     pub status: CDPStatus,
