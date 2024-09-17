@@ -29,8 +29,9 @@ set_min_collat_ratio --to 15000
 accounts = ["equitx"]
 
 [staging.network]
-rpc_url = "https://soroban-testnet.stellar.org"
-network_passphrase = "Test SDF Network ; September 2015"
+rpc-url = "https://soroban-testnet.stellar.org"
+network-passphrase = "Test SDF Network ; September 2015"
 
-# [contracts]
-# data_feed = "CBKZFI26PDCZUJ5HYYKVB5BWCNYUSNA5LVL4R2JTRVSOB4XEP7Y34OPN"
+[staging.contracts]
+data_feed = { id = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63" }
+xasset = { id = "CDL7EPDGP7EL52QTYU4RVP6LSMAVHGCNUGUAOI4YMBMIWXUTHUF3V3ZI" }
