@@ -31,9 +31,11 @@ function Show() {
         <>
           <p>Status: {cdp.status.tag}</p>
           <p>Ratio: {cdp.collateralization_ratio / 100}%</p>
-          <p>XLM Locked: {Number(cdp.xlm_deposited) / 10 ** decimals}</p>
-          <p>USD Lent: {Number(cdp.asset_lent) / 10 ** decimals}</p>
-          <p>XLM Price: {Number(lastprice) / 10 ** decimalsOracle}</p>
+          <p>
+            XLM Locked: {Number(cdp.xlm_deposited / 10n ** BigInt(decimals))}
+          </p>
+          <p>USD Lent: {Number(cdp.asset_lent / 10n ** BigInt(decimals))}</p>
+          <p>XLM Price: {Number(lastprice / 10n ** BigInt(decimalsOracle))}</p>
         </>
       )}
     </>

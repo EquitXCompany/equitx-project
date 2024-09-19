@@ -1,23 +1,17 @@
-import { useState, useEffect } from "react";
-import { getState, onChange, freighter } from "../../../wallet";
+import { useWallet, freighter } from "../../../wallet";
 
 export default function Connect() {
-  const [isSignedIn, setIsSignedIn] = useState(getState().isSignedIn);
-  const [networkPassphrase, setNetwork] = useState(
-    getState().networkPassphrase,
-  );
-  const [account, setAccount] = useState(getState().account);
-
-  useEffect(() => {
-    onChange(async (state) => {
-      setIsSignedIn(state.isSignedIn);
-      setNetwork(state.networkPassphrase);
-      setAccount(state.account);
-    });
-  }, []);
+  const { isSignedIn, networkPassphrase, account } = useWallet();
 
   if (isSignedIn && account) {
-    return <p style={{ textAlign: "center" }}>Connected as {account}</p>;
+    return (
+      <p style={{ textAlign: "center" }}>
+        Connected as{" "}
+        <span title={account} className="truncate">
+          {account}
+        </span>
+      </p>
+    );
   }
   if (networkPassphrase !== import.meta.env.PUBLIC_NETWORK_PASSPHRASE) {
     return (

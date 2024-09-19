@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
 import { useLoaderData } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
 import type { CDP } from "xasset";
 import Card from "../../components/card";
-import { getState, onChange } from "../../../wallet";
+import { useWallet } from "../../../wallet";
 
 export const loader: LoaderFunction = async (): Promise<CDP[]> => {
   const tx = await xasset.cdps();
@@ -13,12 +12,13 @@ export const loader: LoaderFunction = async (): Promise<CDP[]> => {
 
 function List() {
   const cdps = useLoaderData() as Awaited<CDP[]>;
-  const [account, setAccount] = useState(getState().account);
-  useEffect(() => {
-    onChange(async (state) => {
-      setAccount(state.account);
-    });
-  }, []);
+  const { account } = useWallet();
+  const indexOfYours = cdps.findIndex((cdp) => cdp.lender === account);
+  const yours = cdps[indexOfYours];
+  if (yours) {
+    cdps.splice(indexOfYours, 1);
+    cdps.unshift(yours);
+  }
   return (
     cdps.length > 0 && (
       <ul

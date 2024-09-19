@@ -36,6 +36,7 @@ const { title } = Astro.props;
     font-family: system-ui, sans-serif;
     background: #13151a;
     background-size: 224px;
+    text-align: center;
   }
   code {
     font-family:
@@ -101,5 +102,23 @@ const { title } = Astro.props;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: top;
+    border-bottom: 1px dotted rgb(var(--accent-light));
+    cursor: help;
+  }
+  label {
+    display: block;
+    margin-top: 1rem;
+  }
+  input {
+    border: 1px solid rgb(var(--accent));
+    background-color: #23262d;
+    color: white;
+    display: block;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: inherit;
   }
 </style>

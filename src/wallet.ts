@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { isConnected, getAddress, getNetwork } from "@stellar/freighter-api";
 export * as freighter from "@stellar/freighter-api";
 
@@ -30,12 +31,25 @@ type onChangeHandler = (args: {
   network: string;
   networkPassphrase: string;
   isSignedIn: boolean;
-}) => Promise<void>;
+}) => void | Promise<void>;
 
 const onChangeHandlers: onChangeHandler[] = [];
 
 export function onChange(handler: onChangeHandler) {
   onChangeHandlers.push(handler);
+}
+
+export function useWallet() {
+  const [state, setState] = useState(getState());
+  useEffect(() => {
+    onChange((newState) => setState(newState));
+    console.log("+1", { onChangeHandlers });
+    return () => {
+      onChangeHandlers.splice(onChangeHandlers.indexOf(setState), 1);
+      console.log("-1?", { onChangeHandlers });
+    };
+  }, []);
+  return state;
 }
 
 export async function refresh(forceUpdate = false) {
