@@ -6,8 +6,9 @@ import type { CDP } from "xasset";
 interface Data {
   cdp: CDP | undefined;
   decimals: number;
-  lastprice: bigint | undefined;
-  decimalsOracle: number;
+  lastpriceXLM: number;
+  lastpriceAsset: number;
+  symbolAsset: string;
 }
 
 export const loader: LoaderFunction = async ({ params }): Promise<Data> => {
@@ -15,19 +16,24 @@ export const loader: LoaderFunction = async ({ params }): Promise<Data> => {
   return {
     cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
-    lastprice: await xasset.lastprice().then((tx) => tx.result!.price),
-    decimalsOracle: 14, // FIXME: get from xasset (currently erroring in stellar-sdk)
+    lastpriceXLM:
+      Number(await xasset.lastprice_xlm().then((t) => t.result.price)) /
+      10 ** 14, // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
+    lastpriceAsset:
+      Number(await xasset.lastprice_asset().then((t) => t.result.price)) /
+      10 ** 14, // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
+    symbolAsset: "xUSD", // FIXME: get from xasset (to be implemented as part of ft)
   };
 };
 
 function Show() {
   const { lender } = useParams() as { lender: string };
-  const { cdp, decimals, lastprice, decimalsOracle } =
+  const { cdp, decimals, lastpriceXLM, lastpriceAsset, symbolAsset } =
     useLoaderData() as Awaited<Data>;
   return (
     <>
       <h2>CDP for {lender}</h2>
-      {cdp && lastprice && (
+      {cdp && (
         <>
           <p>Status: {cdp.status.tag}</p>
           <p>Ratio: {cdp.collateralization_ratio / 100}%</p>
@@ -35,7 +41,10 @@ function Show() {
             XLM Locked: {Number(cdp.xlm_deposited / 10n ** BigInt(decimals))}
           </p>
           <p>USD Lent: {Number(cdp.asset_lent / 10n ** BigInt(decimals))}</p>
-          <p>XLM Price: {Number(lastprice / 10n ** BigInt(decimalsOracle))}</p>
+          <p>XLM Price: {lastpriceXLM}</p>
+          <p>
+            {symbolAsset} Price: {lastpriceAsset}
+          </p>
         </>
       )}
     </>

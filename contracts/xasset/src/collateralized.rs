@@ -35,20 +35,13 @@ pub struct CDP {
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
 pub trait IsCollateralized {
-    /// Oracle contract ID this tracks. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
-    ///
-    /// This allows calling the Oracle contract to get the price of the asset:
-    ///
-    ///     stellar contract invoke --id CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR \
-    ///       -- lastprice --asset '{"Stellar":"CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4"}'
-    fn pegged_contract(&self) -> loam_sdk::soroban_sdk::Address;
+    /// Oracle contract used for this contract's XLM price feed. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
+    fn xlm_contract(&self) -> loam_sdk::soroban_sdk::Address;
 
-    /// Which asset from Oracle this tracks. Example: `{"Stellar":"CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4"}`
-    ///
-    /// This allows calling the Oracle contract to get the price of the asset:
-    ///
-    ///     stellar contract invoke --id CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR \
-    ///       -- lastprice --asset '{"Stellar":"CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4"}'
+    /// Oracle contract used for this contract's pegged asset. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
+    fn asset_contract(&self) -> loam_sdk::soroban_sdk::Address;
+
+    /// Which asset from Oracle this tracks. For `--asset '{"Other":"USD"}'` on asset contract, set to `USD`
     fn pegged_asset(&self) -> Symbol;
 
     /// Basis points. Default: 110%
@@ -58,14 +51,17 @@ pub trait IsCollateralized {
     /// u16 would suffice, but Soroban SDK doesn't support it 🥴
     fn minimum_collateralization_ratio(&self) -> u32;
 
+    /// Get the most recent price for XLM
+    fn lastprice_xlm(&self) -> PriceData;
+
     /// Get the most recent price for the pegged asset
-    fn lastprice(&self) -> PriceData;
+    fn lastprice_asset(&self) -> PriceData;
 
-    /// Get the number of decimals used by the pegged oracle contract
-    fn decimals_oracle(&self) -> u32;
+    /// Get the number of decimals used by the xlm oracle contract
+    fn decimals_xlm(&self) -> u32;
 
-    // /// each Address can only have one CDP per Asset. Given that you can adjust your CDPs freely, that seems fine?
-    // fn get_cdp(&self, loam_sdk::soroban_sdk::Address) -> CDP;
+    /// Get the number of decimals used by the asset oracle contract
+    fn decimals_asset(&self) -> u32;
 
     // fn add_collateral(&self, cdp: CDP);
 
@@ -82,13 +78,36 @@ pub trait IsCollateralized {
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
 pub trait IsCDPAdmin {
+    /// Initialize the subcontract with the given configuration.
+    ///
+    /// This assumes that you have already:
+    ///
+    /// - instantiated the Core subcontract with `admin_set`
+    ///
+    /// # Panics
+    ///
+    /// - if `cdp_init` has already been called
+    /// - if `admin_set` has not yet been called and there is therefore not yet an admin
+    /// - if admin did not sign the transaction envelope
+    fn cdp_init(
+        &self,
+        xlm_sac: Address,
+        xlm_contract: Address,
+        asset_contract: Address,
+        pegged_asset: Symbol,
+        min_collat_ratio: u32,
+    );
+
     /// Set the address of the XLM contract
-    fn set_xlm_address(&mut self, to: loam_sdk::soroban_sdk::Address);
+    fn set_xlm_sac(&mut self, to: loam_sdk::soroban_sdk::Address);
 
-    /// Set the oracle contract. Only callable by admin.
-    fn set_pegged_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
+    /// Set the oracle price feed contract for xlm. Only callable by admin.
+    fn set_xlm_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
 
-    /// Set the asset this asset is pegged to. Only callable by admin.
+    /// Set the oracle price feed contract for xAsset. Only callable by admin.
+    fn set_asset_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
+
+    /// Set the asset the xAsset is pegged to. Only callable by admin.
     fn set_pegged_asset(&mut self, to: Symbol);
 
     /// Only callable by admin.

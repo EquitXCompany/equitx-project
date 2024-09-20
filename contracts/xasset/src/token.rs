@@ -1,5 +1,5 @@
 use loam_sdk::{
-    soroban_sdk::{self, contracttype, env, token, Address, Map, Symbol, Vec},
+    soroban_sdk::{self, contracttype, env, token, Address, Lazy, Map, Symbol, Vec},
     IntoKey,
 };
 
@@ -34,10 +34,12 @@ impl CDPInternal {
 #[contracttype]
 #[derive(IntoKey)]
 pub struct Token {
-    /// XLM Address
-    xlm_address: Address,
-    /// Oracle contract ID this asset tracks.
-    pegged_contract: Address,
+    /// XLM Stellar Asset Contract address, for XLM transfers
+    xlm_sac: Address,
+    /// Oracle contract ID for XLM price feed
+    xlm_contract: Address,
+    /// Oracle contract ID for asset price feed
+    asset_contract: Address,
     /// Oracle asset ID this asset tracks.
     pegged_asset: Symbol,
     /// basis points; default 110%; updateable by admin
@@ -46,13 +48,34 @@ pub struct Token {
     cdps: Map<Address, CDPInternal>,
 }
 
+impl Token {
+    #[must_use]
+    pub fn new(
+        xlm_sac: Address,
+        xlm_contract: Address,
+        asset_contract: Address,
+        pegged_asset: Symbol,
+        min_collat_ratio: u32,
+    ) -> Self {
+        Token {
+            xlm_sac,
+            xlm_contract,
+            asset_contract,
+            pegged_asset,
+            min_collat_ratio,
+            cdps: Map::new(env()),
+        }
+    }
+}
+
 /// Loam SDK currently requires us to implement `Default`. This is nonsense and will be fixed in
 /// https://github.com/loambuild/loam/issues/92
 impl Default for Token {
     fn default() -> Self {
         Token {
-            xlm_address: env().current_contract_address(),
-            pegged_contract: env().current_contract_address(),
+            xlm_sac: env().current_contract_address(),
+            xlm_contract: env().current_contract_address(),
+            asset_contract: env().current_contract_address(),
             pegged_asset: Symbol::new(env(), "XLM"),
             min_collat_ratio: 11000,
             cdps: Map::new(env()),
@@ -61,8 +84,11 @@ impl Default for Token {
 }
 
 impl IsCollateralized for Token {
-    fn pegged_contract(&self) -> Address {
-        self.pegged_contract.clone()
+    fn xlm_contract(&self) -> Address {
+        self.xlm_contract.clone()
+    }
+    fn asset_contract(&self) -> Address {
+        self.xlm_contract.clone()
     }
     fn pegged_asset(&self) -> Symbol {
         self.pegged_asset.clone()
@@ -71,27 +97,39 @@ impl IsCollateralized for Token {
         self.min_collat_ratio
     }
 
-    fn lastprice(&self) -> PriceData {
+    fn lastprice_xlm(&self) -> PriceData {
         let env = env();
-        let contract = &self.pegged_contract;
+        let contract = &self.xlm_contract;
+        let client = data_feed::Client::new(env, contract);
+        let data_feed::PriceData { price, timestamp } = client
+            .lastprice(&data_feed::Asset::Other(Symbol::new(env, "XLM")))
+            .expect("No XLM price data from Oracle");
+        PriceData { price, timestamp }
+    }
+
+    fn lastprice_asset(&self) -> PriceData {
+        let env = env();
+        let contract = &self.asset_contract;
         let asset = &self.pegged_asset;
         let client = data_feed::Client::new(env, contract);
         let data_feed::PriceData { price, timestamp } = client
             .lastprice(&data_feed::Asset::Other(asset.clone()))
-            .expect("No price data");
+            .expect("No asset price data from Oracle");
         PriceData { price, timestamp }
     }
 
-    fn decimals_oracle(&self) -> u32 {
-        let env = env();
-        let contract = &self.pegged_contract;
-        let client = data_feed::Client::new(env, contract);
+    fn decimals_xlm(&self) -> u32 {
+        let contract = &self.xlm_contract;
+        let client = data_feed::Client::new(env(), contract);
         client.decimals()
     }
-    // fn add_collateral(&self, cdp: CDP) -> CDP {
-    //     self.cdps.get(address)
-    // }
-    //
+
+    fn decimals_asset(&self) -> u32 {
+        let contract = &self.asset_contract;
+        let client = data_feed::Client::new(env(), contract);
+        client.decimals()
+    }
+
     fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) {
         lender.require_auth();
 
@@ -111,7 +149,7 @@ impl IsCollateralized for Token {
         // }
 
         // 3. transfer attached XLM to this contract
-        let client = token::Client::new(env, &self.xlm_address);
+        let client = token::Client::new(env, &self.xlm_sac);
         client.transfer(&lender, &env.current_contract_address(), &collateral);
 
         // 4. FIXME mint `asset_lent` of this token to `address`
@@ -123,18 +161,36 @@ impl IsCollateralized for Token {
 
     fn cdp(&self, lender: Address) -> CDP {
         let cdp = self.cdps.get(lender.clone()).expect("CDP not found");
-        let lastprice = self.lastprice();
-        let decimals = self.decimals_oracle();
-        self.decorate(cdp, lender, lastprice.price, decimals)
+        let xlm_price = self.lastprice_xlm();
+        let xlm_decimals = self.decimals_xlm();
+        let xasset_price = self.lastprice_asset();
+        let xasset_decimals = self.decimals_asset();
+        self.decorate(
+            cdp,
+            lender,
+            xlm_price.price,
+            xlm_decimals,
+            xasset_price.price,
+            xasset_decimals,
+        )
     }
 
     fn cdps(&self) -> Vec<CDP> {
         let mut cdps: Vec<CDP> = Vec::new(env());
-        let lastprice = self.lastprice();
-        let decimals = self.decimals_oracle();
-        self.cdps
-            .iter()
-            .for_each(|(k, v)| cdps.push_back(self.decorate(v, k, lastprice.price, decimals)));
+        let xlm_price = self.lastprice_xlm();
+        let xlm_decimals = self.decimals_xlm();
+        let xasset_price = self.lastprice_asset();
+        let xasset_decimals = self.decimals_asset();
+        self.cdps.iter().for_each(|(lender, cdp)| {
+            cdps.push_back(self.decorate(
+                cdp,
+                lender,
+                xlm_price.price,
+                xlm_decimals,
+                xasset_price.price,
+                xasset_decimals,
+            ))
+        });
         cdps
     }
 
@@ -156,13 +212,34 @@ impl IsCollateralized for Token {
 }
 
 impl IsCDPAdmin for Token {
-    fn set_xlm_address(&mut self, to: Address) {
+    fn cdp_init(
+        &self,
+        xlm_sac: Address,
+        xlm_contract: Address,
+        asset_contract: Address,
+        pegged_asset: Symbol,
+        min_collat_ratio: u32,
+    ) {
         Contract::require_auth();
-        self.xlm_address = to;
+        Token::set_lazy(Token::new(
+            xlm_sac,
+            xlm_contract,
+            asset_contract,
+            pegged_asset,
+            min_collat_ratio,
+        ));
     }
-    fn set_pegged_contract(&mut self, to: Address) {
+    fn set_xlm_sac(&mut self, to: Address) {
         Contract::require_auth();
-        self.pegged_contract = to;
+        self.xlm_sac = to;
+    }
+    fn set_xlm_contract(&mut self, to: Address) {
+        Contract::require_auth();
+        self.xlm_contract = to;
+    }
+    fn set_asset_contract(&mut self, to: Address) {
+        Contract::require_auth();
+        self.asset_contract = to;
     }
     fn set_pegged_asset(&mut self, to: Symbol) {
         Contract::require_auth();
@@ -181,23 +258,37 @@ impl Token {
         &self,
         cdp: CDPInternal,
         lender: Address,
-        price_from_oracle: i128,
-        decimals_oracle: u32,
+        xlm_price: i128,
+        xlm_decimals: u32,
+        xasset_price: i128,
+        xasset_decimals: u32,
     ) -> CDP {
         // Need to divide in a way that never has a decimal, so decimals don't get truncated (or
         // that has only truncatable decimals as of the final operation).
         //
-        // ratio = BASIS_POINTS * XLM locked / (USD minted * XLM price)
+        // ratio = BASIS_POINTS * XLM locked * XLM's USD price / (xAsset minted * xAsset's USD price)
         //
-        //   and: XLM price = price_from_oracle / decimals_oracle
+        //   and: a price = multiplied price from oracle / oracle's number of decimals multiplier
         //   so that:
         //
-        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / (USD minted * price_from_oracle)
-        // ratio = BASIS_POINTS * XLM locked * decimals_oracle / USD minted / price_from_oracle
+        // ratio = BASIS_POINTS * XLM locked * (XLM's multiplied USD price / XLM's multiplier)
+        //           / (xAsset minted * (xAsset's multiplied USD price / xAsset's USD multiplier)
+        // ratio = BASIS_POINTS * XLM locked * XLM's multiplied USD price * xAsset's USD multiplier
+        //           / (xAsset minted * XLM's multiplier * xAsset's multiplied USD price)
+        //
+        // Need to prevent exceeding i128 limit. Multiply the numerator OR denom by min multiplier.
+        let (numer_decimals, denom_decimals) = if xlm_decimals == xasset_decimals {
+            (0, 0)
+        } else if xlm_decimals > xasset_decimals {
+            (0, xlm_decimals - xasset_decimals)
+        } else {
+            (xasset_decimals - xlm_decimals, 0)
+        };
         let collateralization_ratio =
-            (BASIS_POINTS * cdp.xlm_deposited * 10i128.pow(decimals_oracle)
+            (BASIS_POINTS * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
                 / cdp.asset_lent
-                / price_from_oracle) as u32;
+                / 10i128.pow(denom_decimals)
+                / xasset_price) as u32;
 
         CDP {
             lender,
