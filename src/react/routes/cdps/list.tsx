@@ -40,6 +40,11 @@ function List() {
             collateralized)
           </Card>
         ))}
+        {!yours && (
+          <Card title="New" href="/new">
+            Create a CDP
+          </Card>
+        )}
       </ul>
     )
   );
