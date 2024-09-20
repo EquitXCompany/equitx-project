@@ -1,4 +1,5 @@
 import { useWallet, freighter } from "../../../wallet";
+import Truncate from "../../components/truncate";
 
 export default function Connect() {
   const { isSignedIn, networkPassphrase, account } = useWallet();
@@ -6,10 +7,7 @@ export default function Connect() {
   if (isSignedIn && account) {
     return (
       <p style={{ textAlign: "center" }}>
-        Connected as{" "}
-        <span title={account} className="truncate">
-          {account}
-        </span>
+        Connected as <Truncate>{account}</Truncate>
       </p>
     );
   }
