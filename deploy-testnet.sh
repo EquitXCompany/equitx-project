@@ -8,10 +8,7 @@ rm -rf target/loam
 loam build
 export XUSD=$(stellar contract deploy --wasm target/loam/xasset.wasm)
 stellar contract invoke --id $XUSD -- admin_set --new-admin equitx
-stellar contract invoke --id $XUSD -- set_xlm_address --to "$(stellar contract id asset --asset native)"
-stellar contract invoke --id $XUSD -- set_pegged_contract --to "$(stellar contract alias show data_feed)"
-stellar contract invoke --id $XUSD -- set_pegged_asset --to XLM
-stellar contract invoke --id $XUSD -- set_min_collat_ratio --to 15000
+stellar contract invoke --id $XUSD -- cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USD --min_collat_ratio 15000
 sed -i.bak 's/xasset = { id = "\([^"]*\)"/xasset = { id = "'$XUSD'"/' environments.toml
 rm environments.toml.bak
 LOAM_ENV=staging loam build --build-clients

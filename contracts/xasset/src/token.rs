@@ -141,12 +141,25 @@ impl IsCollateralized for Token {
         }
 
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
-        // FIXME: do we need a Client and cross-contract call to self?
-        // let PriceData { price, .. } = self.lastprice().expect("No price data");
-        // let ratio = collateral / (asset_lent * price);
-        // if ratio < self.min_collat_ratio as i128 {
-        //     panic!("Insufficient collateralization ratio");
-        // }
+        let cdp = CDPInternal::new(collateral, asset_lent);
+        let xlm_price = self.lastprice_xlm();
+        let xlm_decimals = self.decimals_xlm_feed();
+        let xasset_price = self.lastprice_asset();
+        let xasset_decimals = self.decimals_asset_feed();
+        let CDP {
+            collateralization_ratio,
+            ..
+        } = self.decorate(
+            cdp.clone(),
+            lender.clone(),
+            xlm_price.price,
+            xlm_decimals,
+            xasset_price.price,
+            xasset_decimals,
+        );
+        if collateralization_ratio < self.min_collat_ratio {
+            panic!("Insufficient collateralization ratio");
+        }
 
         // 3. transfer attached XLM to this contract
         let client = token::Client::new(env, &self.xlm_sac);
@@ -155,8 +168,7 @@ impl IsCollateralized for Token {
         // 4. FIXME mint `asset_lent` of this token to `address`
 
         // 5. create CDP
-        self.cdps
-            .set(lender, CDPInternal::new(collateral, asset_lent));
+        self.cdps.set(lender, cdp);
     }
 
     fn cdp(&self, lender: Address) -> CDP {
