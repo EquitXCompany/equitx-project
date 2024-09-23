@@ -118,13 +118,13 @@ impl IsCollateralized for Token {
         PriceData { price, timestamp }
     }
 
-    fn decimals_xlm(&self) -> u32 {
+    fn decimals_xlm_feed(&self) -> u32 {
         let contract = &self.xlm_contract;
         let client = data_feed::Client::new(env(), contract);
         client.decimals()
     }
 
-    fn decimals_asset(&self) -> u32 {
+    fn decimals_asset_feed(&self) -> u32 {
         let contract = &self.asset_contract;
         let client = data_feed::Client::new(env(), contract);
         client.decimals()
@@ -162,9 +162,9 @@ impl IsCollateralized for Token {
     fn cdp(&self, lender: Address) -> CDP {
         let cdp = self.cdps.get(lender.clone()).expect("CDP not found");
         let xlm_price = self.lastprice_xlm();
-        let xlm_decimals = self.decimals_xlm();
+        let xlm_decimals = self.decimals_xlm_feed();
         let xasset_price = self.lastprice_asset();
-        let xasset_decimals = self.decimals_asset();
+        let xasset_decimals = self.decimals_asset_feed();
         self.decorate(
             cdp,
             lender,
@@ -178,9 +178,9 @@ impl IsCollateralized for Token {
     fn cdps(&self) -> Vec<CDP> {
         let mut cdps: Vec<CDP> = Vec::new(env());
         let xlm_price = self.lastprice_xlm();
-        let xlm_decimals = self.decimals_xlm();
+        let xlm_decimals = self.decimals_xlm_feed();
         let xasset_price = self.lastprice_asset();
-        let xasset_decimals = self.decimals_asset();
+        let xasset_decimals = self.decimals_asset_feed();
         self.cdps.iter().for_each(|(lender, cdp)| {
             cdps.push_back(self.decorate(
                 cdp,

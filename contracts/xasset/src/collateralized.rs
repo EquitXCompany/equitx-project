@@ -57,11 +57,11 @@ pub trait IsCollateralized {
     /// Get the most recent price for the pegged asset
     fn lastprice_asset(&self) -> PriceData;
 
-    /// Get the number of decimals used by the xlm oracle contract
-    fn decimals_xlm(&self) -> u32;
+    /// Get the number of decimals used by the xlm oracle contract. This is NOT the same as the number of decimals used by the XLM Stellar Asset Contract.
+    fn decimals_xlm_feed(&self) -> u32;
 
-    /// Get the number of decimals used by the asset oracle contract
-    fn decimals_asset(&self) -> u32;
+    /// Get the number of decimals used by the asset oracle contract. This is NOT the same as the number of decimals used by the xAsset Fungible Token contract.
+    fn decimals_asset_feed(&self) -> u32;
 
     // fn add_collateral(&self, cdp: CDP);
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Form, useLoaderData, redirect } from "react-router-dom";
 import type { ActionFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
-import data_feed from "../../../contracts/data_feed";
 import { freighter, useWallet } from "../../../wallet";
 
 const BASIS_POINTS = 10000;
@@ -24,22 +23,16 @@ export const loader = async () => {
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = Object.fromEntries(await request.formData());
-  // FIXME: we need to have `decimalsSAC` vs `decimalsOracleXLM` or something
-  // Here we need `decimalsSAC`
-  const decimalsXLM = 7;
-  const decimalsAsset = 14; // FIXME: get from xasset (currently erroring in stellar-sdk)
-  console.log({ decimalsXLM, decimalsAsset });
+  const decimalsXLM = 7; // FIXME: get from xlmSac.decimals (currently erroring in stellar-sdk)
+  const decimalsAsset = 7; // FIXME: get from xasset.decimals (currently erroring in stellar-sdk)
   const cdp = {
     lender: formData.lender as string,
     collateral: BigInt(Number(formData.collateral) * 10 ** decimalsXLM),
     asset_lent: BigInt(Number(formData.asset_lent) * 10 ** decimalsAsset),
   };
-  console.log(cdp);
-  // @ts-expect-error publicKey is passed through; stellar-sdk has incorrect types
   const tx = await xasset.open_cdp(cdp, { publicKey: cdp.lender });
   await tx.signAndSend({ signTransaction: freighter.signTransaction });
-  return null;
-  // return redirect(`/`);
+  return redirect(`/`);
 };
 
 function New() {
