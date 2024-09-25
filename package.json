@@ -10,7 +10,7 @@
   "name": "equitx",
   "scripts": {
     "astro": "astro",
-    "build": "astro check && astro build",
+    "build": "LOAM_ENV=staging loam build --build-clients && astro check && astro build",
     "dev": "concurrently \"loam dev --build-clients\" \"astro dev\"",
     "preview": "astro preview",
     "start": "concurrently \"loam dev --build-clients\" \"astro dev\""
