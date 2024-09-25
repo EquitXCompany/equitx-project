@@ -30,6 +30,7 @@ export const action: ActionFunction = async ({ request }) => {
     collateral: BigInt(Number(formData.collateral) * 10 ** decimalsXLM),
     asset_lent: BigInt(Number(formData.asset_lent) * 10 ** decimalsAsset),
   };
+  // @ts-expect-error publicKey is not in the type, but is passed through; see https://github.com/stellar/js-stellar-sdk/issues/1055
   const tx = await xasset.open_cdp(cdp, { publicKey: cdp.lender });
   await tx.signAndSend({ signTransaction: freighter.signTransaction });
   return redirect(`/`);
