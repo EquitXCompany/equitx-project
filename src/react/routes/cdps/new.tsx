@@ -1,22 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Form, useLoaderData, redirect } from "react-router-dom";
 import type { ActionFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
 import { freighter, useWallet } from "../../../wallet";
-
-const BASIS_POINTS = 10000;
+import BigNumber from 'bignumber.js';
+import { BASIS_POINTS } from "../../../constants";
 
 export const loader = async () => {
   return {
     minRatio: await xasset
       .minimum_collateralization_ratio()
-      .then((t) => t.result),
-    lastpriceXLM:
-      Number(await xasset.lastprice_xlm().then((t) => t.result.price)) /
-      10 ** 14, // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
-    lastpriceAsset:
-      Number(await xasset.lastprice_asset().then((t) => t.result.price)) /
-      10 ** 14, // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
+      .then((t) => new BigNumber(t.result)),
+    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => t.result.price)).toString())
+      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
+    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => t.result.price)).toString())
+      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
     symbolAsset: "xUSD", // FIXME: get from xasset, pending FT implementation
   };
 };
@@ -27,8 +25,8 @@ export const action: ActionFunction = async ({ request }) => {
   const decimalsAsset = 7; // FIXME: get from xasset.decimals (currently erroring in stellar-sdk)
   const cdp = {
     lender: formData.lender as string,
-    collateral: BigInt(Number(formData.collateral) * 10 ** decimalsXLM),
-    asset_lent: BigInt(Number(formData.asset_lent) * 10 ** decimalsAsset),
+    collateral: new BigNumber(formData.collateral?.toString() || '0').times(new BigNumber(10).pow(decimalsXLM)).toFixed(0),
+    asset_lent: new BigNumber(formData.asset_lent?.toString() || '0').times(new BigNumber(10).pow(decimalsAsset)).toFixed(0),
   };
   // @ts-expect-error publicKey is not in the type, but is passed through; see https://github.com/stellar/js-stellar-sdk/issues/1055
   const tx = await xasset.open_cdp(cdp, { publicKey: cdp.lender });
@@ -40,34 +38,52 @@ function New() {
   const { account } = useWallet();
   const { lastpriceXLM, lastpriceAsset, minRatio, symbolAsset } =
     useLoaderData() as Awaited<ReturnType<typeof loader>>;
-  const [collateral, setCollateral] = useState(100);
-  const [desiredRatio, setDesiredRatio] = useState(minRatio + 3000);
-  const [toLend, setToLend] = useState(
-    calcToLend({ collateral, lastpriceXLM, desiredRatio, lastpriceAsset }),
-  );
-  const updateAmountToLend = ({
-    xlmDeposit,
-    ratio,
-  }: {
-    ratio?: number;
-    xlmDeposit?: number;
-  }) => {
-    setToLend(
-      calcToLend({
-        collateral: xlmDeposit ?? collateral,
-        desiredRatio: ratio ?? desiredRatio,
-        lastpriceXLM,
-        lastpriceAsset,
-      }),
-    );
+  const [collateral, setCollateral] = useState(new BigNumber(100));
+  const [toLend, setToLend] = useState(new BigNumber(0));
+  const [ratio, setRatio] = useState(new BigNumber(0));
+  const decimalsXLM = 7; // FIXME: get from xlmSac.decimals (currently erroring in stellar-sdk)
+  const decimalsAsset = 7; // FIXME: get from xasset.decimals (currently erroring in stellar-sdk)
+  const stepValueXLM = `0.${'0'.repeat(decimalsXLM - 1)}1`;
+  const stepValueAsset = `0.${'0'.repeat(decimalsAsset - 1)}1`;
+
+  const updateRatio = (newCollateral: BigNumber, newToLend: BigNumber) => {
+    if (newToLend.isZero()) {
+      setRatio(new BigNumber(0));
+    } else {
+      const newRatio = newCollateral.times(lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(lastpriceAsset));
+      setRatio(newRatio);
+    }
   };
+
+  const handleCollateralChange = (value: string) => {
+    const newCollateral = new BigNumber(value);
+    setCollateral(newCollateral);
+    updateRatio(newCollateral, toLend);
+  };
+
+  const handleToLendChange = (value: string) => {
+    const newToLend = new BigNumber(value);
+    setToLend(newToLend);
+    updateRatio(collateral, newToLend);
+  };
+
+  const handleRatioChange = (value: string) => {
+    const newRatio = new BigNumber(value).times(BASIS_POINTS).div(100);
+    setRatio(newRatio);
+    const newToLend = collateral.times(lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(lastpriceAsset);
+    setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_DOWN));
+  };
+
+  useEffect(() => {
+    // Initialize ratio when collateral is set
+    updateRatio(collateral, toLend);
+  }, []);
+
   return (
     <>
       <h2>Open a new Collateralized Debt Position (CDP)</h2>
-      <p>Current XLM price: ${lastpriceXLM}</p>
-      <p>
-        Current {symbolAsset} price: ${lastpriceAsset}
-      </p>
+      <p>Current XLM price: ${lastpriceXLM.toFixed(decimalsXLM)}</p>
+      <p>Current {symbolAsset} price: ${lastpriceAsset.toFixed(decimalsAsset)}</p>
       <Form method="post">
         <input type="hidden" name="lender" value={account} />
         <label>
@@ -76,43 +92,45 @@ function New() {
             type="number"
             name="collateral"
             autoFocus
-            value={collateral}
-            onChange={(e) => {
-              const collateral = Number(e.target.value);
-              setCollateral(collateral);
-              updateAmountToLend({ xlmDeposit: Number(e.target.value) });
-            }}
+            value={collateral.toNumber()}
+            onChange={(e) => handleCollateralChange(e.target.value)}
+            step={stepValueXLM}
           />
         </label>
         <label>
-          Pick a collateralization ratio:
+          Set collateralization ratio (%):
           <input
             type="number"
-            min={minRatio / 100}
-            value={desiredRatio / 100}
-            onChange={(e) => {
-              const ratio = Number(e.target.value) * 100;
-              setDesiredRatio(ratio);
-              updateAmountToLend({ ratio });
-            }}
+            value={ratio.times(100).div(BASIS_POINTS).toFixed(2)}
+            onChange={(e) => handleRatioChange(e.target.value)}
+            step="0.01"
+            min={minRatio.times(100).div(BASIS_POINTS).toFixed(2)}
           />
-          <p>
-            The minimum collateralization ratio is {minRatio / 100}%. Your CDP
-            will be liquidated if its ratio falls below this value. The higher
-            you go above this ratio, the less likely you are to be liquidated.
-            fully collateralized)
-          </p>
         </label>
         <label>
           Amount of {symbolAsset} you'll mint:
-          <input type="number" name="asset_lent" readOnly value={toLend} />
+          <input
+            type="number"
+            name="asset_lent"
+            value={toLend.toFixed(decimalsAsset)}
+            onChange={(e) => handleToLendChange(e.target.value)}
+            step={stepValueAsset}
+            max={collateral.times(lastpriceXLM).div(lastpriceAsset).times(new BigNumber(minRatio).div(BASIS_POINTS)).toFixed(decimalsAsset)}
+          />
         </label>
-        <button type="submit" style={{ marginTop: "2rem" }}>
+        <p>
+          Current collateralization ratio: {ratio.times(100).div(BASIS_POINTS).toFixed(2)}%
+          {ratio.isLessThan(minRatio) && (
+            <span style={{ color: 'red' }}> (Below minimum ratio of {new BigNumber(minRatio).times(100).div(BASIS_POINTS).toFixed(2)}%)</span>
+          )}
+        </p>
+        <button type="submit" style={{ marginTop: "2rem" }} disabled={ratio.isLessThan(minRatio)}>
           Open CDP
         </button>
       </Form>
     </>
   );
+
 }
 
 export const element = <New />;
