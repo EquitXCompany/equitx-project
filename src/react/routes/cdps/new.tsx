@@ -71,7 +71,7 @@ function New() {
     const newRatio = new BigNumber(value).times(BASIS_POINTS).div(100);
     setRatio(newRatio);
     const newToLend = collateral.times(lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(lastpriceAsset);
-    setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_DOWN));
+    setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
   };
 
   useEffect(() => {
