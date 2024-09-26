@@ -316,4 +316,31 @@ impl Token {
             },
         }
     }
+
+    /*pub fn liquidate_cdp(&mut self, lender: Address) {
+        let mut cdp = self.cdps.get(lender.clone()).expect("CDP not found");
+        let mut sp = StabilityPool::new(env());
+
+        if matches!(cdp.status, CDPStatus::Insolvent) {
+            let (liquidated_debt, liquidated_collateral, remaining_debt) = sp.liquidate(&mut cdp);
+
+            if remaining_debt == 0 {
+                // Full liquidation
+                self.cdps.remove(lender.clone());
+            } else {
+                // Partial liquidation
+                cdp.status = CDPStatus::Frozen;
+                self.cdps.set(lender.clone(), cdp);
+            }
+
+            // Transfer liquidated collateral to Stability Pool
+            let client = token::Client::new(env(), &self.xlm_sac);
+            client.transfer(&env.current_contract_address(), &sp.address(), &liquidated_collateral);
+
+            // Burn liquidated iAsset
+            // FIXME: Implement iAsset burning logic
+        } else {
+            panic!("CDP not insolvent");
+        }
+    }*/
 }

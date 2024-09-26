@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.dependencies]
-loam-sdk = "0.6.12"
+loam-sdk = "0.6.15"
 loam-subcontract-core = "0.7.5"
 
 [profile.release]
