@@ -1,4 +1,4 @@
-import { useLoaderData, useParams } from "react-router-dom";
+import { useLoaderData, useParams, Link } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
 import type { CDP } from "xasset";
@@ -32,6 +32,7 @@ function Show() {
     useLoaderData() as Awaited<Data>;
   return (
     <>
+      <Link to="/">← Back to List</Link>
       <h2>CDP for {lender}</h2>
       {cdp && (
         <>
