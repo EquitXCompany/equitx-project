@@ -1,17 +1,17 @@
 use loam_sdk::{
-    soroban_sdk::{self, Address, Lazy, Symbol},
+    soroban_sdk::{self, Address, Lazy, String, Symbol, Vec},
     subcontract,
 };
 
 use crate::PriceData;
 
 #[loam_sdk::soroban_sdk::contracttype]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 /// Descriptions of these on page 5 of Indigo white paper
 pub enum CDPStatus {
-    /// A CDP that is fully collateralized, with its CR value above the iAsset’s MCR. Open CDPs remain fully usable by their lenders.
+    /// A CDP that is fully collateralized, with its CR value above the xAsset’s MCR. Open CDPs remain fully usable by their lenders.
     Open,
-    /// A CDP that is undercollateralized, with its CR value below the iAsset’s MCR. Insolvent CDPs remain fully usable by their lenders but eligible to be frozen by any user.
+    /// A CDP that is undercollateralized, with its CR value below the xAsset’s MCR. Insolvent CDPs remain fully usable by their lenders but eligible to be frozen by any user.
     /// Consideration: does `Insolvent` need to be hard-coded? Or can it be calculated on-demand while data's small and as part of our eventual indexing layer once data's big?
     Insolvent,
     /// A CDP that has been confiscated by the protocol and no longer has an lender. A CDP becomes frozen after a user successfully submits a request against an insolvent CDP. Frozen CDPs cannot be used by their former lenders.
@@ -63,15 +63,48 @@ pub trait IsCollateralized {
     /// Get the number of decimals used by the asset oracle contract. This is NOT the same as the number of decimals used by the xAsset Fungible Token contract.
     fn decimals_asset_feed(&self) -> u32;
 
-    // fn add_collateral(&self, cdp: CDP);
-
+    /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
+    /// The user who creates the CDP becomes the CDP's owner.
     fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128);
 
+    /// Retrieves the CDP information for a specific lender
     fn cdp(&self, lender: Address) -> CDP;
 
+    /// Retrieves all CDPs in the system
     fn cdps(&self) -> soroban_sdk::Vec<CDP>;
 
+    /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
+    /// A frozen CDP is no longer usable or interactable by its former owner.
     fn freeze_cdp(&mut self, lender: Address);
+
+    /// Increases the Collateralization Ratio (CR) by depositing more collateral to an existing CDP.
+    fn add_collateral(&mut self, lender: Address, amount: i128);
+
+    /// Lowers the Collateralization Ratio (CR) by withdrawing part or all of the collateral from a CDP.
+    /// Collateral cannot be withdrawn if it brings CR below the xAsset's MCR.
+    fn withdraw_collateral(&mut self, lender: Address, amount: i128);
+
+    /// Lowers the Collateralization Ratio (CR) by minting additional xAsset against existing collateral.
+    /// More xAsset cannot be minted if it brings CR below the xAsset's MCR.
+    fn borrow_xasset(&mut self, lender: Address, amount: i128);
+
+    /// Increases the Collateralization Ratio (CR) by repaying debt in the form of xAsset.
+    /// When the debt is repaid, the xAsset is burned (i.e., destroyed).
+    /// More xAsset cannot be burned than debt owed by the CDP.
+    fn repay_debt(&mut self, lender: Address, amount: i128);
+
+    /// Liquidates a frozen CDP. Upon liquidation, CDP debt is repaid by withdrawing xAsset from a Stability Pool.
+    /// As debt is repaid, collateral is withdrawn from the CDP.
+    /// If all debt is repaid, then all collateral is withdrawn, and the CDP is closed.
+    fn liquidate_cdp(&mut self, lender: Address);
+
+    /// Merges two or more frozen CDPs into one CDP.
+    /// Upon merging, all but one of the CDPs are closed, and their debt and collateral are transferred into a single CDP.
+    fn merge_cdps(&mut self, lenders: Vec<Address>);
+
+    /// Closes a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt.
+    /// A CDP is closed after all its debt is repaid and its collateral is withdrawn.
+    fn close_cdp(&mut self, lender: Address);
 }
 
 #[subcontract]
@@ -96,6 +129,10 @@ pub trait IsCDPAdmin {
         asset_contract: Address,
         pegged_asset: Symbol,
         min_collat_ratio: u32,
+        admin: Address,
+        name: String,
+        symbol: String,
+        decimals: u32,
     );
 
     /// Set the address of the XLM contract

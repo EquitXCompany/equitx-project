@@ -2,9 +2,11 @@
 use collateralized::{CDPAdmin, Collateralized, CDP};
 use loam_sdk::{
     derive_contract,
-    soroban_sdk::{self, Address, Symbol},
+    soroban_sdk::{self, Address, String, Symbol, Vec},
 };
 use loam_subcontract_core::{admin::Admin, Core};
+use loam_subcontract_ft::Fungible;
+use stability_pool::StabilityPool;
 use token::Token;
 
 pub mod collateralized;
@@ -26,7 +28,13 @@ pub mod data_feed {
     );
 }
 
-#[derive_contract(Core(Admin), Collateralized(Token), CDPAdmin(Token))]
+#[derive_contract(
+    Core(Admin),
+    Collateralized(Token),
+    CDPAdmin(Token),
+    Fungible(Token),
+    StabilityPool(Token)
+)]
 pub struct Contract;
 
 impl Contract {
