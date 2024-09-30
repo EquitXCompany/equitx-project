@@ -18,7 +18,7 @@ set_asset_price --price 100000000000000 --asset '{"Other":"USD"}' --timestamp "$
 client = true
 init = """
 admin_set --new-admin equitx
-cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USD --min_collat_ratio 11000
+cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USD --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7
 STELLAR_ACCOUNT=alice open_cdp --lender alice --collateral 1700000000 --asset-lent 100000000
 STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 100000000
 set_min_collat_ratio --to 15000

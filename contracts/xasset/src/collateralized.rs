@@ -129,7 +129,6 @@ pub trait IsCDPAdmin {
         asset_contract: Address,
         pegged_asset: Symbol,
         min_collat_ratio: u32,
-        admin: Address,
         name: String,
         symbol: String,
         decimals: u32,

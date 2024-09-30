@@ -5,9 +5,9 @@ use loam_sdk::{
     stellar_asset, IntoKey,
 };
 use loam_subcontract_core::Core;
-use loam_subcontract_ft::IsFungible;
+use loam_subcontract_ft::{Fungible, IsFungible};
 
-use crate::{collateralized::CDPStatus, data_feed};
+use crate::{collateralized::CDPStatus, data_feed };
 use crate::{
     collateralized::{IsCDPAdmin, IsCollateralized, CDP},
     PriceData,
@@ -56,8 +56,6 @@ pub struct Token {
     allowances: Map<Txn, Allowance>,
     /// Mapping of addresses to their authorization status
     authorized: Map<Address, bool>,
-    /// Address of the contract administrator
-    admin: Address,
     /// Name of the token
     name: String,
     /// Symbol of the token
@@ -74,7 +72,7 @@ pub struct Token {
     pegged_asset: Symbol,
     /// basis points; default 110%; updateable by admin
     min_collat_ratio: u32,
-    /// each Address can only have one CDP per Asset. Given that you can adjust your CDPs freely, that seems fine?
+    /// each Address can only have one CDP per Asset
     cdps: Map<Address, CDPInternal>,
     /// stability pool for the token
     stability_pool: MyStabilityPool,
@@ -88,7 +86,6 @@ impl Token {
         asset_contract: Address,
         pegged_asset: Symbol,
         min_collat_ratio: u32,
-        admin: Address,
         name: String,
         symbol: String,
         decimals: u32,
@@ -100,11 +97,10 @@ impl Token {
             pegged_asset,
             min_collat_ratio,
             cdps: Map::new(env()),
-            stability_pool: MyStabilityPool::new(env().current_contract_address()),
+            stability_pool: MyStabilityPool::new(),
             balances: Map::new(env()),
             allowances: Map::new(env()),
             authorized: Map::new(env()),
-            admin,
             name,
             symbol,
             decimals,
@@ -123,11 +119,10 @@ impl Default for Token {
             pegged_asset: Symbol::new(env(), "XLM"),
             min_collat_ratio: 11000,
             cdps: Map::new(env()),
-            stability_pool: MyStabilityPool::new(env().current_contract_address()),
+            stability_pool: MyStabilityPool::new(),
             balances: Map::new(env()),
             allowances: Map::new(env()),
             authorized: Map::new(env()),
-            admin: env().current_contract_address(),
             name: String::from_str(env(), "Default Token"),
             symbol: String::from_str(env(), "DTK"),
             decimals: 7,
@@ -251,25 +246,25 @@ impl IsFungible for Token {
     }
 
     fn set_authorized(&mut self, id: Address, authorize: bool) {
-        self.admin.require_auth();
+        Contract::require_auth();
         self.authorized.set(id, authorize);
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
-        self.admin.require_auth();
+        Contract::require_auth();
         let balance = self.balance(to.clone()) + amount;
         self.balances.set(to, balance);
     }
 
     fn clawback(&mut self, from: Address, amount: i128) {
-        self.admin.require_auth();
+        Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
         self.balances.set(from, balance);
     }
 
     fn set_admin(&mut self, new_admin: Address) {
-        self.admin.require_auth();
-        self.admin = new_admin;
+        Contract::require_auth();
+        Contract::set_admin(new_admin);
     }
 }
 
@@ -585,7 +580,6 @@ impl IsCDPAdmin for Token {
         asset_contract: Address,
         pegged_asset: Symbol,
         min_collat_ratio: u32,
-        admin: Address,
         name: String,
         symbol: String,
         decimals: u32,
@@ -597,11 +591,11 @@ impl IsCDPAdmin for Token {
             asset_contract,
             pegged_asset,
             min_collat_ratio,
-            admin,
             name,
             symbol,
-            decimals,
+            decimals, // FIXME: we should use this instead of the data feed to get xasset decimals?
         ));
+        MyStabilityPool::set_lazy(MyStabilityPool::new()); // FIXME should there be a sp_init? would we ever want to initialize it separately tot he cdp contract given they are the same contract?
     }
     fn set_xlm_sac(&mut self, to: Address) {
         Contract::require_auth();
@@ -631,9 +625,9 @@ fn native() -> token::Client<'static> {
 }
 
 impl IsStabilityPool for Token {
-    fn sp_init(&mut self, admin: Address) {
+    fn sp_init(&self) {
         Contract::admin_get().unwrap().require_auth();
-        MyStabilityPool::set_lazy(MyStabilityPool::new(admin));
+        MyStabilityPool::set_lazy(MyStabilityPool::new());
     }
 
     fn deposit(&mut self, from: Address, amount: i128) {

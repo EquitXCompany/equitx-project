@@ -9,7 +9,6 @@ pub struct MyStabilityPool {
     deposits: Map<Address, StakerPosition>,
     total_xasset: i128,
     total_collateral: i128,
-    admin: Address,
     product_constant: i128,
     compounded_constant: i128,
     epoch: u64,
@@ -39,12 +38,11 @@ impl Default for StakerPosition {
 
 impl MyStabilityPool {
     #[must_use]
-    pub fn new(admin: Address) -> Self {
+    pub fn new() -> Self {
         MyStabilityPool {
             deposits: Map::new(env()),
             total_xasset: 0,
             total_collateral: 0,
-            admin,
             product_constant: 1_000_000,
             compounded_constant: 0,
             epoch: 0,
@@ -101,14 +99,6 @@ impl MyStabilityPool {
 
     pub fn subtract_total_collateral(&mut self, amount: i128) {
         self.total_collateral -= amount;
-    }
-
-    pub fn get_admin(&self) -> Address {
-        self.admin.clone()
-    }
-
-    pub fn set_admin(&mut self, new_admin: Address) {
-        self.admin = new_admin;
     }
 
     pub fn get_product_constant(&self) -> i128 {
@@ -170,14 +160,14 @@ impl MyStabilityPool {
 
 impl Default for MyStabilityPool {
     fn default() -> Self {
-        Self::new(env().current_contract_address())
+        Self::new()
     }
 }
 
 #[subcontract]
 pub trait IsStabilityPool {
-    /// Initializes the Stability Pool with an admin address.
-    fn sp_init(&mut self, admin: Address);
+    /// Initializes the Stability Pool.
+    fn sp_init(&self);
     /// Deposits iAsset tokens into the Stability Pool.
     fn deposit(&mut self, from: Address, amount: i128);
     /// Withdraws xasset tokens from the Stability Pool.
