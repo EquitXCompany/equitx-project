@@ -13,6 +13,7 @@ pub struct MyStabilityPool {
     compounded_constant: i128,
     epoch: u64,
     fees_collected: i128,
+    deposit_fee: i128,
     stake_fee: i128,
     unstake_return: i128,
 }
@@ -47,6 +48,7 @@ impl MyStabilityPool {
             compounded_constant: 0,
             epoch: 0,
             fees_collected: 0,
+            deposit_fee: 10_000_000,
             stake_fee: 70_000_000,
             unstake_return: 20_000_000,
         }
@@ -141,6 +143,10 @@ impl MyStabilityPool {
         self.stake_fee
     }
 
+    pub fn get_deposit_fee(&self) -> i128 {
+        self.deposit_fee
+    }
+
     pub fn set_stake_fee(&mut self, value: i128) {
         self.stake_fee = value;
     }
@@ -183,7 +189,9 @@ pub trait IsStabilityPool {
     /// Retrieves the total amount of collateral rewards in the Stability Pool.
     fn get_total_collateral(&self) -> i128;
     /// Transfers XLM from the stability pool to an address
-    fn transfer_xlm(&self, to: Address, amount: i128);
+    fn transfer_xlm_to(&self, to: Address, amount: i128);
+    /// Transfers XLM from an address to the stability pool
+    fn transfer_xlm_from(&self, from: Address, amount: i128);
     /// Allows a user to add their stake to the pool
     fn stake(&mut self, from: Address, amount: i128);
     /// Allows a user to remove their stake from the pool

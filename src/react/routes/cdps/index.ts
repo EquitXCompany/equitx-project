@@ -2,6 +2,7 @@ import * as root from "./root";
 import * as show from "./show";
 import * as list from "./list";
 import * as newCDP from "./new";
+import * as editCDP from "./edit";
 import errorElement from "../error";
 
 export default {
@@ -21,6 +22,10 @@ export default {
         {
           ...show,
           path: ":lender",
+        },
+        {
+          ...editCDP,
+          path: ":lender/edit",
         },
       ],
     },

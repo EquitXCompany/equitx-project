@@ -246,24 +246,24 @@ impl IsFungible for Token {
     }
 
     fn set_authorized(&mut self, id: Address, authorize: bool) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         self.authorized.set(id, authorize);
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
-        Contract::require_auth();
+        //self::Contract::require_auth();
         let balance = self.balance(to.clone()) + amount;
         self.balances.set(to, balance);
     }
 
     fn clawback(&mut self, from: Address, amount: i128) {
-        Contract::require_auth();
+        //self::Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
         self.balances.set(from, balance);
     }
 
     fn set_admin(&mut self, new_admin: Address) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         Contract::set_admin(new_admin);
     }
 }
@@ -584,7 +584,7 @@ impl IsCDPAdmin for Token {
         symbol: String,
         decimals: u32,
     ) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         Token::set_lazy(Token::new(
             xlm_sac,
             xlm_contract,
@@ -598,23 +598,23 @@ impl IsCDPAdmin for Token {
         MyStabilityPool::set_lazy(MyStabilityPool::new()); // FIXME should there be a sp_init? would we ever want to initialize it separately tot he cdp contract given they are the same contract?
     }
     fn set_xlm_sac(&mut self, to: Address) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         self.xlm_sac = to;
     }
     fn set_xlm_contract(&mut self, to: Address) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         self.xlm_contract = to;
     }
     fn set_asset_contract(&mut self, to: Address) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         self.asset_contract = to;
     }
     fn set_pegged_asset(&mut self, to: Symbol) {
-        Contract::require_auth();
+        self::Contract::require_auth();
         self.pegged_asset = to;
     }
     fn set_min_collat_ratio(&mut self, to: u32) -> u32 {
-        Contract::require_auth();
+        self::Contract::require_auth();
         self.min_collat_ratio = to;
         to
     }
@@ -643,8 +643,8 @@ impl IsStabilityPool for Token {
                 });
 
         // Collect 1 XLM fee for each new deposit
-        self.stability_pool.add_fees_collected(10_000_000); // FIXME: set fee as a variable
-
+        self.transfer_xlm_from( from.clone(), self.stability_pool.get_deposit_fee());
+        self.stability_pool.add_fees_collected(self.stability_pool.get_deposit_fee()); 
         position.xasset_deposit += amount;
         self.stability_pool.set_deposit(from, position);
         self.stability_pool.add_total_xasset(amount);
@@ -719,7 +719,7 @@ impl IsStabilityPool for Token {
         if cdp.asset_lent == 0 {
             // Withdraw any remaining collateral
             if cdp.xlm_deposited > 0 {
-                self.transfer_xlm(cdp_owner.clone(), cdp.xlm_deposited);
+                self.transfer_xlm_to(cdp_owner.clone(), cdp.xlm_deposited);
             }
             // Close the CDP
             self.cdps.remove(cdp_owner);
@@ -747,7 +747,7 @@ impl IsStabilityPool for Token {
         };
 
         self.stability_pool.subtract_total_collateral(xlm_reward);
-        self.transfer_xlm(to, xlm_reward);
+        self.transfer_xlm_to(to, xlm_reward);
         xlm_reward
     }
 
@@ -765,17 +765,38 @@ impl IsStabilityPool for Token {
         self.stability_pool.get_total_collateral()
     }
 
-    fn transfer_xlm(&self, to: Address, amount: i128) {
+    fn transfer_xlm_to(&self, to: Address, amount: i128) {
         native().transfer(&env().current_contract_address(), &to, &amount);
+    }
+
+    fn transfer_xlm_from(&self, from: Address, amount: i128) {
+        native().transfer(&from, &env().current_contract_address(), &amount);
     }
 
     fn stake(&mut self, from: Address, amount: i128) {
         from.require_auth();
-
+    
+        // Check if the user already has a stake
+        if self.stability_pool.get_deposit(from.clone()).is_some() {
+            panic!("User already has a stake. Use deposit function to add to existing stake.");
+        }
+    
+        self.transfer_xlm_from( from.clone(), self.stability_pool.get_stake_fee());
+        // Add stake fee
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_stake_fee());
-
-        self.deposit(from, amount);
+    
+        // Create new position
+        let position = StakerPosition {
+            xasset_deposit: amount,
+            product_constant: self.stability_pool.get_product_constant(),
+            compounded_constant: self.stability_pool.get_compounded_constant(),
+            epoch: 0,
+        };
+    
+        // Set the new position in the stability pool
+        self.stability_pool.set_deposit(from, position);
+        self.stability_pool.add_total_xasset(amount);
     }
 
     fn unstake(&mut self, to: Address, amount: i128) {
@@ -796,7 +817,7 @@ impl IsStabilityPool for Token {
         self.stability_pool
             .subtract_fees_collected(self.stability_pool.get_unstake_return());
 
-        self.transfer_xlm(to.clone(), self.stability_pool.get_unstake_return());
+        self.transfer_xlm_to(to.clone(), self.stability_pool.get_unstake_return());
 
         self.stability_pool.remove_deposit(to);
     }

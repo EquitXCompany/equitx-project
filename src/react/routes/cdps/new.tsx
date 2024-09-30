@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Form, useLoaderData, redirect } from "react-router-dom";
 import type { ActionFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
-import { freighter, useWallet } from "../../../wallet";
+import { useWallet } from "../../../wallet";
+import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import BigNumber from 'bignumber.js';
 import { BASIS_POINTS } from "../../../constants";
+import { Box, Button, TextField, Typography } from '@mui/material';
 
 export const loader = async () => {
   return {
@@ -29,8 +31,7 @@ export const action: ActionFunction = async ({ request }) => {
     asset_lent: new BigNumber(formData.asset_lent?.toString() || '0').times(new BigNumber(10).pow(decimalsAsset)).toFixed(0),
   };
   // @ts-expect-error publicKey is not in the type, but is passed through; see https://github.com/stellar/js-stellar-sdk/issues/1055
-  const tx = await xasset.open_cdp(cdp, { publicKey: cdp.lender });
-  await tx.signAndSend({ signTransaction: freighter.signTransaction });
+  await authenticatedContractCall(xasset.open_cdp, cdp);
   return redirect(`/`);
 };
 
@@ -38,6 +39,7 @@ function New() {
   const { account } = useWallet();
   const { lastpriceXLM, lastpriceAsset, minRatio, symbolAsset } =
     useLoaderData() as Awaited<ReturnType<typeof loader>>;
+
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));
   const [ratio, setRatio] = useState(new BigNumber(0));
@@ -80,78 +82,87 @@ function New() {
   }, []);
 
   return (
-    <>
-      <h2>Open a new Collateralized Debt Position (CDP)</h2>
-      <p>Current XLM price: ${lastpriceXLM.toFixed(decimalsXLM)}</p>
-      <p>Current {symbolAsset} price: ${lastpriceAsset.toFixed(decimalsAsset)}</p>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Open a new Collateralized Debt Position (CDP)
+      </Typography>
+      <Typography variant="body1" gutterBottom>
+        Current XLM price: ${lastpriceXLM.toFixed(decimalsXLM)}
+      </Typography>
+      <Typography variant="body1" gutterBottom>
+        Current {symbolAsset} price: ${lastpriceAsset.toFixed(decimalsAsset)}
+      </Typography>
       <Form method="post">
         <input type="hidden" name="lender" value={account} />
-        <label>
-          How much XLM to deposit?
-          <input
+        <Box sx={{ mt: 2 }}>
+          <TextField
+            fullWidth
+            label="How much XLM to deposit?"
             type="number"
             name="collateral"
             autoFocus
             value={collateral.toNumber()}
             onChange={(e) => handleCollateralChange(e.target.value)}
-            step={stepValueXLM}
+            inputProps={{ step: stepValueXLM }}
+            variant="outlined"
+            margin="normal"
           />
-        </label>
-        <label>
-          Set collateralization ratio (%):
-          <input
+        </Box>
+        <Box sx={{ mt: 2 }}>
+          <TextField
+            fullWidth
+            label="Set collateralization ratio (%)"
             type="number"
             value={ratio.times(100).div(BASIS_POINTS).toFixed(2)}
             onChange={(e) => handleRatioChange(e.target.value)}
-            step="0.01"
-            min={minRatio.times(100).div(BASIS_POINTS).toFixed(2)}
+            inputProps={{
+              step: "0.01",
+              min: minRatio.times(100).div(BASIS_POINTS).toFixed(2),
+            }}
+            variant="outlined"
+            margin="normal"
           />
-        </label>
-        <label>
-          Amount of {symbolAsset} you'll mint:
-          <input
+        </Box>
+        <Box sx={{ mt: 2 }}>
+          <TextField
+            fullWidth
+            label={`Amount of ${symbolAsset} you'll mint:`}
             type="number"
             name="asset_lent"
             value={toLend.toFixed(decimalsAsset)}
             onChange={(e) => handleToLendChange(e.target.value)}
-            step={stepValueAsset}
-            max={collateral.times(lastpriceXLM).div(lastpriceAsset).times(new BigNumber(minRatio).div(BASIS_POINTS)).toFixed(decimalsAsset)}
+            inputProps={{
+              step: stepValueAsset,
+              max: collateral
+                .times(lastpriceXLM)
+                .div(lastpriceAsset)
+                .times(new BigNumber(minRatio).div(BASIS_POINTS))
+                .toFixed(decimalsAsset),
+            }}
+            variant="outlined"
+            margin="normal"
           />
-        </label>
-        <p>
+        </Box>
+        <Typography variant="body1" gutterBottom sx={{ mt: 2 }}>
           Current collateralization ratio: {ratio.times(100).div(BASIS_POINTS).toFixed(2)}%
           {ratio.isLessThan(minRatio) && (
-            <span style={{ color: 'red' }}> (Below minimum ratio of {new BigNumber(minRatio).times(100).div(BASIS_POINTS).toFixed(2)}%)</span>
+            <Typography variant="body2" color="error">
+              (Below minimum ratio of {new BigNumber(minRatio).times(100).div(BASIS_POINTS).toFixed(2)}%)
+            </Typography>
           )}
-        </p>
-        <button type="submit" style={{ marginTop: "2rem" }} disabled={ratio.isLessThan(minRatio)}>
+        </Typography>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          sx={{ mt: 3 }}
+          disabled={ratio.isLessThan(minRatio)}
+        >
           Open CDP
-        </button>
+        </Button>
       </Form>
-    </>
+    </Box>
   );
-
 }
 
 export const element = <New />;
-
-/*
- * Calculate new amount of xAsset to lend.
- * ratio = XLM collateral * XLM's USD price / xAsset to lend / xAsset's USD price
- * xAsset to lend = XLM collateral * XLM's USD price / ratio / xAsset's USD price
- */
-function calcToLend({
-  collateral,
-  desiredRatio,
-  lastpriceXLM,
-  lastpriceAsset,
-}: {
-  collateral: number;
-  desiredRatio: number;
-  lastpriceXLM: number;
-  lastpriceAsset: number;
-}) {
-  return (
-    (collateral * lastpriceXLM * BASIS_POINTS) / desiredRatio / lastpriceAsset
-  );
-}

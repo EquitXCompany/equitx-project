@@ -21,6 +21,7 @@ function List() {
   }
   return (
     cdps.length > 0 && (
+      <div className="grid">
       <ul
         role="list"
         style={{
@@ -46,6 +47,7 @@ function List() {
           </Card>
         )}
       </ul>
+      </div>
     )
   );
 }
