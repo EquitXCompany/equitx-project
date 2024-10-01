@@ -3,23 +3,23 @@ import { Tooltip, IconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 interface AddressDisplayProps {
-  lender: string;
+  address: string;
 }
 
-const AddressDisplay: React.FC<AddressDisplayProps> = ({ lender }) => {
+const AddressDisplay: React.FC<AddressDisplayProps> = ({ address: address }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(lender);
+    navigator.clipboard.writeText(address);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
   };
 
-  const truncatedLender = `${lender.slice(0, 5)}...`;
+  const truncatedLender = `${address.slice(0, 5)}...`;
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <Tooltip title={lender}>
+      <Tooltip title={address}>
         <span>{truncatedLender}</span>
       </Tooltip>
       <Tooltip title={copied ? "Copied!" : "Copy to clipboard"}>

@@ -1,5 +1,4 @@
 import { useWallet, freighter } from "../../../wallet";
-import Truncate from "../../components/truncate";
 import AddressDisplay from "../cdp/AddressDisplay";
 
 export default function Connect() {
@@ -8,7 +7,7 @@ export default function Connect() {
   if (isSignedIn && account) {
     return (
       <p style={{ textAlign: "center" }}>
-        Connected as <AddressDisplay lender={account} />
+        Connected as <AddressDisplay address={account} />
       </p>
     );
   }

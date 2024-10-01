@@ -30,6 +30,7 @@ interface LoaderData {
 
 export const loader: LoaderFunction = async ({ params }): Promise<LoaderData> => {
   const { lender } = params as { lender: string };
+  console.log(xasset);
   return {
     cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
@@ -61,6 +62,9 @@ export const action: ActionFunction = async ({ request }) => {
       break;
     case "liquidate":
       tx = await authenticatedContractCall(xasset.liquidate_cdp, { lender });
+      break;
+    case "freeze":
+      tx = await authenticatedContractCall(xasset.freeze_cdp, { lender });
       break;
     case "close":
       tx = await authenticatedContractCall(xasset.close_cdp, { lender });
@@ -111,7 +115,7 @@ function Edit() {
           ← Back to CDP Details
         </MuiLink>
         <Typography variant="h4" gutterBottom>
-          Edit CDP for <AddressDisplay lender={lender} />
+          Edit CDP for <AddressDisplay address={lender} />
         </Typography>
 
         <Snackbar open={!!message} autoHideDuration={6000} onClose={() => setMessage(null)}>
@@ -175,13 +179,22 @@ function Edit() {
                 </Grid>
               </Form>
             )}
-
-            {cdp.status.tag === "Insolvent" && (
+            {cdp.status.tag === "Frozen" && (
               <Box mt={2}>
                 <Form method="post">
                   <input type="hidden" name="lender" value={lender} />
                   <Button fullWidth variant="contained" color="error" type="submit" name="action" value="liquidate">
                     Liquidate CDP
+                  </Button>
+                </Form>
+              </Box>
+            )}
+            {cdp.status.tag === "Insolvent" && (
+              <Box mt={2}>
+                <Form method="post">
+                  <input type="hidden" name="lender" value={lender} />
+                  <Button fullWidth variant="contained" color="error" type="submit" name="action" value="freeze">
+                    Freeze CDP
                   </Button>
                 </Form>
               </Box>

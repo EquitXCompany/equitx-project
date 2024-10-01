@@ -30,6 +30,13 @@ const theme = createTheme({
           },
           '& .MuiInputLabel-root': {
             color: '#dda15e', // --color-light-orange
+            background: 'transparent', // Make label background transparent
+            margin: 0,
+            fontSize: 20,
+          },
+          '& .MuiInputLabel-shrink': {
+            background: '#264c73', // Match with your background color
+            transform: 'translate(14px, -9px) scale(0.75)', // Adjust label position
           },
           '& .MuiOutlinedInput-root': {
             '& fieldset': {

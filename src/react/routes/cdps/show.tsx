@@ -37,7 +37,7 @@ function Show() {
   return (
     <>
       <Link to="/" className="back-link">← Back to List</Link>
-      <h2>CDP for <AddressDisplay lender={lender} /></h2>
+      <h2>CDP for <AddressDisplay address={lender} /></h2>
       {cdp && (
         <>
           <CDPDisplay

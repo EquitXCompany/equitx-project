@@ -6,12 +6,14 @@ import Connect from "../../components/connect";
 import BigNumber from "bignumber.js";
 import { BASIS_POINTS } from "../../../constants";
 import { Box, Typography, Grid, Paper, Container } from '@mui/material';
+import AddressDisplay from '../../components/cdp/AddressDisplay';
 
 interface StabilityPoolMetadata {
   lastpriceXLM: BigNumber;
   lastpriceAsset: BigNumber;
   min_ratio: number;
   symbolAsset: string;
+  contractId: string;
 }
 
 export const loader: LoaderFunction = async (): Promise<StabilityPoolMetadata> => {
@@ -21,17 +23,21 @@ export const loader: LoaderFunction = async (): Promise<StabilityPoolMetadata> =
     lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price)).div(10 ** 14),
     min_ratio: tx.result,
     symbolAsset: "xUSD",
+    contractId: xasset.options.contractId,
   };
 };
 
 function Root() {
-  const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset } = useLoaderData() as StabilityPoolMetadata;
+  const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = useLoaderData() as StabilityPoolMetadata;
 
   return (
     <Container maxWidth="md">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           XLM↔USD Pool
+        </Typography>
+        <Typography variant="h5" component="h4" gutterBottom>
+          <AddressDisplay address={contractId} />
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={4}>

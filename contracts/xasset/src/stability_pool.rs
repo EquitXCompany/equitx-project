@@ -55,20 +55,20 @@ impl MyStabilityPool {
     }
 
     pub fn update_constants(&mut self, xasset_debited: i128, xlm_earned: i128) {
-        let new_product_constant = (self.product_constant as i128
-            * (self.total_xasset - xasset_debited) as i128)
-            / self.total_xasset as i128;
-        let new_compounded_constant =
-            self.compounded_constant + (xlm_earned * self.product_constant) / self.total_xasset;
-
-        self.product_constant = new_product_constant;
-        self.compounded_constant = new_compounded_constant;
-
+        // Check if total_xasset is zero prior to calculation
         if self.total_xasset == 0 {
             self.epoch += 1;
             self.product_constant = 1_000_000;
             self.compounded_constant = 0;
+            return;
         }
+
+        // Proceed with updates if total_xasset is not zero
+        let new_product_constant = (self.product_constant as i128 * (self.total_xasset - xasset_debited) as i128) / self.total_xasset as i128;
+        let new_compounded_constant = self.compounded_constant + (xlm_earned * self.product_constant) / self.total_xasset;
+
+        self.product_constant = new_product_constant;
+        self.compounded_constant = new_compounded_constant;
     }
 
     pub fn get_deposit(&self, address: Address) -> Option<StakerPosition> {
@@ -188,10 +188,6 @@ pub trait IsStabilityPool {
     fn get_total_xasset(&self) -> i128;
     /// Retrieves the total amount of collateral rewards in the Stability Pool.
     fn get_total_collateral(&self) -> i128;
-    /// Transfers XLM from the stability pool to an address
-    fn transfer_xlm_to(&self, to: Address, amount: i128);
-    /// Transfers XLM from an address to the stability pool
-    fn transfer_xlm_from(&self, from: Address, amount: i128);
     /// Allows a user to add their stake to the pool
     fn stake(&mut self, from: Address, amount: i128);
     /// Allows a user to remove their stake from the pool

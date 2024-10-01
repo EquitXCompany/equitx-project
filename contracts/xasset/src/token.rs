@@ -1,13 +1,13 @@
 use core::cmp;
 
 use loam_sdk::{
-    soroban_sdk::{self, contracttype, env, token, Address, Lazy, Map, String, Symbol, Vec},
+    soroban_sdk::{self, contracttype, env, token, Address, Lazy, Map, String, Symbol, Vec },
     stellar_asset, IntoKey,
 };
 use loam_subcontract_core::Core;
 use loam_subcontract_ft::{Fungible, IsFungible};
 
-use crate::{collateralized::CDPStatus, data_feed };
+use crate::{collateralized::CDPStatus, data_feed};
 use crate::{
     collateralized::{IsCDPAdmin, IsCollateralized, CDP},
     PriceData,
@@ -504,19 +504,13 @@ impl IsCollateralized for Token {
 
         if cdp.asset_lent == 0 && cdp.xlm_deposited == 0 {
             self.close_cdp(lender);
-        }
-        else{
+        } else {
             self.set_cdp_from_decorated(lender, cdp);
         }
     }
 
     fn liquidate_cdp(&mut self, lender: Address) {
-        let cdp = self.cdp(lender.clone());
-        if !matches!(cdp.status, CDPStatus::Frozen) {
-            panic!("CDP is not frozen");
-        }
-
-        self.liquidate(lender.clone());
+        self.liquidate(lender);
     }
 
     fn merge_cdps(&mut self, lenders: Vec<Address>) {
@@ -643,8 +637,9 @@ impl IsStabilityPool for Token {
                 });
 
         // Collect 1 XLM fee for each new deposit
-        self.transfer_xlm_from( from.clone(), self.stability_pool.get_deposit_fee());
-        self.stability_pool.add_fees_collected(self.stability_pool.get_deposit_fee()); 
+        native().transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_deposit_fee());
+        self.stability_pool
+            .add_fees_collected(self.stability_pool.get_deposit_fee());
         position.xasset_deposit += amount;
         self.stability_pool.set_deposit(from, position);
         self.stability_pool.add_total_xasset(amount);
@@ -709,7 +704,9 @@ impl IsStabilityPool for Token {
             .update_constants(liquidated_debt, liquidated_collateral);
 
         // Burn the liquidated debt
-        self.burn(env().current_contract_address().clone(), liquidated_debt);
+        let sp_address = env().current_contract_address();
+        let balance = self.balance(sp_address.clone()) - liquidated_debt;
+        self.balances.set(sp_address, balance);
 
         // Update the CDP
         cdp.xlm_deposited -= liquidated_collateral;
@@ -719,7 +716,7 @@ impl IsStabilityPool for Token {
         if cdp.asset_lent == 0 {
             // Withdraw any remaining collateral
             if cdp.xlm_deposited > 0 {
-                self.transfer_xlm_to(cdp_owner.clone(), cdp.xlm_deposited);
+                native().transfer(&env().current_contract_address(), &cdp_owner.clone(), &cdp.xlm_deposited);
             }
             // Close the CDP
             self.cdps.remove(cdp_owner);
@@ -730,6 +727,119 @@ impl IsStabilityPool for Token {
 
         (liquidated_debt, liquidated_collateral)
     }
+
+    /*fn liquidate(&mut self, cdp_owner: Address) -> (i128, i128) {
+    let mut cdp = self.cdp(cdp_owner.clone());
+    
+    env().events().publish(
+        (Symbol::new(&env(), "liquidate_start"),),
+        (cdp_owner.clone(), cdp.clone()),
+    );
+
+    let debt = cdp.asset_lent;
+    let collateral = cdp.xlm_deposited;
+
+    env().events().publish(
+        (Symbol::new(&env(), "liquidate_initial_values"),),
+        (debt, collateral),
+    );
+
+    // Check if the CDP is frozen
+    if !matches!(cdp.status, CDPStatus::Frozen) {
+        env().events().publish(
+            (Symbol::new(&env(), "liquidate_error"),),
+            "CDP must be frozen to be liquidated",
+        );
+        panic!("CDP must be frozen to be liquidated");
+    }
+
+    // Ensure the debt and collateral are positive
+    if debt <= 0 || collateral <= 0 {
+        env().events().publish(
+            (Symbol::new(&env(), "liquidate_error"),),
+            "Debt and collateral must be positive",
+        );
+        panic!("Debt and collateral must be positive");
+    }
+
+    let total_xasset = self.stability_pool.get_total_xasset();
+    
+    env().events().publish(
+        (Symbol::new(&env(), "stability_pool_total_xasset"),),
+        total_xasset,
+    );
+
+    // Determine how much debt can be repaid from the Stability Pool
+    let liquidated_debt = cmp::min(debt, total_xasset);
+
+    // Calculate the proportional amount of collateral to withdraw
+    let liquidated_collateral =
+        (collateral as u128 * liquidated_debt as u128 / debt as u128) as i128;
+
+    env().events().publish(
+        (Symbol::new(&env(), "liquidation_amounts"),),
+        (liquidated_debt, liquidated_collateral),
+    );
+
+    // Update the stability pool
+    self.stability_pool.subtract_total_xasset(liquidated_debt);
+    self.stability_pool
+        .add_total_collateral(liquidated_collateral);
+
+    // Update constants for the stability pool
+    self.stability_pool
+        .update_constants(liquidated_debt, liquidated_collateral);
+
+    env().events().publish(
+        (Symbol::new(&env(), "stability_pool_updated"),),
+        (self.stability_pool.get_total_xasset(), self.stability_pool.get_total_collateral()),
+    );
+
+    // Burn the liquidated debt
+    self.burn(env().current_contract_address().clone(), liquidated_debt);
+
+    // Update the CDP
+    cdp.xlm_deposited -= liquidated_collateral;
+    cdp.asset_lent -= liquidated_debt;
+
+    env().events().publish(
+        (Symbol::new(&env(), "cdp_updated"),),
+        cdp.clone(),
+    );
+
+    // If all debt is repaid, close the CDP
+    if cdp.asset_lent == 0 {
+        // Withdraw any remaining collateral
+        if cdp.xlm_deposited > 0 {
+            self.transfer_xlm_to(cdp_owner.clone(), cdp.xlm_deposited);
+            env().events().publish(
+                (Symbol::new(&env(), "remaining_collateral_withdrawn"),),
+                cdp.xlm_deposited,
+            );
+        }
+        // Close the CDP
+        self.cdps.remove(cdp_owner.clone());
+        env().events().publish(
+            (Symbol::new(&env(), "cdp_closed"),),
+            cdp_owner.clone(),
+        );
+    } else {
+        // Otherwise, update the CDP
+        self.set_cdp_from_decorated(cdp_owner.clone(), cdp.clone());
+        env().events().publish(
+            (Symbol::new(&env(), "cdp_updated_in_storage"),),
+            (cdp_owner.clone(), cdp.clone()),
+        );
+    }
+
+    env().events().publish(
+        (Symbol::new(&env(), "liquidate_end"),),
+        (liquidated_debt, liquidated_collateral),
+    );
+
+    (liquidated_debt, liquidated_collateral)
+}*/
+
 
     fn claim_rewards(&mut self, to: Address) -> i128 {
         to.require_auth();
@@ -747,7 +857,7 @@ impl IsStabilityPool for Token {
         };
 
         self.stability_pool.subtract_total_collateral(xlm_reward);
-        self.transfer_xlm_to(to, xlm_reward);
+        native().transfer(&env().current_contract_address(), &to, &xlm_reward);
         xlm_reward
     }
 
@@ -765,27 +875,19 @@ impl IsStabilityPool for Token {
         self.stability_pool.get_total_collateral()
     }
 
-    fn transfer_xlm_to(&self, to: Address, amount: i128) {
-        native().transfer(&env().current_contract_address(), &to, &amount);
-    }
-
-    fn transfer_xlm_from(&self, from: Address, amount: i128) {
-        native().transfer(&from, &env().current_contract_address(), &amount);
-    }
-
     fn stake(&mut self, from: Address, amount: i128) {
         from.require_auth();
-    
+
         // Check if the user already has a stake
         if self.stability_pool.get_deposit(from.clone()).is_some() {
             panic!("User already has a stake. Use deposit function to add to existing stake.");
         }
-    
-        self.transfer_xlm_from( from.clone(), self.stability_pool.get_stake_fee());
+
+        native().transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_stake_fee());
         // Add stake fee
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_stake_fee());
-    
+
         // Create new position
         let position = StakerPosition {
             xasset_deposit: amount,
@@ -793,7 +895,7 @@ impl IsStabilityPool for Token {
             compounded_constant: self.stability_pool.get_compounded_constant(),
             epoch: 0,
         };
-    
+
         // Set the new position in the stability pool
         self.stability_pool.set_deposit(from, position);
         self.stability_pool.add_total_xasset(amount);
@@ -817,7 +919,7 @@ impl IsStabilityPool for Token {
         self.stability_pool
             .subtract_fees_collected(self.stability_pool.get_unstake_return());
 
-        self.transfer_xlm_to(to.clone(), self.stability_pool.get_unstake_return());
+        native().transfer(&env().current_contract_address(), &to, &self.stability_pool.get_unstake_return());
 
         self.stability_pool.remove_deposit(to);
     }
@@ -826,6 +928,85 @@ impl IsStabilityPool for Token {
 impl Token {
     /// Decorate a CDPInternal with the collateralization ratio. Also check if the CDP is insolvent.
     fn decorate(
+        &self,
+        cdp: CDPInternal,
+        lender: Address,
+        xlm_price: i128,
+        xlm_decimals: u32,
+        xasset_price: i128,
+        xasset_decimals: u32,
+    ) -> CDP {
+        env().events().publish(
+            (Symbol::new(&env(), "decorate_start"),),
+            (xlm_price, xlm_decimals, xasset_price, xasset_decimals),
+        );
+    
+        let (numer_decimals, denom_decimals) = if xlm_decimals == xasset_decimals {
+            (0, 0)
+        } else if xlm_decimals > xasset_decimals {
+            (0, xlm_decimals - xasset_decimals)
+        } else {
+            (xasset_decimals - xlm_decimals, 0)
+        };
+    
+        env().events().publish(
+            (Symbol::new(&env(), "decimals_calculation"),),
+            (numer_decimals, denom_decimals),
+        );
+    
+        env().events().publish(
+            (Symbol::new(&env(), "asset_lent"),),
+            cdp.asset_lent.clone(),
+        );
+    
+        let collateralization_ratio = if cdp.asset_lent == 0 || xasset_price == 0 {
+            u32::MAX
+        } else {
+            let numerator = (BASIS_POINTS as i128) * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals);
+            let denominator = cdp.asset_lent * 10i128.pow(denom_decimals) * xasset_price;
+            
+            env().events().publish(
+                (Symbol::new(&env(), "ratio_calculation"),),
+                (numerator, denominator),
+            );
+    
+            (numerator / denominator) as u32
+        };
+    
+        env().events().publish(
+            (Symbol::new(&env(), "collateralization_ratio"),),
+            collateralization_ratio,
+        );
+    
+        let status = if matches!(cdp.status, CDPStatus::Open)
+            && collateralization_ratio < self.min_collat_ratio
+        {
+            CDPStatus::Insolvent
+        } else {
+            cdp.status
+        };
+    
+        env().events().publish(
+            (Symbol::new(&env(), "cdp_status"),),
+            status.clone(),
+        );
+    
+        let decorated_cdp = CDP {
+            lender,
+            xlm_deposited: cdp.xlm_deposited,
+            asset_lent: cdp.asset_lent,
+            collateralization_ratio,
+            status,
+        };
+    
+        env().events().publish(
+            (Symbol::new(&env(), "decorate_end"),),
+            decorated_cdp.clone(),
+        );
+    
+        decorated_cdp
+    }
+    /*fn decorate(
         &self,
         cdp: CDPInternal,
         lender: Address,
@@ -855,12 +1036,16 @@ impl Token {
         } else {
             (xasset_decimals - xlm_decimals, 0)
         };
-        let collateralization_ratio =
-            (BASIS_POINTS * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
-                / cdp.asset_lent
-                / 10i128.pow(denom_decimals)
-                / xasset_price) as u32;
-
+        env().events().publish(
+            (Symbol::new(&env(), "asset lent"),),
+            cdp.asset_lent.clone(),
+        );
+        let collateralization_ratio = if cdp.asset_lent == 0 || xasset_price == 0 {
+            u32::MAX
+        } else {
+            ((BASIS_POINTS as i128) * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
+                / (cdp.asset_lent * 10i128.pow(denom_decimals) * xasset_price)) as u32
+        };
         CDP {
             lender,
             xlm_deposited: cdp.xlm_deposited,
@@ -874,7 +1059,7 @@ impl Token {
                 cdp.status
             },
         }
-    }
+    }*/
 
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDP) {
         self.cdps.set(

@@ -8,6 +8,7 @@ import {
   Box,
   Grid,
 } from '@mui/material';
+import { getStatusColor } from '../../../utils/contractHelpers';
 
 interface CDPDisplayProps {
   cdp: CDP;
@@ -20,21 +21,6 @@ interface CDPDisplayProps {
 
 export const formatNumber = (value: BigNumber | number, decimalPlaces: number) => {
   return new BigNumber(value).toFixed(decimalPlaces);
-};
-
-const getStatusColor = (status: string): string => {
-  switch (status.toLowerCase()) {
-    case 'open':
-      return '#f2e8c9'; // --color-cream
-    case 'closed':
-      return '#d1d8e0'; // light grey
-    case 'insolvent':
-      return '#c0392b'; // --color-red
-    case 'frozen':
-      return '#e67e22'; // --color-orange
-    default:
-      return '#f2e8c9'; // --color-cream
-  }
 };
 
 export const CDPDisplay: React.FC<CDPDisplayProps> = ({

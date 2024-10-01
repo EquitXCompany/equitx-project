@@ -2,6 +2,7 @@
 
 :root {
   --color-dark-blue: #1a4266;
+  --color-grey-blue: #264c73;
   --color-light-blue: #4d8cc8;
   --color-cream: #f2e8c9;
   --color-orange: #e67e22;
@@ -54,7 +55,7 @@ form {
   padding: 20px;
   border-radius: 5px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  background-color: var(--color-cream);
+  background-color: var(--color-grey-blue);
 }
 
 label {
