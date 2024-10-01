@@ -21,7 +21,6 @@ function ErrorPage() {
     message = String(error);
   }
 
-  console.log(ContractErrors);
   //let errorCode = xasset.Error[num];
   return (
     <div id="error-page">
