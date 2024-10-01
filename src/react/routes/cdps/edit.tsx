@@ -30,7 +30,6 @@ interface LoaderData {
 
 export const loader: LoaderFunction = async ({ params }): Promise<LoaderData> => {
   const { lender } = params as { lender: string };
-  console.log(xasset);
   return {
     cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
