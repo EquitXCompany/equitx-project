@@ -36,7 +36,7 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 function New() {
-  const { account } = useWallet();
+  const { account, isSignedIn } = useWallet();
   const { lastpriceXLM, lastpriceAsset, minRatio, symbolAsset } =
     useLoaderData() as Awaited<ReturnType<typeof loader>>;
 
@@ -150,7 +150,7 @@ function New() {
           variant="contained"
           color="primary"
           sx={{ mt: 3 }}
-          disabled={ratio.isLessThan(minRatio)}
+          disabled={ratio.isLessThan(minRatio) || !isSignedIn}
         >
           Open CDP
         </Button>

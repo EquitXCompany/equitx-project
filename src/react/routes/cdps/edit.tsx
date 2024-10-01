@@ -84,7 +84,7 @@ export const action: ActionFunction = async ({ request }) => {
 function Edit() {
   const { lender } = useParams() as { lender: string };
   const { cdp, decimals, lastpriceXLM, lastpriceAsset, symbolAsset } = useLoaderData() as LoaderData;
-  const { account } = useWallet();
+  const { account, isSignedIn } = useWallet();
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const navigate = useNavigate();
@@ -152,27 +152,27 @@ function Edit() {
                 />
                 <Grid container spacing={2}>
                   <Grid item xs={6} sm={4}>
-                    <Button fullWidth variant="contained" type="submit" name="action" value="addCollateral">
+                    <Button fullWidth variant="contained" type="submit" name="action" value="addCollateral" disabled={!isSignedIn}>
                       Add Collateral
                     </Button>
                   </Grid>
                   <Grid item xs={6} sm={4}>
-                    <Button fullWidth variant="contained" type="submit" name="action" value="withdrawCollateral">
+                    <Button fullWidth variant="contained" type="submit" name="action" value="withdrawCollateral" disabled={!isSignedIn}>
                       Withdraw Collateral
                     </Button>
                   </Grid>
                   <Grid item xs={6} sm={4}>
-                    <Button fullWidth variant="contained" type="submit" name="action" value="borrowXAsset">
+                    <Button fullWidth variant="contained" type="submit" name="action" value="borrowXAsset" disabled={!isSignedIn}>
                       Borrow {symbolAsset}
                     </Button>
                   </Grid>
                   <Grid item xs={6} sm={4}>
-                    <Button fullWidth variant="contained" type="submit" name="action" value="repayDebt">
+                    <Button fullWidth variant="contained" type="submit" name="action" value="repayDebt" disabled={!isSignedIn}>
                       Repay Debt
                     </Button>
                   </Grid>
                   <Grid item xs={6} sm={4}>
-                    <Button fullWidth variant="contained" color="secondary" type="submit" name="action" value="close">
+                    <Button fullWidth variant="contained" color="secondary" type="submit" name="action" value="close" disabled={!isSignedIn}>
                       Close CDP
                     </Button>
                   </Grid>
@@ -183,7 +183,7 @@ function Edit() {
               <Box mt={2}>
                 <Form method="post">
                   <input type="hidden" name="lender" value={lender} />
-                  <Button fullWidth variant="contained" color="error" type="submit" name="action" value="liquidate">
+                  <Button fullWidth variant="contained" color="error" type="submit" name="action" value="liquidate" disabled={!isSignedIn}>
                     Liquidate CDP
                   </Button>
                 </Form>
@@ -193,7 +193,7 @@ function Edit() {
               <Box mt={2}>
                 <Form method="post">
                   <input type="hidden" name="lender" value={lender} />
-                  <Button fullWidth variant="contained" color="error" type="submit" name="action" value="freeze">
+                  <Button fullWidth variant="contained" color="error" type="submit" name="action" value="freeze" disabled={!isSignedIn}>
                     Freeze CDP
                   </Button>
                 </Form>
