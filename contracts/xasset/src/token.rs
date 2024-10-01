@@ -7,7 +7,7 @@ use loam_sdk::{
 use loam_subcontract_core::Core;
 use loam_subcontract_ft::{Fungible, IsFungible};
 
-use crate::{collateralized::CDPStatus, data_feed};
+use crate::{collateralized::CDPStatus, data_feed, Error};
 use crate::{
     collateralized::{IsCDPAdmin, IsCollateralized, CDP},
     PriceData,
@@ -18,7 +18,6 @@ use crate::{
 };
 
 const BASIS_POINTS: i128 = 10_000;
-
 #[contracttype]
 pub struct Txn(Address, Address);
 
@@ -251,13 +250,13 @@ impl IsFungible for Token {
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
-        //self::Contract::require_auth();
+        self::Contract::require_auth();
         let balance = self.balance(to.clone()) + amount;
         self.balances.set(to, balance);
     }
 
     fn clawback(&mut self, from: Address, amount: i128) {
-        //self::Contract::require_auth();
+        self::Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
         self.balances.set(from, balance);
     }
@@ -315,14 +314,14 @@ impl IsCollateralized for Token {
         client.decimals()
     }
 
-    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) {
+    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) -> Result<(), Error> {
         lender.require_auth();
 
         let env = env();
 
         // 1. check if lender already has a CDP
         if self.cdps.contains_key(lender.clone()) {
-            panic!("CDP already exists for this lender");
+            return Err(Error::CDPAlreadyExists);
         }
 
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
@@ -343,7 +342,7 @@ impl IsCollateralized for Token {
             xasset_decimals,
         );
         if collateralization_ratio < self.min_collat_ratio {
-            panic!("Insufficient collateralization ratio");
+            return Err(Error::InsufficientCollateralization);
         }
 
         // 3. transfer attached XLM to this contract
@@ -351,10 +350,12 @@ impl IsCollateralized for Token {
         client.transfer(&lender, &env.current_contract_address(), &collateral);
 
         // 4. mint `asset_lent` of this token to `address`
-        self.mint(lender.clone(), asset_lent);
+        let balance = self.balance(lender.clone()) + asset_lent;
+        self.balances.set(lender.clone(), balance);
 
         // 5. create CDP
         self.cdps.set(lender, cdp);
+        Ok(())
     }
 
     fn cdp(&self, lender: Address) -> CDP {
@@ -392,44 +393,45 @@ impl IsCollateralized for Token {
         cdps
     }
 
-    fn freeze_cdp(&mut self, lender: Address) {
+    fn freeze_cdp(&mut self, lender: Address) -> Result<(), Error> {
         let mut cdp = self.cdp(lender.clone());
         if matches!(cdp.status, CDPStatus::Insolvent) {
             cdp.status = CDPStatus::Frozen;
             self.set_cdp_from_decorated(lender, cdp);
+            Ok(())
         } else {
-            panic!("CDP not insolvent");
+            Err(Error::CDPNotInsolvent)
         }
     }
 
-    fn add_collateral(&mut self, lender: Address, amount: i128) {
+    fn add_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone());
-
+    
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
-            panic!("CDP must be Open or Insolvent to add collateral");
+            return Err(Error::CDPNotOpenOrInsolvent);
         }
-
+    
         // Transfer XLM from lender to contract
-        let client = token::Client::new(env(), &self.xlm_sac);
-        client.transfer(&lender, &env().current_contract_address(), &amount);
-
+        native().transfer(&lender, &env().current_contract_address(), &amount);
+    
         cdp.xlm_deposited += amount;
         self.set_cdp_from_decorated(lender, cdp);
+        Ok(())
     }
 
-    fn withdraw_collateral(&mut self, lender: Address, amount: i128) {
+    fn withdraw_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone());
-
+    
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
-            panic!("CDP must be Open or Insolvent to withdraw collateral");
+            return Err(Error::CDPNotOpenOrInsolvent);
         }
-
+    
         if cdp.xlm_deposited < amount {
-            panic!("Insufficient collateral");
+            return Err(Error::InsufficientCollateral);
         }
-
+    
         let new_cdp = self.decorate(
             CDPInternal {
                 xlm_deposited: cdp.xlm_deposited - amount,
@@ -442,27 +444,27 @@ impl IsCollateralized for Token {
             self.lastprice_asset().price,
             self.decimals_asset_feed(),
         );
-
+    
         if new_cdp.collateralization_ratio < self.min_collat_ratio {
-            panic!("Withdrawal would cause undercollateralization");
+            return Err(Error::InvalidWithdrawal);
         }
-
+    
         // Transfer XLM from contract to lender
-        let client = token::Client::new(env(), &self.xlm_sac);
-        client.transfer(&env().current_contract_address(), &lender, &amount);
-
+        native().transfer(&env().current_contract_address(), &lender, &amount);
+    
         cdp.xlm_deposited -= amount;
         self.set_cdp_from_decorated(lender, cdp);
+        Ok(())
     }
 
-    fn borrow_xasset(&mut self, lender: Address, amount: i128) {
+    fn borrow_xasset(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone());
-
+    
         if !matches!(cdp.status, CDPStatus::Open) {
-            panic!("CDP must be Open to borrow asset");
+            return Err(Error::CDPNotOpen);
         }
-
+    
         let new_cdp = self.decorate(
             CDPInternal {
                 xlm_deposited: cdp.xlm_deposited,
@@ -475,61 +477,67 @@ impl IsCollateralized for Token {
             self.lastprice_asset().price,
             self.decimals_asset_feed(),
         );
-
+    
         if new_cdp.collateralization_ratio < self.min_collat_ratio {
-            panic!("Borrowing would cause undercollateralization");
+            return Err(Error::InsufficientCollateralization);
         }
-
-        self.mint(lender.clone(), amount);
-
+    
+        // mint xasset
+        let balance = self.balance(lender.clone()) + amount;
+        self.balances.set(lender.clone(), balance);
+    
         cdp.asset_lent += amount;
         self.set_cdp_from_decorated(lender, cdp);
+        Ok(())
     }
 
-    fn repay_debt(&mut self, lender: Address, amount: i128) {
+    fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone());
-
+    
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
-            panic!("CDP must be Open or Insolvent to repay debt");
+            return Err(Error::CDPNotOpenOrInsolventForRepay);
         }
-
+    
         if cdp.asset_lent < amount {
-            panic!("Repayment amount exceeds debt");
+            return Err(Error::RepaymentExceedsDebt);
         }
-
-        self.burn(lender.clone(), amount);
-
+    
+        //burn the xasset
+        let balance = self.balance(lender.clone()) - amount;
+        self.balances.set(lender.clone(), balance);
+    
         cdp.asset_lent -= amount;
-
+    
         if cdp.asset_lent == 0 && cdp.xlm_deposited == 0 {
-            self.close_cdp(lender);
+            self.close_cdp(lender)?;
         } else {
             self.set_cdp_from_decorated(lender, cdp);
         }
+        Ok(())
     }
 
-    fn liquidate_cdp(&mut self, lender: Address) {
-        self.liquidate(lender);
+    fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128), Error> {
+        self.liquidate(lender)
     }
 
-    fn merge_cdps(&mut self, lenders: Vec<Address>) {
+    fn merge_cdps(&mut self, lenders: Vec<Address>) -> Result<(), Error> {
         if lenders.len() < 2 {
-            panic!("At least two CDPs are required for merging");
+            return Err(Error::InvalidMerge);
         }
-
+    
         let mut total_xlm = 0;
         let mut total_asset = 0;
-
+    
         for lender in lenders.iter() {
             let cdp = self.cdp(lender.clone());
             if !matches!(cdp.status, CDPStatus::Frozen) {
-                panic!("All CDPs must be frozen to merge");
+                return Err(Error::InvalidMerge);
             }
             total_xlm += cdp.xlm_deposited;
             total_asset += cdp.asset_lent;
         }
-
+    
         // Merge into the first CDP
         let merged_cdp = CDPInternal {
             xlm_deposited: total_xlm,
@@ -538,31 +546,27 @@ impl IsCollateralized for Token {
         };
         let first_lender = lenders.get(0).unwrap();
         self.cdps.set(first_lender.clone(), merged_cdp);
-
+    
         // Remove other CDPs
         for lender in lenders.iter().skip(1) {
             self.cdps.remove(lender.clone());
         }
+        Ok(())
     }
 
-    fn close_cdp(&mut self, lender: Address) {
+    fn close_cdp(&mut self, lender: Address) -> Result<(), Error> {
         let cdp = self.cdp(lender.clone());
         if cdp.asset_lent > 0 {
-            panic!("Cannot close CDP with outstanding debt");
+            return Err(Error::OutstandingDebt);
         }
-
+    
         // If there's any remaining collateral, return it to the lender
         if cdp.xlm_deposited > 0 {
-            let client = token::Client::new(env(), &self.xlm_sac);
-            client.transfer(
-                &env().current_contract_address(),
-                &lender,
-                &cdp.xlm_deposited,
-            );
+            native().transfer(&env().current_contract_address(), &lender, &cdp.xlm_deposited);
         }
-
-        // FIXME what is the point of having a CLOSED status if they are just removed?
+    
         self.cdps.remove(lender);
+        Ok(())
     }
 }
 
@@ -635,7 +639,7 @@ impl IsStabilityPool for Token {
                     compounded_constant: self.stability_pool.get_compounded_constant(),
                     epoch: 0,
                 });
-
+    
         // Collect 1 XLM fee for each new deposit
         native().transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_deposit_fee());
         self.stability_pool
@@ -645,87 +649,84 @@ impl IsStabilityPool for Token {
         self.stability_pool.add_total_xasset(amount);
     }
 
-    fn withdraw(&mut self, to: Address, amount: i128) {
+    fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
         to.require_auth();
         let mut position = self
             .stability_pool
             .get_deposit(to.clone())
             .unwrap_or_default();
-        assert!(position.xasset_deposit >= amount, "Insufficient balance");
-
+        if position.xasset_deposit < amount {
+            return Err(Error::InsufficientBalance);
+        }
+    
         let xasset_owed = if position.epoch == self.stability_pool.get_epoch() {
             (position.xasset_deposit * self.stability_pool.get_product_constant())
                 / position.product_constant
         } else {
             0
         };
-
-        assert!(
-            xasset_owed >= amount,
-            "Insufficient balance after liquidations"
-        );
-
+    
+        if xasset_owed < amount {
+            return Err(Error::InsufficientBalance);
+        }
+    
         position.xasset_deposit -= amount;
         self.stability_pool.set_deposit(to, position);
         self.stability_pool.add_total_xasset(-amount);
+        Ok(())
     }
 
-    fn liquidate(&mut self, cdp_owner: Address) -> (i128, i128) {
+    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error> {
         let mut cdp = self.cdp(cdp_owner.clone());
         let debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
-
+    
         // Check if the CDP is frozen
         if !matches!(cdp.status, CDPStatus::Frozen) {
-            panic!("CDP must be frozen to be liquidated");
+            return Err(Error::InvalidLiquidation);
         }
-
+    
         // Ensure the debt and collateral are positive
         if debt <= 0 || collateral <= 0 {
-            panic!("Debt and collateral must be positive");
+            return Err(Error::InvalidLiquidation);
         }
-
+    
         let total_xasset = self.stability_pool.get_total_xasset();
-
+    
         // Determine how much debt can be repaid from the Stability Pool
         let liquidated_debt = cmp::min(debt, total_xasset);
-
+    
         // Calculate the proportional amount of collateral to withdraw
         let liquidated_collateral =
             (collateral as u128 * liquidated_debt as u128 / debt as u128) as i128;
-
+    
         // Update the stability pool
         self.stability_pool.subtract_total_xasset(liquidated_debt);
         self.stability_pool
             .add_total_collateral(liquidated_collateral);
-
+    
         // Update constants for the stability pool
         self.stability_pool
             .update_constants(liquidated_debt, liquidated_collateral);
-
+    
         // Burn the liquidated debt
         let sp_address = env().current_contract_address();
         let balance = self.balance(sp_address.clone()) - liquidated_debt;
         self.balances.set(sp_address, balance);
-
+    
         // Update the CDP
         cdp.xlm_deposited -= liquidated_collateral;
         cdp.asset_lent -= liquidated_debt;
-
+    
         // If all debt is repaid, close the CDP
         if cdp.asset_lent == 0 {
-            // Withdraw any remaining collateral
-            if cdp.xlm_deposited > 0 {
-                native().transfer(&env().current_contract_address(), &cdp_owner.clone(), &cdp.xlm_deposited);
-            }
-            // Close the CDP
             self.cdps.remove(cdp_owner);
         } else {
             // Otherwise, update the CDP
             self.set_cdp_from_decorated(cdp_owner, cdp);
         }
-
-        (liquidated_debt, liquidated_collateral)
+    
+        Ok((liquidated_debt, liquidated_collateral))
     }
 
     fn claim_rewards(&mut self, to: Address) -> i128 {
@@ -762,19 +763,19 @@ impl IsStabilityPool for Token {
         self.stability_pool.get_total_collateral()
     }
 
-    fn stake(&mut self, from: Address, amount: i128) {
+    fn stake(&mut self, from: Address, amount: i128) -> Result<(), Error> {
         from.require_auth();
-
+    
         // Check if the user already has a stake
         if self.stability_pool.get_deposit(from.clone()).is_some() {
-            panic!("User already has a stake. Use deposit function to add to existing stake.");
+            return Err(Error::StakeAlreadyExists);
         }
-
+    
         native().transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_stake_fee());
         // Add stake fee
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_stake_fee());
-
+    
         // Create new position
         let position = StakerPosition {
             xasset_deposit: amount,
@@ -782,33 +783,34 @@ impl IsStabilityPool for Token {
             compounded_constant: self.stability_pool.get_compounded_constant(),
             epoch: 0,
         };
-
+    
         // Set the new position in the stability pool
         self.stability_pool.set_deposit(from, position);
         self.stability_pool.add_total_xasset(amount);
+        Ok(())
     }
 
-    fn unstake(&mut self, to: Address, amount: i128) {
+    fn unstake(&mut self, to: Address, amount: i128) -> Result<(), Error> {
         to.require_auth();
-
+    
         let position = self
             .stability_pool
             .get_deposit(to.clone())
             .unwrap_or_default();
-        assert!(
-            position.xasset_deposit == amount,
-            "Must unstake all xAsset to close SP account"
-        );
-
-        self.withdraw(to.clone(), amount);
-
+        if position.xasset_deposit != amount {
+            return Err(Error::PartialUnstakeNotAllowed);
+        }
+    
+        self.withdraw(to.clone(), amount)?;
+    
         // Return 2 XLM fee upon closing the SP account
         self.stability_pool
             .subtract_fees_collected(self.stability_pool.get_unstake_return());
-
+    
         native().transfer(&env().current_contract_address(), &to, &self.stability_pool.get_unstake_return());
-
+    
         self.stability_pool.remove_deposit(to);
+        Ok(())
     }
 }
 

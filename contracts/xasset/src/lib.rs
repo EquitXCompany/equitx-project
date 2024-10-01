@@ -12,6 +12,9 @@ use token::Token;
 pub mod collateralized;
 pub mod stability_pool;
 pub mod token;
+pub mod error;
+
+pub use error::Error;
 
 // FIXME: copied from data_feed; find way to reuse
 #[loam_sdk::soroban_sdk::contracttype]

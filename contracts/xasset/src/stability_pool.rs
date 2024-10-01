@@ -3,6 +3,8 @@ use loam_sdk::{
     subcontract, IntoKey,
 };
 
+use crate::Error;
+
 #[contracttype]
 #[derive(IntoKey)]
 pub struct MyStabilityPool {
@@ -177,9 +179,9 @@ pub trait IsStabilityPool {
     /// Deposits iAsset tokens into the Stability Pool.
     fn deposit(&mut self, from: Address, amount: i128);
     /// Withdraws xasset tokens from the Stability Pool.
-    fn withdraw(&mut self, to: Address, amount: i128);
+    fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error>;
     /// Processes a liquidation event for a CDP.
-    fn liquidate(&mut self, cdp_owner: Address) -> (i128, i128);
+    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error>;
     /// Allows a user to claim their share of collateral rewards.
     fn claim_rewards(&mut self, to: Address) -> i128;
     /// Retrieves the current deposit amount for a given address.
@@ -189,7 +191,7 @@ pub trait IsStabilityPool {
     /// Retrieves the total amount of collateral rewards in the Stability Pool.
     fn get_total_collateral(&self) -> i128;
     /// Allows a user to add their stake to the pool
-    fn stake(&mut self, from: Address, amount: i128);
+    fn stake(&mut self, from: Address, amount: i128) -> Result<(), Error>;
     /// Allows a user to remove their stake from the pool
-    fn unstake(&mut self, to: Address, amount: i128);
+    fn unstake(&mut self, to: Address, amount: i128) -> Result<(), Error>;
 }

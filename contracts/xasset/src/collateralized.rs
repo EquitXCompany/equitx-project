@@ -3,7 +3,7 @@ use loam_sdk::{
     subcontract,
 };
 
-use crate::PriceData;
+use crate::{Error, PriceData};
 
 #[loam_sdk::soroban_sdk::contracttype]
 #[derive(Clone, Copy)]
@@ -65,7 +65,7 @@ pub trait IsCollateralized {
 
     /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
     /// The user who creates the CDP becomes the CDP's owner.
-    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128);
+    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) -> Result<(), Error>;
 
     /// Retrieves the CDP information for a specific lender
     fn cdp(&self, lender: Address) -> CDP;
@@ -75,36 +75,36 @@ pub trait IsCollateralized {
 
     /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
     /// A frozen CDP is no longer usable or interactable by its former owner.
-    fn freeze_cdp(&mut self, lender: Address);
+    fn freeze_cdp(&mut self, lender: Address) -> Result<(), Error>;
 
     /// Increases the Collateralization Ratio (CR) by depositing more collateral to an existing CDP.
-    fn add_collateral(&mut self, lender: Address, amount: i128);
+    fn add_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error>;
 
     /// Lowers the Collateralization Ratio (CR) by withdrawing part or all of the collateral from a CDP.
     /// Collateral cannot be withdrawn if it brings CR below the xAsset's MCR.
-    fn withdraw_collateral(&mut self, lender: Address, amount: i128);
+    fn withdraw_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error>;
 
     /// Lowers the Collateralization Ratio (CR) by minting additional xAsset against existing collateral.
     /// More xAsset cannot be minted if it brings CR below the xAsset's MCR.
-    fn borrow_xasset(&mut self, lender: Address, amount: i128);
+    fn borrow_xasset(&mut self, lender: Address, amount: i128) -> Result<(), Error>;
 
     /// Increases the Collateralization Ratio (CR) by repaying debt in the form of xAsset.
     /// When the debt is repaid, the xAsset is burned (i.e., destroyed).
     /// More xAsset cannot be burned than debt owed by the CDP.
-    fn repay_debt(&mut self, lender: Address, amount: i128);
+    fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error>;
 
     /// Liquidates a frozen CDP. Upon liquidation, CDP debt is repaid by withdrawing xAsset from a Stability Pool.
     /// As debt is repaid, collateral is withdrawn from the CDP.
     /// If all debt is repaid, then all collateral is withdrawn, and the CDP is closed.
-    fn liquidate_cdp(&mut self, lender: Address);
+    fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128), Error>;
 
     /// Merges two or more frozen CDPs into one CDP.
     /// Upon merging, all but one of the CDPs are closed, and their debt and collateral are transferred into a single CDP.
-    fn merge_cdps(&mut self, lenders: Vec<Address>);
+    fn merge_cdps(&mut self, lenders: Vec<Address>) -> Result<(), Error>;
 
     /// Closes a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt.
     /// A CDP is closed after all its debt is repaid and its collateral is withdrawn.
-    fn close_cdp(&mut self, lender: Address);
+    fn close_cdp(&mut self, lender: Address) -> Result<(), Error>;
 }
 
 #[subcontract]
