@@ -844,10 +844,6 @@ impl Token {
         } else {
             (xasset_decimals - xlm_decimals, 0)
         };
-        env().events().publish(
-            (Symbol::new(&env(), "asset lent"),),
-            cdp.asset_lent.clone(),
-        );
         let collateralization_ratio = if cdp.asset_lent == 0 || xasset_price == 0 {
             u32::MAX
         } else {
