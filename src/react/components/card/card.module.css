@@ -2,40 +2,52 @@
   list-style: none;
   display: flex;
   padding: 1px;
-  background-color: #23262d;
+  background-color: var(--color-dark-blue);
   background-image: none;
   background-size: 400%;
   border-radius: 7px;
   background-position: 100%;
   transition: background-position 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(242, 232, 201, 0.1); /* Using --color-cream with opacity */
 }
+
 .linkCard > a {
   width: 100%;
   text-decoration: none;
   line-height: 1.4;
   padding: calc(1.5rem - 1px);
   border-radius: 8px;
-  color: white;
-  background-color: #23262d;
+  color: var(--color-cream);
+  background-color: var(--color-dark-blue);
   opacity: 0.8;
 }
+
 .linkCard h2 {
   margin: 0;
   font-size: 1.25rem;
   transition: color 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
 .linkCard h2 span:last-child {
   margin-left: 0.25rem;
 }
+
 .linkCard p {
   margin-top: 0.5rem;
   margin-bottom: 0;
 }
+
 .linkCard:is(:hover, :focus-within) {
   background-position: 0;
-  background-image: var(--accent-gradient);
+  background-image: linear-gradient(45deg, var(--color-light-blue), var(--color-orange));
 }
+
 .linkCard:is(:hover, :focus-within) h2 {
-  color: rgb(var(--accent-light));
+  color: var(--color-cream);
+}
+
+/* Define accent colors if they're used elsewhere */
+:root {
+  --accent-light: 242, 232, 201; /* --color-cream in RGB */
+  --accent-gradient: linear-gradient(45deg, var(--color-light-blue), var(--color-orange) 30%, var(--color-cream) 60%);
 }

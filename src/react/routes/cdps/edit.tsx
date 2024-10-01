@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLoaderData, useParams, Link, Form, useNavigate, useActionData } from "react-router-dom";
+import { useLoaderData, useParams, Link as RouterLink, Form, useNavigate, useActionData } from "react-router-dom";
 import type { LoaderFunction, ActionFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
 import type { CDP } from "xasset";
@@ -92,7 +92,7 @@ function Edit() {
       const timer = setTimeout(() => {
         setMessage(null);
         navigate(`/${actionData.lender}`);
-      }, 3000); // Redirect after 3 seconds
+      }, 3000);
 
       return () => clearTimeout(timer);
     }
@@ -105,56 +105,91 @@ function Edit() {
   const isOwner = account === lender;
 
   return (
-    <>
-      <Link to={`/${lender}`} className="back-link">← Back to CDP Details</Link>
-      <h2>Edit CDP for <AddressDisplay lender={lender} /></h2>
+    <Container maxWidth="md">
+      <Box my={4}>
+        <MuiLink component={RouterLink} to={`/${lender}`} sx={{ display: 'block', mb: 2 }}>
+          ← Back to CDP Details
+        </MuiLink>
+        <Typography variant="h4" gutterBottom>
+          Edit CDP for <AddressDisplay lender={lender} />
+        </Typography>
 
-      {message && (
-        <div className={`message ${message.type}`}>
-          {message.text}
-        </div>
-      )}
-      {cdp && (
-        <>
-          <CDPDisplay
-            cdp={cdp}
-            decimals={decimals}
-            lastpriceXLM={lastpriceXLM}
-            lastpriceAsset={lastpriceAsset}
-            symbolAsset={symbolAsset}
-            lender={lender}
-          />
+        <Snackbar open={!!message} autoHideDuration={6000} onClose={() => setMessage(null)}>
+          <Alert severity={message?.type || "info"} onClose={() => setMessage(null)}>
+            {message?.text}
+          </Alert>
+        </Snackbar>
 
-          {isOwner && (
-            <Form method="post">
-              <input type="hidden" name="lender" value={lender} />
-              <label>
-                Amount:
-                <input
+        {cdp && (
+          <>
+            <CDPDisplay
+              cdp={cdp}
+              decimals={decimals}
+              lastpriceXLM={lastpriceXLM}
+              lastpriceAsset={lastpriceAsset}
+              symbolAsset={symbolAsset}
+              lender={lender}
+            />
+
+            {isOwner && (
+              <Form method="post">
+                <input type="hidden" name="lender" value={lender} />
+                <TextField
+                  fullWidth
+                  label="Amount"
                   type="number"
                   name="amount"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  step={`0.${'0'.repeat(decimals - 1)}1`}
+                  inputProps={{
+                    step: `0.${'0'.repeat(decimals - 1)}1`
+                  }}
+                  sx={{ mb: 2 }}
                 />
-              </label>
-              <button type="submit" name="action" value="addCollateral">Add Collateral</button>
-              <button type="submit" name="action" value="withdrawCollateral">Withdraw Collateral</button>
-              <button type="submit" name="action" value="borrowXAsset">Borrow {symbolAsset}</button>
-              <button type="submit" name="action" value="repayDebt">Repay Debt</button>
-              <button type="submit" name="action" value="close">Close CDP</button>
-            </Form>
-          )}
+                <Grid container spacing={2}>
+                  <Grid item xs={6} sm={4}>
+                    <Button fullWidth variant="contained" type="submit" name="action" value="addCollateral">
+                      Add Collateral
+                    </Button>
+                  </Grid>
+                  <Grid item xs={6} sm={4}>
+                    <Button fullWidth variant="contained" type="submit" name="action" value="withdrawCollateral">
+                      Withdraw Collateral
+                    </Button>
+                  </Grid>
+                  <Grid item xs={6} sm={4}>
+                    <Button fullWidth variant="contained" type="submit" name="action" value="borrowXAsset">
+                      Borrow {symbolAsset}
+                    </Button>
+                  </Grid>
+                  <Grid item xs={6} sm={4}>
+                    <Button fullWidth variant="contained" type="submit" name="action" value="repayDebt">
+                      Repay Debt
+                    </Button>
+                  </Grid>
+                  <Grid item xs={6} sm={4}>
+                    <Button fullWidth variant="contained" color="secondary" type="submit" name="action" value="close">
+                      Close CDP
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Form>
+            )}
 
-          {cdp.status.tag === "Insolvent" && (
-            <Form method="post">
-              <input type="hidden" name="lender" value={lender} />
-              <button type="submit" name="action" value="liquidate">Liquidate CDP</button>
-            </Form>
-          )}
-        </>
-      )}
-    </>
+            {cdp.status.tag === "Insolvent" && (
+              <Box mt={2}>
+                <Form method="post">
+                  <input type="hidden" name="lender" value={lender} />
+                  <Button fullWidth variant="contained" color="error" type="submit" name="action" value="liquidate">
+                    Liquidate CDP
+                  </Button>
+                </Form>
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
+    </Container>
   );
 }
 

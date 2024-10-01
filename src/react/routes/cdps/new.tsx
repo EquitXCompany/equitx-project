@@ -86,12 +86,6 @@ function New() {
       <Typography variant="h4" gutterBottom>
         Open a new Collateralized Debt Position (CDP)
       </Typography>
-      <Typography variant="body1" gutterBottom>
-        Current XLM price: ${lastpriceXLM.toFixed(decimalsXLM)}
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Current {symbolAsset} price: ${lastpriceAsset.toFixed(decimalsAsset)}
-      </Typography>
       <Form method="post">
         <input type="hidden" name="lender" value={account} />
         <Box sx={{ mt: 2 }}>
