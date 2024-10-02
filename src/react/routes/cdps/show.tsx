@@ -1,7 +1,7 @@
 import { useLoaderData, useParams, Link } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
-import type { CDP } from "xasset";
+import type { CDP, PriceData } from "xasset";
 import BigNumber from "bignumber.js";
 import { CDPDisplay } from "../../components/cdp/CDPDisplay";
 import AddressDisplay from "../../components/cdp/AddressDisplay";
