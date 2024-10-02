@@ -2,7 +2,7 @@ use core::cmp;
 
 use loam_sdk::{
     soroban_sdk::{self, contracttype, env, token, Address, Lazy, Map, String, Symbol, Vec },
-    stellar_asset, IntoKey,
+    IntoKey,
 };
 use loam_subcontract_core::Core;
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
@@ -373,7 +373,7 @@ impl IsCollateralized for Token {
         }
 
         // 3. transfer attached XLM to this contract
-        let _ = native().try_transfer(&lender, &env.current_contract_address(), &collateral).map_err(|_| Error::XLMTransferFailed)?;
+        let _ = self.native().try_transfer(&lender, &env.current_contract_address(), &collateral).map_err(|_| Error::XLMTransferFailed)?;
 
         // 4. mint `asset_lent` of this token to `address`
         let balance = self.balance(lender.clone()) + asset_lent;
@@ -385,7 +385,7 @@ impl IsCollateralized for Token {
     }
 
     fn cdp(&self, lender: Address) -> Result<CDP, Error> {
-        let cdp = self.cdps.get(lender.clone()).expect("CDP not found");
+        let cdp = self.cdps.get(lender.clone()).ok_or(Error::CDPNotFound)?;
         let xlm_price = self.lastprice_xlm()?;
         let xlm_decimals = self.decimals_xlm_feed()?;
         let xasset_price = self.lastprice_asset()?;
@@ -439,7 +439,7 @@ impl IsCollateralized for Token {
         }
     
         // Transfer XLM from lender to contract
-        let _ = native().try_transfer(&lender, &env().current_contract_address(), &amount).map_err(|_| Error::XLMTransferFailed)?;
+        let _ = self.native().try_transfer(&lender, &env().current_contract_address(), &amount).map_err(|_| Error::XLMTransferFailed)?;
     
         cdp.xlm_deposited += amount;
         self.set_cdp_from_decorated(lender, cdp);
@@ -476,7 +476,7 @@ impl IsCollateralized for Token {
         }
     
         // Transfer XLM from contract to lender
-        let _ = native().try_transfer(&env().current_contract_address(), &lender, &amount).map_err(|_| Error::XLMTransferFailed)?;
+        let _ = self.native().try_transfer(&env().current_contract_address(), &lender, &amount).map_err(|_| Error::XLMTransferFailed)?;
     
         cdp.xlm_deposited -= amount;
         self.set_cdp_from_decorated(lender, cdp);
@@ -588,7 +588,7 @@ impl IsCollateralized for Token {
     
         // If there's any remaining collateral, return it to the lender
         if cdp.xlm_deposited > 0 {
-            let _ = native().try_transfer(&env().current_contract_address(), &lender, &cdp.xlm_deposited).map_err(|_| Error::XLMTransferFailed)?;
+            let _ = self.native().try_transfer(&env().current_contract_address(), &lender, &cdp.xlm_deposited).map_err(|_| Error::XLMTransferFailed)?;
         }
     
         self.cdps.remove(lender);
@@ -642,10 +642,7 @@ impl IsCDPAdmin for Token {
         self.min_collat_ratio = to;
         to
     }
-}
 
-fn native() -> token::Client<'static> {
-    stellar_asset!("native")
 }
 
 impl IsStabilityPool for Token {
@@ -667,7 +664,7 @@ impl IsStabilityPool for Token {
                 });
     
         // Collect 1 XLM fee for each new deposit
-        let _ = native().try_transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_deposit_fee()).map_err(|_| Error::XLMTransferFailed);
+        let _ = self.native().try_transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_deposit_fee()).map_err(|_| Error::XLMTransferFailed);
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_deposit_fee());
         position.xasset_deposit += amount;
@@ -770,7 +767,7 @@ impl IsStabilityPool for Token {
             0
         };
 
-        let _ = native().try_transfer(&env().current_contract_address(), &to, &xlm_reward).map_err(|_| Error::XLMTransferFailed);
+        let _ = self.native().try_transfer(&env().current_contract_address(), &to, &xlm_reward).map_err(|_| Error::XLMTransferFailed);
         self.stability_pool.subtract_total_collateral(xlm_reward);
         xlm_reward
     }
@@ -797,7 +794,7 @@ impl IsStabilityPool for Token {
             return Err(Error::StakeAlreadyExists);
         }
     
-        let _ = native().try_transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_stake_fee()).map_err(|_| Error::XLMTransferFailed)?;
+        let _ = self.native().try_transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_stake_fee()).map_err(|_| Error::XLMTransferFailed)?;
         // Add stake fee
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_stake_fee());
@@ -830,7 +827,7 @@ impl IsStabilityPool for Token {
         self.withdraw(to.clone(), amount)?;
     
         // Return 2 XLM fee upon closing the SP account
-        let _ = native().try_transfer(&env().current_contract_address(), &to, &self.stability_pool.get_unstake_return()).map_err(|_| Error::XLMTransferFailed)?;
+        let _ = self.native().try_transfer(&env().current_contract_address(), &to, &self.stability_pool.get_unstake_return()).map_err(|_| Error::XLMTransferFailed)?;
         self.stability_pool
             .subtract_fees_collected(self.stability_pool.get_unstake_return());
     
@@ -901,5 +898,9 @@ impl Token {
                 status: decorated_cdp.status,
             },
         );
+    }
+
+    fn native(&self) -> token::Client {
+        token::Client::new(&env(), &self.xlm_sac)
     }
 }

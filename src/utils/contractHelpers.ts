@@ -1,4 +1,5 @@
 import { freighter } from "../wallet";
+import { type Result } from "@stellar/stellar-sdk/contract";
 
 export async function authenticatedContractCall(contractMethod: any, params: any) {
   const publicKey = (await freighter.getAddress()).address;
@@ -21,3 +22,12 @@ export const getStatusColor = (status: string): string => {
       return '#f2e8c9'; // --color-cream
   }
 };
+
+export function unwrapResult<T>(result: Result<T>, errorMessage: string): T {
+  console.log(result);
+  if (result.isOk()) {
+    return result.unwrap();
+  } else {
+    throw new Error(errorMessage);
+  }
+}

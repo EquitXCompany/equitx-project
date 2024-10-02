@@ -9,16 +9,16 @@ network-passphrase = "Standalone Network ; February 2017"
 client = true
 init = """
 admin_set --new-admin equitx
-sep40_init --resolution 300 --assets '[{"Other":"USD"},{"Other":"XLM"}]' --decimals 14 --base '{"Other":"USD"}'
+sep40_init --resolution 300 --assets '[{"Other":"USDT"},{"Other":"XLM"}]' --decimals 14 --base '{"Other":"USDT"}'
 set_asset_price --price 10000000000000 --asset '{"Other":"XLM"}' --timestamp "$(date +%s)"
-set_asset_price --price 100000000000000 --asset '{"Other":"USD"}' --timestamp "$(date +%s)"
+set_asset_price --price 100000000000000 --asset '{"Other":"USDT"}' --timestamp "$(date +%s)"
 """
 
 [development.contracts.xasset]
 client = true
 init = """
 admin_set --new-admin equitx
-cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USD --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7
+cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USDT --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7
 STELLAR_ACCOUNT=alice open_cdp --lender alice --collateral 1700000000 --asset-lent 100000000
 STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 100000000
 set_min_collat_ratio --to 15000
@@ -33,4 +33,4 @@ network-passphrase = "Test SDF Network ; September 2015"
 
 [staging.contracts]
 data_feed = { id = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63" }
-xasset = { id = "CDQJIXXTQ4R46CAKWG4PU3XWEPTAZCGPKFO3YGKEPWTTZYJ6KPNVQLXC" }
+xasset = { id = "CAAS6YSPUPMHYUD3YNXWWHF2LACTGT74E3C7WCZL6W6PRVPIWHUV3R4O" }

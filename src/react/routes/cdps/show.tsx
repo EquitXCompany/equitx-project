@@ -5,6 +5,7 @@ import type { CDP } from "xasset";
 import BigNumber from "bignumber.js";
 import { CDPDisplay } from "../../components/cdp/CDPDisplay";
 import AddressDisplay from "../../components/cdp/AddressDisplay";
+import { unwrapResult } from "../../../utils/contractHelpers";
 
 interface Data {
   cdp: CDP | undefined;
@@ -17,10 +18,12 @@ interface Data {
 export const loader: LoaderFunction = async ({ params }): Promise<Data> => {
   const { lender } = params as { lender: string };
   return {
-    cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
+    cdp: await xasset.cdp({ lender }).then((tx) => unwrapResult(tx.result, "failed to retrieve CDP")),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
-    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price.toString())).div(10 ** 14),
-    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price.toString())).div(10 ** 14),
+    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => (unwrapResult(t.result, "Failed to retrieve the XLM price") as PriceData).price)).toString())
+      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
+    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => (unwrapResult(t.result, "Failed to retrieve the asset price") as PriceData).price)).toString())
+      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
     symbolAsset: "xUSD", // FIXME: get from xasset (to be implemented as part of ft)
   };
 };

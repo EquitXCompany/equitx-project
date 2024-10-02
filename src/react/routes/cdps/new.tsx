@@ -7,15 +7,17 @@ import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import BigNumber from 'bignumber.js';
 import { BASIS_POINTS } from "../../../constants";
 import { Box, Button, TextField, Typography } from '@mui/material';
+import { unwrapResult } from "../../../utils/contractHelpers";
+import { type PriceData } from "xasset";
 
 export const loader = async () => {
   return {
     minRatio: await xasset
       .minimum_collateralization_ratio()
       .then((t) => new BigNumber(t.result)),
-    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => t.result.price)).toString())
+    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => (unwrapResult(t.result, "Failed to retrieve the XLM price") as PriceData).price)).toString())
       .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
-    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => t.result.price)).toString())
+    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => (unwrapResult(t.result, "Failed to retrieve the asset price") as PriceData).price)).toString())
       .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
     symbolAsset: "xUSD", // FIXME: get from xasset, pending FT implementation
   };

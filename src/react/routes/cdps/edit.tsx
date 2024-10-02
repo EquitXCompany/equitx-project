@@ -8,6 +8,7 @@ import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import { CDPDisplay } from "../../components/cdp/CDPDisplay";
 import AddressDisplay from "../../components/cdp/AddressDisplay";
+import { unwrapResult } from "../../../utils/contractHelpers";
 import { 
   Button, 
   TextField, 
@@ -19,6 +20,7 @@ import {
   Snackbar,
   Link as MuiLink
 } from "@mui/material";
+import type { PriceData } from "data_feed";
 
 interface LoaderData {
   cdp: CDP;
@@ -32,15 +34,18 @@ interface ActionData {
   message: string;
   type: "success" | "error";
   lender: string;
+  action: string;
 }
 
 export const loader: LoaderFunction = async ({ params }): Promise<LoaderData> => {
   const { lender } = params as { lender: string };
   return {
-    cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
+    cdp: await xasset.cdp({ lender }).then((tx) => unwrapResult(tx.result, "Failed to retrieve CDP")),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
-    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price.toString())).div(10 ** 14),
-    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price.toString())).div(10 ** 14),
+    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => (unwrapResult(t.result, "Failed to retrieve the XLM price") as PriceData).price)).toString())
+      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
+    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => (unwrapResult(t.result, "Failed to retrieve the asset price") as PriceData).price)).toString())
+      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
     symbolAsset: "xUSD", // FIXME: get from xasset (to be implemented as part of ft)
   };
 };
@@ -80,9 +85,9 @@ export const action: ActionFunction = async ({ request }) => {
 
   const status = tx.getTransactionResponse.status;
   if (status === "SUCCESS") {
-    return { message: "Transaction successful!", type: "success", lender };
+    return { message: "Transaction successful!", type: "success", lender, action };
   } else {
-    return { message: "Transaction failed.", type: "error", lender };
+    return { message: "Transaction failed.", type: "error", lender, action };
   }
 };
 
@@ -98,12 +103,17 @@ function Edit() {
   useEffect(() => {
     if (actionData) {
       setMessage({ text: actionData.message, type: actionData.type });
-      const timer = setTimeout(() => {
-        setMessage(null);
-        navigate(`/${actionData.lender}`);
-      }, 3000);
-
-      return () => clearTimeout(timer);
+      
+      if (actionData.type === 'success' && actionData.action === 'close') {
+        navigate('/'); // Navigate to root (list view) immediately
+      } else {
+        const timer = setTimeout(() => {
+          setMessage(null);
+          navigate(`/${actionData.lender}`);
+        }, 3000);
+        
+        return () => clearTimeout(timer);
+      }
     }
     return;
   }, [actionData, navigate]);
