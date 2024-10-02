@@ -54,5 +54,13 @@ pub enum Error {
 
     // "live_until_ledger must be greater than or equal to the current ledger number"
     InvalidLedgerSequence = 17,
-}
 
+    // "Failed to fetch price data from Oracle"
+    OraclePriceFetchFailed = 18,
+
+    // "Failed to fetch decimals from Oracle"
+    OracleDecimalsFetchFailed = 19,
+
+    // "Failed to transfer XLM"
+    XLMTransferFailed = 20,
+}

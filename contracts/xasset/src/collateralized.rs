@@ -52,26 +52,26 @@ pub trait IsCollateralized {
     fn minimum_collateralization_ratio(&self) -> u32;
 
     /// Get the most recent price for XLM
-    fn lastprice_xlm(&self) -> PriceData;
+    fn lastprice_xlm(&self) -> Result<PriceData, Error>;
 
     /// Get the most recent price for the pegged asset
-    fn lastprice_asset(&self) -> PriceData;
+    fn lastprice_asset(&self) -> Result<PriceData, Error>;
 
     /// Get the number of decimals used by the xlm oracle contract. This is NOT the same as the number of decimals used by the XLM Stellar Asset Contract.
-    fn decimals_xlm_feed(&self) -> u32;
+    fn decimals_xlm_feed(&self) -> Result<u32, Error>;
 
     /// Get the number of decimals used by the asset oracle contract. This is NOT the same as the number of decimals used by the xAsset Fungible Token contract.
-    fn decimals_asset_feed(&self) -> u32;
+    fn decimals_asset_feed(&self) -> Result<u32, Error>;
 
     /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
     /// The user who creates the CDP becomes the CDP's owner.
     fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) -> Result<(), Error>;
 
     /// Retrieves the CDP information for a specific lender
-    fn cdp(&self, lender: Address) -> CDP;
+    fn cdp(&self, lender: Address) -> Result<CDP, Error>;
 
     /// Retrieves all CDPs in the system
-    fn cdps(&self) -> soroban_sdk::Vec<CDP>;
+    fn cdps(&self) -> Result<soroban_sdk::Vec<CDP>, Error>;
 
     /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
     /// A frozen CDP is no longer usable or interactable by its former owner.

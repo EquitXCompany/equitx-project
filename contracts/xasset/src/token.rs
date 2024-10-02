@@ -283,37 +283,62 @@ impl IsCollateralized for Token {
         self.min_collat_ratio
     }
 
-    fn lastprice_xlm(&self) -> PriceData {
+    fn lastprice_xlm(&self) -> Result<PriceData, Error> {
         let env = env();
         let contract = &self.xlm_contract;
         let client = data_feed::Client::new(env, contract);
-        let data_feed::PriceData { price, timestamp } = client
-            .lastprice(&data_feed::Asset::Other(Symbol::new(env, "XLM")))
-            .expect("No XLM price data from Oracle");
-        PriceData { price, timestamp }
+        match client.try_lastprice(&data_feed::Asset::Other(Symbol::new(env, "XLM"))) {
+            Ok(price_data_option) => match price_data_option {
+                core::prelude::v1::Ok(Some(data_feed::PriceData { price, timestamp })) => Ok(PriceData { price, timestamp }),
+                core::prelude::v1::Ok(None) => Err(Error::OraclePriceFetchFailed),
+                Err(_) => Err(Error::OraclePriceFetchFailed),
+            },
+            Err(_) => Err(Error::OraclePriceFetchFailed),
+        }
     }
 
-    fn lastprice_asset(&self) -> PriceData {
+    fn lastprice_asset(&self) -> Result<PriceData, Error> {
         let env = env();
         let contract = &self.asset_contract;
         let asset = &self.pegged_asset;
         let client = data_feed::Client::new(env, contract);
-        let data_feed::PriceData { price, timestamp } = client
-            .lastprice(&data_feed::Asset::Other(asset.clone()))
-            .expect("No asset price data from Oracle");
-        PriceData { price, timestamp }
+        
+        match client.try_lastprice(&data_feed::Asset::Other(asset.clone())) {
+            Ok(price_data_option) => match price_data_option {
+                core::prelude::v1::Ok(Some(data_feed::PriceData { price, timestamp })) => Ok(PriceData { price, timestamp }),
+                core::prelude::v1::Ok(None) => Err(Error::OraclePriceFetchFailed),
+                Err(_) => Err(Error::OraclePriceFetchFailed),
+            },
+            Err(_) => Err(Error::OraclePriceFetchFailed),
+        }
     }
 
-    fn decimals_xlm_feed(&self) -> u32 {
+    fn decimals_xlm_feed(&self) -> Result<u32, Error> {
+        let env = env();
         let contract = &self.xlm_contract;
-        let client = data_feed::Client::new(env(), contract);
-        client.decimals()
+        let client = data_feed::Client::new(env, contract);
+        
+        match client.try_decimals() {
+            Ok(decimals_result) => match decimals_result {
+                core::prelude::v1::Ok(decimals) => Ok(decimals),
+                Err(_) => Err(Error::OracleDecimalsFetchFailed),
+            },
+            Err(_) => Err(Error::OracleDecimalsFetchFailed),
+        }
     }
 
-    fn decimals_asset_feed(&self) -> u32 {
+    fn decimals_asset_feed(&self) -> Result<u32, Error> {
+        let env = env();
         let contract = &self.asset_contract;
-        let client = data_feed::Client::new(env(), contract);
-        client.decimals()
+        let client = data_feed::Client::new(env, contract);
+        
+        match client.try_decimals() {
+            Ok(decimals_result) => match decimals_result {
+                core::prelude::v1::Ok(decimals) => Ok(decimals),
+                Err(_) => Err(Error::OracleDecimalsFetchFailed),
+            },
+            Err(_) => Err(Error::OracleDecimalsFetchFailed),
+        }
     }
 
     fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) -> Result<(), Error> {
@@ -328,10 +353,10 @@ impl IsCollateralized for Token {
 
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
         let cdp = CDPInternal::new(collateral, asset_lent);
-        let xlm_price = self.lastprice_xlm();
-        let xlm_decimals = self.decimals_xlm_feed();
-        let xasset_price = self.lastprice_asset();
-        let xasset_decimals = self.decimals_asset_feed();
+        let xlm_price = self.lastprice_xlm()?;
+        let xlm_decimals = self.decimals_xlm_feed()?;
+        let xasset_price = self.lastprice_asset()?;
+        let xasset_decimals = self.decimals_asset_feed()?;
         let CDP {
             collateralization_ratio,
             ..
@@ -348,8 +373,7 @@ impl IsCollateralized for Token {
         }
 
         // 3. transfer attached XLM to this contract
-        let client = token::Client::new(env, &self.xlm_sac);
-        client.transfer(&lender, &env.current_contract_address(), &collateral);
+        let _ = native().try_transfer(&lender, &env.current_contract_address(), &collateral).map_err(|_| Error::XLMTransferFailed)?;
 
         // 4. mint `asset_lent` of this token to `address`
         let balance = self.balance(lender.clone()) + asset_lent;
@@ -360,28 +384,28 @@ impl IsCollateralized for Token {
         Ok(())
     }
 
-    fn cdp(&self, lender: Address) -> CDP {
+    fn cdp(&self, lender: Address) -> Result<CDP, Error> {
         let cdp = self.cdps.get(lender.clone()).expect("CDP not found");
-        let xlm_price = self.lastprice_xlm();
-        let xlm_decimals = self.decimals_xlm_feed();
-        let xasset_price = self.lastprice_asset();
-        let xasset_decimals = self.decimals_asset_feed();
-        self.decorate(
+        let xlm_price = self.lastprice_xlm()?;
+        let xlm_decimals = self.decimals_xlm_feed()?;
+        let xasset_price = self.lastprice_asset()?;
+        let xasset_decimals = self.decimals_asset_feed()?;
+        Ok(self.decorate(
             cdp,
             lender,
             xlm_price.price,
             xlm_decimals,
             xasset_price.price,
             xasset_decimals,
-        )
+        ))
     }
 
-    fn cdps(&self) -> Vec<CDP> {
+    fn cdps(&self) -> Result<Vec<CDP>, Error> {
         let mut cdps: Vec<CDP> = Vec::new(env());
-        let xlm_price = self.lastprice_xlm();
-        let xlm_decimals = self.decimals_xlm_feed();
-        let xasset_price = self.lastprice_asset();
-        let xasset_decimals = self.decimals_asset_feed();
+        let xlm_price = self.lastprice_xlm()?;
+        let xlm_decimals = self.decimals_xlm_feed()?;
+        let xasset_price = self.lastprice_asset()?;
+        let xasset_decimals = self.decimals_asset_feed()?;
         self.cdps.iter().for_each(|(lender, cdp)| {
             cdps.push_back(self.decorate(
                 cdp,
@@ -392,11 +416,11 @@ impl IsCollateralized for Token {
                 xasset_decimals,
             ))
         });
-        cdps
+        Ok(cdps)
     }
 
     fn freeze_cdp(&mut self, lender: Address) -> Result<(), Error> {
-        let mut cdp = self.cdp(lender.clone());
+        let mut cdp = self.cdp(lender.clone())?;
         if matches!(cdp.status, CDPStatus::Insolvent) {
             cdp.status = CDPStatus::Frozen;
             self.set_cdp_from_decorated(lender, cdp);
@@ -408,14 +432,14 @@ impl IsCollateralized for Token {
 
     fn add_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
-        let mut cdp = self.cdp(lender.clone());
+        let mut cdp = self.cdp(lender.clone())?;
     
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolvent);
         }
     
         // Transfer XLM from lender to contract
-        native().transfer(&lender, &env().current_contract_address(), &amount);
+        let _ = native().try_transfer(&lender, &env().current_contract_address(), &amount).map_err(|_| Error::XLMTransferFailed)?;
     
         cdp.xlm_deposited += amount;
         self.set_cdp_from_decorated(lender, cdp);
@@ -424,7 +448,7 @@ impl IsCollateralized for Token {
 
     fn withdraw_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
-        let mut cdp = self.cdp(lender.clone());
+        let mut cdp = self.cdp(lender.clone())?;
     
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolvent);
@@ -441,10 +465,10 @@ impl IsCollateralized for Token {
                 status: cdp.status,
             },
             lender.clone(),
-            self.lastprice_xlm().price,
-            self.decimals_xlm_feed(),
-            self.lastprice_asset().price,
-            self.decimals_asset_feed(),
+            self.lastprice_xlm()?.price,
+            self.decimals_xlm_feed()?,
+            self.lastprice_asset()?.price,
+            self.decimals_asset_feed()?,
         );
     
         if new_cdp.collateralization_ratio < self.min_collat_ratio {
@@ -452,7 +476,7 @@ impl IsCollateralized for Token {
         }
     
         // Transfer XLM from contract to lender
-        native().transfer(&env().current_contract_address(), &lender, &amount);
+        let _ = native().try_transfer(&env().current_contract_address(), &lender, &amount).map_err(|_| Error::XLMTransferFailed)?;
     
         cdp.xlm_deposited -= amount;
         self.set_cdp_from_decorated(lender, cdp);
@@ -461,7 +485,7 @@ impl IsCollateralized for Token {
 
     fn borrow_xasset(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
-        let mut cdp = self.cdp(lender.clone());
+        let mut cdp = self.cdp(lender.clone())?;
     
         if !matches!(cdp.status, CDPStatus::Open) {
             return Err(Error::CDPNotOpen);
@@ -474,10 +498,10 @@ impl IsCollateralized for Token {
                 status: cdp.status,
             },
             lender.clone(),
-            self.lastprice_xlm().price,
-            self.decimals_xlm_feed(),
-            self.lastprice_asset().price,
-            self.decimals_asset_feed(),
+            self.lastprice_xlm()?.price,
+            self.decimals_xlm_feed()?,
+            self.lastprice_asset()?.price,
+            self.decimals_asset_feed()?,
         );
     
         if new_cdp.collateralization_ratio < self.min_collat_ratio {
@@ -495,7 +519,7 @@ impl IsCollateralized for Token {
 
     fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
-        let mut cdp = self.cdp(lender.clone());
+        let mut cdp = self.cdp(lender.clone())?;
     
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolventForRepay);
@@ -532,7 +556,7 @@ impl IsCollateralized for Token {
         let mut total_asset = 0;
     
         for lender in lenders.iter() {
-            let cdp = self.cdp(lender.clone());
+            let cdp = self.cdp(lender.clone())?;
             if !matches!(cdp.status, CDPStatus::Frozen) {
                 return Err(Error::InvalidMerge);
             }
@@ -557,14 +581,14 @@ impl IsCollateralized for Token {
     }
 
     fn close_cdp(&mut self, lender: Address) -> Result<(), Error> {
-        let cdp = self.cdp(lender.clone());
+        let cdp = self.cdp(lender.clone())?;
         if cdp.asset_lent > 0 {
             return Err(Error::OutstandingDebt);
         }
     
         // If there's any remaining collateral, return it to the lender
         if cdp.xlm_deposited > 0 {
-            native().transfer(&env().current_contract_address(), &lender, &cdp.xlm_deposited);
+            let _ = native().try_transfer(&env().current_contract_address(), &lender, &cdp.xlm_deposited).map_err(|_| Error::XLMTransferFailed)?;
         }
     
         self.cdps.remove(lender);
@@ -643,7 +667,7 @@ impl IsStabilityPool for Token {
                 });
     
         // Collect 1 XLM fee for each new deposit
-        native().transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_deposit_fee());
+        let _ = native().try_transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_deposit_fee()).map_err(|_| Error::XLMTransferFailed);
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_deposit_fee());
         position.xasset_deposit += amount;
@@ -679,7 +703,7 @@ impl IsStabilityPool for Token {
     }
 
     fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error> {
-        let mut cdp = self.cdp(cdp_owner.clone());
+        let mut cdp = self.cdp(cdp_owner.clone())?;
         let debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
     
@@ -746,8 +770,8 @@ impl IsStabilityPool for Token {
             0
         };
 
+        let _ = native().try_transfer(&env().current_contract_address(), &to, &xlm_reward).map_err(|_| Error::XLMTransferFailed);
         self.stability_pool.subtract_total_collateral(xlm_reward);
-        native().transfer(&env().current_contract_address(), &to, &xlm_reward);
         xlm_reward
     }
 
@@ -773,7 +797,7 @@ impl IsStabilityPool for Token {
             return Err(Error::StakeAlreadyExists);
         }
     
-        native().transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_stake_fee());
+        let _ = native().try_transfer(&from.clone(), &env().current_contract_address(), &self.stability_pool.get_stake_fee()).map_err(|_| Error::XLMTransferFailed)?;
         // Add stake fee
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_stake_fee());
@@ -806,10 +830,9 @@ impl IsStabilityPool for Token {
         self.withdraw(to.clone(), amount)?;
     
         // Return 2 XLM fee upon closing the SP account
+        let _ = native().try_transfer(&env().current_contract_address(), &to, &self.stability_pool.get_unstake_return()).map_err(|_| Error::XLMTransferFailed)?;
         self.stability_pool
             .subtract_fees_collected(self.stability_pool.get_unstake_return());
-    
-        native().transfer(&env().current_contract_address(), &to, &self.stability_pool.get_unstake_return());
     
         self.stability_pool.remove_deposit(to);
         Ok(())
