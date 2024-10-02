@@ -5,5 +5,6 @@ import react from "@astrojs/react";
 // https://astro.build/config
 export default defineConfig({
   integrations: [react()],
-  site: 'https://EquitXCompany.github.io',
+  site: 'https://equitxcompany.github.io',
+  base: '/equitx-project',
 });
