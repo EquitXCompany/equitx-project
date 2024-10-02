@@ -28,13 +28,19 @@ interface LoaderData {
   symbolAsset: string;
 }
 
+interface ActionData {
+  message: string;
+  type: "success" | "error";
+  lender: string;
+}
+
 export const loader: LoaderFunction = async ({ params }): Promise<LoaderData> => {
   const { lender } = params as { lender: string };
   return {
     cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
-    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price)).div(10 ** 14),
-    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price)).div(10 ** 14),
+    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price.toString())).div(10 ** 14),
+    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price.toString())).div(10 ** 14),
     symbolAsset: "xUSD", // FIXME: get from xasset (to be implemented as part of ft)
   };
 };
@@ -87,7 +93,7 @@ function Edit() {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const navigate = useNavigate();
-  const actionData = useActionData();
+  const actionData = useActionData() as ActionData;
 
   useEffect(() => {
     if (actionData) {
@@ -99,11 +105,8 @@ function Edit() {
 
       return () => clearTimeout(timer);
     }
+    return;
   }, [actionData, navigate]);
-
-  const formatNumber = (value: BigNumber | number, decimalPlaces: number) => {
-    return new BigNumber(value).toFixed(decimalPlaces);
-  };
 
   const isOwner = account === lender;
 

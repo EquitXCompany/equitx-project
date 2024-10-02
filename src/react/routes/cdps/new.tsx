@@ -30,7 +30,6 @@ export const action: ActionFunction = async ({ request }) => {
     collateral: new BigNumber(formData.collateral?.toString() || '0').times(new BigNumber(10).pow(decimalsXLM)).toFixed(0),
     asset_lent: new BigNumber(formData.asset_lent?.toString() || '0').times(new BigNumber(10).pow(decimalsAsset)).toFixed(0),
   };
-  // @ts-expect-error publicKey is not in the type, but is passed through; see https://github.com/stellar/js-stellar-sdk/issues/1055
   await authenticatedContractCall(xasset.open_cdp, cdp);
   return redirect(`/`);
 };

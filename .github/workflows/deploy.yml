@@ -17,11 +17,18 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v4
 
+      - name: Create .env file
+        run: |
+          echo 'export STELLAR_ACCOUNT=equitx' > .env
+          echo 'export PUBLIC_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"' >> .env
+          echo 'export PUBLIC_RPC_URL="https://soroban-testnet.stellar.org:443"' >> .env
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
           targets: wasm32-unknown-unknown
+
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:

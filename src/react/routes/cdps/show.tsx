@@ -19,8 +19,8 @@ export const loader: LoaderFunction = async ({ params }): Promise<Data> => {
   return {
     cdp: await xasset.cdp({ lender }).then((tx) => tx.result),
     decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
-    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price)).div(10 ** 14),
-    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price)).div(10 ** 14),
+    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price.toString())).div(10 ** 14),
+    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price.toString())).div(10 ** 14),
     symbolAsset: "xUSD", // FIXME: get from xasset (to be implemented as part of ft)
   };
 };
@@ -29,10 +29,6 @@ function Show() {
   const { lender } = useParams() as { lender: string };
   const { cdp, decimals, lastpriceXLM, lastpriceAsset, symbolAsset } =
     useLoaderData() as Awaited<Data>;
-
-  const formatNumber = (value: BigNumber | number, decimalPlaces: number) => {
-    return new BigNumber(value).toFixed(decimalPlaces);
-  };
 
   return (
     <>

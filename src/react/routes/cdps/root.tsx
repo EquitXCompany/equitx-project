@@ -1,4 +1,3 @@
-import React from 'react';
 import { useLoaderData, Outlet } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
@@ -19,8 +18,8 @@ interface StabilityPoolMetadata {
 export const loader: LoaderFunction = async (): Promise<StabilityPoolMetadata> => {
   const tx = await xasset.minimum_collateralization_ratio();
   return {
-    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price)).div(10 ** 14),
-    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price)).div(10 ** 14),
+    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => t.result.price.toString())).div(10 ** 14),
+    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => t.result.price.toString())).div(10 ** 14),
     min_ratio: tx.result,
     symbolAsset: "xUSD",
     contractId: xasset.options.contractId,
