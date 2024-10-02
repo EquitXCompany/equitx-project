@@ -10,9 +10,9 @@ use stability_pool::StabilityPool;
 use token::Token;
 
 pub mod collateralized;
+pub mod error;
 pub mod stability_pool;
 pub mod token;
-pub mod error;
 
 pub use error::Error;
 

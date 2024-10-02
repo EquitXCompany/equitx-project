@@ -66,8 +66,11 @@ impl MyStabilityPool {
         }
 
         // Proceed with updates if total_xasset is not zero
-        let new_product_constant = (self.product_constant as i128 * (self.total_xasset - xasset_debited) as i128) / self.total_xasset as i128;
-        let new_compounded_constant = self.compounded_constant + (xlm_earned * self.product_constant) / self.total_xasset;
+        let new_product_constant = (self.product_constant as i128
+            * (self.total_xasset - xasset_debited) as i128)
+            / self.total_xasset as i128;
+        let new_compounded_constant =
+            self.compounded_constant + (xlm_earned * self.product_constant) / self.total_xasset;
 
         self.product_constant = new_product_constant;
         self.compounded_constant = new_compounded_constant;

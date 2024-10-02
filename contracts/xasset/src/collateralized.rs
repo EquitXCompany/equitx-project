@@ -65,7 +65,12 @@ pub trait IsCollateralized {
 
     /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
     /// The user who creates the CDP becomes the CDP's owner.
-    fn open_cdp(&mut self, lender: Address, collateral: i128, asset_lent: i128) -> Result<(), Error>;
+    fn open_cdp(
+        &mut self,
+        lender: Address,
+        collateral: i128,
+        asset_lent: i128,
+    ) -> Result<(), Error>;
 
     /// Retrieves the CDP information for a specific lender
     fn cdp(&self, lender: Address) -> Result<CDP, Error>;
