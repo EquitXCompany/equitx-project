@@ -5,7 +5,7 @@ use loam_sdk::{
     stellar_asset, IntoKey,
 };
 use loam_subcontract_core::Core;
-use loam_subcontract_ft::{Fungible, IsFungible};
+use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
 use crate::{collateralized::CDPStatus, data_feed, Error};
 use crate::{
@@ -129,7 +129,7 @@ impl Default for Token {
     }
 }
 
-impl IsFungible for Token {
+impl IsSep41 for Token {
     fn allowance(&self, from: Address, spender: Address) -> i128 {
         let allowance = self.allowances.get(Txn(from, spender));
         match allowance {
@@ -207,7 +207,9 @@ impl IsFungible for Token {
     fn symbol(&self) -> String {
         self.symbol.clone()
     }
+}
 
+impl IsFungible for Token {
     fn increase_allowance(&mut self, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         let current_allowance = self.allowance(from.clone(), spender.clone());

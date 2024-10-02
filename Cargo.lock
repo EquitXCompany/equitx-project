@@ -331,6 +331,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-encoding"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
+
+[[package]]
 name = "data_feed"
 version = "0.0.0"
 dependencies = [
@@ -715,6 +721,8 @@ checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 [[package]]
 name = "loam-build"
 version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afe8001c87529b6066e49796579a1ca66d4bb1936c4f00833e50e97e396eeb4f"
 dependencies = [
  "cargo_metadata",
  "thiserror",
@@ -724,6 +732,8 @@ dependencies = [
 [[package]]
 name = "loam-sdk"
 version = "0.6.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c39904694cfe21e514cf23324a8f1fd822f77972722744cb128fe0249873df22"
 dependencies = [
  "loam-sdk-macro",
  "loam-soroban-sdk",
@@ -731,7 +741,9 @@ dependencies = [
 
 [[package]]
 name = "loam-sdk-macro"
-version = "0.8.4"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28689bb2736de0035c6ee03f61e8db00453553a8733f053172d92ca898c1bfb1"
 dependencies = [
  "Inflector",
  "cargo_metadata",
@@ -742,8 +754,8 @@ dependencies = [
  "quote",
  "regex",
  "sha2",
- "soroban-sdk",
- "stellar-strkey",
+ "stellar-strkey 0.0.11",
+ "stellar-xdr",
  "syn",
  "syn-file-expand",
  "thiserror",
@@ -752,6 +764,8 @@ dependencies = [
 [[package]]
 name = "loam-soroban-sdk"
 version = "0.6.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eb02c35550f4141784abac057f64251e30633651fe5a4f6020e14809076b25e"
 dependencies = [
  "loam-sdk-macro",
  "soroban-sdk",
@@ -759,14 +773,18 @@ dependencies = [
 
 [[package]]
 name = "loam-subcontract-core"
-version = "0.7.7"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06b5870c7f67f256991eb561770c1b7a59d79dd5ce06e4fd1b71f2d536771602"
 dependencies = [
  "loam-sdk",
 ]
 
 [[package]]
 name = "loam-subcontract-ft"
-version = "0.7.0"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881d736fcd9ebeffb256c0f814d42cb1cfa1d674b0a70b784087625d57fc328b"
 dependencies = [
  "loam-sdk",
 ]
@@ -1229,7 +1247,7 @@ dependencies = [
  "soroban-env-common",
  "soroban-wasmi",
  "static_assertions",
- "stellar-strkey",
+ "stellar-strkey 0.0.8",
  "wasmparser",
 ]
 
@@ -1279,7 +1297,7 @@ dependencies = [
  "soroban-env-host",
  "soroban-ledger-snapshot",
  "soroban-sdk-macros",
- "stellar-strkey",
+ "stellar-strkey 0.0.8",
 ]
 
 [[package]]
@@ -1377,6 +1395,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "stellar-strkey"
+version = "0.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0989c9a05eccbd08b60e603a1c7e3ed3ec92c0de73b8681fc964d272ab2b2697"
+dependencies = [
+ "crate-git-revision",
+ "data-encoding",
+]
+
+[[package]]
 name = "stellar-xdr"
 version = "21.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1389,7 +1417,7 @@ dependencies = [
  "hex",
  "serde",
  "serde_with",
- "stellar-strkey",
+ "stellar-strkey 0.0.8",
 ]
 
 [[package]]

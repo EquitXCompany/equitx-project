@@ -5,7 +5,7 @@ use loam_sdk::{
     soroban_sdk::{self, Address, String, Symbol, Vec},
 };
 use loam_subcontract_core::{admin::Admin, Core};
-use loam_subcontract_ft::Fungible;
+use loam_subcontract_ft::{Fungible, Sep41};
 use stability_pool::StabilityPool;
 use token::Token;
 
@@ -35,6 +35,7 @@ pub mod data_feed {
     Core(Admin),
     Collateralized(Token),
     CDPAdmin(Token),
+    Sep41(Token),
     Fungible(Token),
     StabilityPool(Token)
 )]
