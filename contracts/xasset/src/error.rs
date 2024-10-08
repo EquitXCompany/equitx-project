@@ -49,8 +49,8 @@ pub enum Error {
     // "User already has a stake. Use deposit function to add to existing stake."
     StakeAlreadyExists = 15,
 
-    // "Must unstake all xAsset to close SP account"
-    PartialUnstakeNotAllowed = 16,
+    // "User does not have a stake. Use stake function to create one."
+    StakeDoesntExist = 16,
 
     // "live_until_ledger must be greater than or equal to the current ledger number"
     InvalidLedgerSequence = 17,
@@ -63,4 +63,10 @@ pub enum Error {
 
     // "Failed to transfer XLM"
     XLMTransferFailed = 20,
+
+    // "Claim rewards from previous epoch before modifying position"
+    ClaimRewardsFirst = 21,
+
+    // "Insufficient amount of xAsset staked
+    InsufficientStake = 22,
 }

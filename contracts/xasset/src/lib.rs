@@ -6,7 +6,7 @@ use loam_sdk::{
 };
 use loam_subcontract_core::{admin::Admin, Core};
 use loam_subcontract_ft::{Fungible, Sep41};
-use stability_pool::StabilityPool;
+use stability_pool::{AvailableAssets, StabilityPool, StakerPosition};
 use token::Token;
 
 pub mod collateralized;

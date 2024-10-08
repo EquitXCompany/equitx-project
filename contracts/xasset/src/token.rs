@@ -13,7 +13,7 @@ use crate::{
     PriceData,
 };
 use crate::{
-    stability_pool::{IsStabilityPool, MyStabilityPool, StakerPosition},
+    stability_pool::{AvailableAssets, IsStabilityPool, MyStabilityPool, StakerPosition},
     Contract,
 };
 
@@ -166,10 +166,10 @@ impl IsSep41 for Token {
 
     fn transfer(&mut self, from: Address, to: Address, amount: i128) {
         from.require_auth();
-        let from_balance = self.balance(from.clone()) - amount;
-        let to_balance = self.balance(to.clone()) + amount;
-        self.balances.set(from, from_balance);
-        self.balances.set(to, to_balance);
+        if self.balance(from.clone()) < amount {
+            panic!("Insufficient balance");
+        }
+        self.transfer_internal(from, to, amount);
     }
 
     fn transfer_from(&mut self, spender: Address, from: Address, to: Address, amount: i128) {
@@ -183,8 +183,10 @@ impl IsSep41 for Token {
 
     fn burn(&mut self, from: Address, amount: i128) {
         from.require_auth();
-        let balance = self.balance(from.clone()) - amount;
-        self.balances.set(from, balance);
+        if self.balance(from.clone()) < amount {
+            panic!("Insufficient balance");
+        }
+        self.burn_internal(from, amount);
     }
 
     fn burn_from(&mut self, spender: Address, from: Address, amount: i128) {
@@ -253,8 +255,7 @@ impl IsFungible for Token {
 
     fn mint(&mut self, to: Address, amount: i128) {
         self::Contract::require_auth();
-        let balance = self.balance(to.clone()) + amount;
-        self.balances.set(to, balance);
+        self.mint_internal(to, amount);
     }
 
     fn clawback(&mut self, from: Address, amount: i128) {
@@ -388,8 +389,7 @@ impl IsCollateralized for Token {
             .map_err(|_| Error::XLMTransferFailed)?;
 
         // 4. mint `asset_lent` of this token to `address`
-        let balance = self.balance(lender.clone()) + asset_lent;
-        self.balances.set(lender.clone(), balance);
+        self.mint_internal(lender.clone(), asset_lent);
 
         // 5. create CDP
         self.cdps.set(lender, cdp);
@@ -527,8 +527,7 @@ impl IsCollateralized for Token {
         }
 
         // mint xasset
-        let balance = self.balance(lender.clone()) + amount;
-        self.balances.set(lender.clone(), balance);
+        self.mint_internal(lender.clone(), amount);
 
         cdp.asset_lent += amount;
         self.set_cdp_from_decorated(lender, cdp);
@@ -547,9 +546,13 @@ impl IsCollateralized for Token {
             return Err(Error::RepaymentExceedsDebt);
         }
 
+        // check to ensure enough xasset is available
+        if self.balance(lender.clone()) < amount {
+            return Err(Error::InsufficientBalance);
+        }
+
         //burn the xasset
-        let balance = self.balance(lender.clone()) - amount;
-        self.balances.set(lender.clone(), balance);
+        self.burn_internal(lender.clone(), amount);
 
         cdp.asset_lent -= amount;
 
@@ -675,8 +678,14 @@ impl IsStabilityPool for Token {
         MyStabilityPool::set_lazy(MyStabilityPool::new());
     }
 
-    fn deposit(&mut self, from: Address, amount: i128) {
+    fn deposit(&mut self, from: Address, amount: i128) -> Result<(), Error> {
         from.require_auth();
+        // check if the user has sufficient xasset
+        let balance = self.balance(from.clone());
+        if balance < amount {
+            return Err(Error::InsufficientBalance);
+        }
+        let current_position = self.get_deposit(from.clone())?;
         let mut position =
             self.stability_pool
                 .get_deposit(from.clone())
@@ -684,9 +693,11 @@ impl IsStabilityPool for Token {
                     xasset_deposit: 0,
                     product_constant: self.stability_pool.get_product_constant(),
                     compounded_constant: self.stability_pool.get_compounded_constant(),
-                    epoch: 0,
+                    epoch: self.stability_pool.get_epoch(),
                 });
-
+        if position.epoch != self.stability_pool.get_epoch() {
+            return Err(Error::ClaimRewardsFirst);
+        }
         // Collect 1 XLM fee for each new deposit
         let _ = self
             .native()
@@ -695,39 +706,22 @@ impl IsStabilityPool for Token {
                 &env().current_contract_address(),
                 &self.stability_pool.get_deposit_fee(),
             )
-            .map_err(|_| Error::XLMTransferFailed);
+            .map_err(|_| Error::XLMTransferFailed)?;
         self.stability_pool
             .add_fees_collected(self.stability_pool.get_deposit_fee());
-        position.xasset_deposit += amount;
+        position.xasset_deposit = current_position + amount;
+        position.compounded_constant = self.stability_pool.get_compounded_constant();
+        position.product_constant = self.stability_pool.get_product_constant();
+        // transfer xasset from address to pool
+        self.transfer_internal(from.clone(), env().current_contract_address(), amount);
         self.stability_pool.set_deposit(from, position);
         self.stability_pool.add_total_xasset(amount);
+        Ok(())
     }
-
+    // Modified withdraw method
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
         to.require_auth();
-        let mut position = self
-            .stability_pool
-            .get_deposit(to.clone())
-            .unwrap_or_default();
-        if position.xasset_deposit < amount {
-            return Err(Error::InsufficientBalance);
-        }
-
-        let xasset_owed = if position.epoch == self.stability_pool.get_epoch() {
-            (position.xasset_deposit * self.stability_pool.get_product_constant())
-                / position.product_constant
-        } else {
-            0
-        };
-
-        if xasset_owed < amount {
-            return Err(Error::InsufficientBalance);
-        }
-
-        position.xasset_deposit -= amount;
-        self.stability_pool.set_deposit(to, position);
-        self.stability_pool.add_total_xasset(-amount);
-        Ok(())
+        self.withdraw_internal(to, amount)
     }
 
     fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error> {
@@ -754,19 +748,17 @@ impl IsStabilityPool for Token {
         let liquidated_collateral =
             (collateral as u128 * liquidated_debt as u128 / debt as u128) as i128;
 
+        // Update constants for the stability pool
+        self.stability_pool
+            .update_constants(liquidated_debt, liquidated_collateral);
+
         // Update the stability pool
         self.stability_pool.subtract_total_xasset(liquidated_debt);
         self.stability_pool
             .add_total_collateral(liquidated_collateral);
 
-        // Update constants for the stability pool
-        self.stability_pool
-            .update_constants(liquidated_debt, liquidated_collateral);
-
         // Burn the liquidated debt
-        let sp_address = env().current_contract_address();
-        let balance = self.balance(sp_address.clone()) - liquidated_debt;
-        self.balances.set(sp_address, balance);
+        self.burn_internal(env().current_contract_address(), liquidated_debt);
 
         // Update the CDP
         cdp.xlm_deposited -= liquidated_collateral;
@@ -783,33 +775,33 @@ impl IsStabilityPool for Token {
         Ok((liquidated_debt, liquidated_collateral))
     }
 
-    fn claim_rewards(&mut self, to: Address) -> i128 {
+    fn claim_rewards(&mut self, to: Address) -> Result<i128, Error> {
         to.require_auth();
-        let position = self
+        let mut position = self
             .stability_pool
             .get_deposit(to.clone())
-            .unwrap_or_default();
+            .ok_or(Error::StakeDoesntExist)?;
 
-        let xlm_reward = if position.epoch == self.stability_pool.get_epoch() {
-            (position.xasset_deposit
-                * (self.stability_pool.get_compounded_constant() - position.compounded_constant))
-                / position.product_constant
-        } else {
-            0
-        };
+        let xlm_reward = self.calculate_rewards(&position);
 
         let _ = self
             .native()
             .try_transfer(&env().current_contract_address(), &to, &xlm_reward)
-            .map_err(|_| Error::XLMTransferFailed);
+            .map_err(|_| Error::XLMTransferFailed)?;
         self.stability_pool.subtract_total_collateral(xlm_reward);
-        xlm_reward
+        position.epoch = self.stability_pool.get_epoch();
+        position.xasset_deposit = self.get_deposit(to.clone())?;
+        position.compounded_constant = self.stability_pool.get_compounded_constant();
+        position.product_constant = self.stability_pool.get_product_constant();
+        self.stability_pool.set_deposit(to, position);
+        Ok(xlm_reward)
     }
 
-    fn get_deposit(&self, address: Address) -> i128 {
-        self.stability_pool
-            .get_deposit(address)
-            .map_or(0, |p| p.xasset_deposit)
+    fn get_deposit(&self, address: Address) -> Result<i128, Error> {
+        match self.stability_pool.get_deposit(address) {
+            Some(position) => Ok(self.calculate_current_deposit(&position)),
+            None => Err(Error::StakeDoesntExist),
+        }
     }
 
     fn get_total_xasset(&self) -> i128 {
@@ -826,6 +818,11 @@ impl IsStabilityPool for Token {
         // Check if the user already has a stake
         if self.stability_pool.get_deposit(from.clone()).is_some() {
             return Err(Error::StakeAlreadyExists);
+        }
+        // check if the user has sufficient xasset
+        let balance = self.balance(from.clone());
+        if balance < amount {
+            return Err(Error::InsufficientBalance);
         }
 
         let _ = self
@@ -845,8 +842,10 @@ impl IsStabilityPool for Token {
             xasset_deposit: amount,
             product_constant: self.stability_pool.get_product_constant(),
             compounded_constant: self.stability_pool.get_compounded_constant(),
-            epoch: 0,
+            epoch: self.stability_pool.get_epoch(),
         };
+        // transfer xasset from address to pool
+        self.transfer_internal(from.clone(), env().current_contract_address(), amount);
 
         // Set the new position in the stability pool
         self.stability_pool.set_deposit(from, position);
@@ -854,33 +853,49 @@ impl IsStabilityPool for Token {
         Ok(())
     }
 
-    fn unstake(&mut self, to: Address, amount: i128) -> Result<(), Error> {
-        to.require_auth();
+    // Modified unstake method
+    fn unstake(&mut self, staker: Address) -> Result<(), Error> {
+        staker.require_auth();
 
-        let position = self
-            .stability_pool
-            .get_deposit(to.clone())
-            .unwrap_or_default();
-        if position.xasset_deposit != amount {
-            return Err(Error::PartialUnstakeNotAllowed);
-        }
-
-        self.withdraw(to.clone(), amount)?;
-
-        // Return 2 XLM fee upon closing the SP account
-        let _ = self
-            .native()
-            .try_transfer(
-                &env().current_contract_address(),
-                &to,
-                &self.stability_pool.get_unstake_return(),
-            )
-            .map_err(|_| Error::XLMTransferFailed)?;
         self.stability_pool
-            .subtract_fees_collected(self.stability_pool.get_unstake_return());
+            .get_deposit(staker.clone())
+            .ok_or_else(|| Error::StakeDoesntExist)?;
 
-        self.stability_pool.remove_deposit(to);
-        Ok(())
+        let amount = self.get_deposit(staker.clone())?;
+
+        self.withdraw_internal(staker, amount)
+    }
+
+    fn get_available_assets(&self, staker: Address) -> Result<AvailableAssets, Error> {
+        match self.stability_pool.get_deposit(staker) {
+            Some(position) => {
+                let d = self.calculate_current_deposit(&position);
+                let xlm_reward = self.calculate_rewards(&position);
+                Ok(AvailableAssets {
+                    available_xasset: d,
+                    available_rewards: xlm_reward,
+                })
+            }
+            None => Err(Error::StakeDoesntExist),
+        }
+    }
+
+    fn get_position(&self, staker: Address) -> Result<StakerPosition, Error> {
+        match self.stability_pool.get_deposit(staker) {
+            Some(position) => {
+                Ok(position)
+            }
+            None => Err(Error::StakeDoesntExist),
+        }
+    }
+
+    fn get_constants(&self) -> StakerPosition {
+        StakerPosition {
+            compounded_constant: self.stability_pool.get_compounded_constant(),
+            product_constant: self.stability_pool.get_product_constant(),
+            epoch: self.stability_pool.get_epoch(),
+            xasset_deposit: self.stability_pool.get_total_xasset()
+        }
     }
 }
 
@@ -919,7 +934,7 @@ impl Token {
         let collateralization_ratio = if cdp.asset_lent == 0 || xasset_price == 0 {
             u32::MAX
         } else {
-            ((BASIS_POINTS as i128) * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
+            (BASIS_POINTS * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
                 / (cdp.asset_lent * 10i128.pow(denom_decimals) * xasset_price)) as u32
         };
         CDP {
@@ -949,6 +964,92 @@ impl Token {
     }
 
     fn native(&self) -> token::Client {
-        token::Client::new(&env(), &self.xlm_sac)
+        token::Client::new(env(), &self.xlm_sac)
+    }
+
+    // convenience functions for internal minting / transfering of the ft asset
+    fn mint_internal(&mut self, to: Address, amount: i128) {
+        let balance = self.balance(to.clone()) + amount;
+        self.balances.set(to, balance);
+    }
+
+    fn transfer_internal(&mut self, from: Address, to: Address, amount: i128) {
+        let from_balance = self.balance(from.clone()) - amount;
+        let to_balance = self.balance(to.clone()) + amount;
+        self.balances.set(from, from_balance);
+        self.balances.set(to, to_balance);
+    }
+
+    fn burn_internal(&mut self, from: Address, amount: i128) {
+        let balance = self.balance(from.clone()) - amount;
+        self.balances.set(from, balance);
+    }
+
+    // New common method
+    fn withdraw_internal(&mut self, to: Address, amount: i128) -> Result<(), Error> {
+        let xasset_owed = self.get_deposit(to.clone())?;
+        if xasset_owed < amount {
+            return Err(Error::InsufficientStake);
+        }
+        if xasset_owed == amount {
+            //close the position
+
+            // Return 2 XLM fee upon closing the SP account
+            let _ = self
+                .native()
+                .try_transfer(
+                    &env().current_contract_address(),
+                    &to,
+                    &self.stability_pool.get_unstake_return(),
+                )
+                .map_err(|_| Error::XLMTransferFailed)?;
+            self.stability_pool
+                .subtract_fees_collected(self.stability_pool.get_unstake_return());
+
+            // transfer xasset to address from pool
+            self.transfer_internal(env().current_contract_address(), to.clone(), amount);
+            self.stability_pool.remove_deposit(to);
+            self.stability_pool.add_total_xasset(-amount);
+            return Ok(());
+        }
+        let mut position = self
+            .stability_pool
+            .get_deposit(to.clone())
+            .unwrap_or_default();
+
+        position.xasset_deposit = xasset_owed - amount;
+
+        position.compounded_constant = self.stability_pool.get_compounded_constant();
+        position.product_constant = self.stability_pool.get_product_constant();
+        // transfer xasset from pool to address
+        self.transfer_internal(env().current_contract_address(), to.clone(), amount);
+        self.stability_pool.set_deposit(to, position);
+        self.stability_pool.add_total_xasset(-amount);
+        Ok(())
+    }
+
+    fn calculate_current_deposit(&self, position: &StakerPosition) -> i128 {
+        if position.epoch == self.stability_pool.get_epoch() {
+            (position.xasset_deposit * self.stability_pool.get_product_constant())
+                / position.product_constant
+        } else {
+            0
+        }
+    }
+
+    fn calculate_rewards(&self, position: &StakerPosition) -> i128 {
+        if position.epoch == self.stability_pool.get_epoch() {
+            (position.xasset_deposit
+                * (self.stability_pool.get_compounded_constant() - position.compounded_constant))
+                / position.product_constant
+        } else {
+            (position.xasset_deposit
+                * (self
+                    .stability_pool
+                    .get_compounded_epoch(position.epoch)
+                    .expect("The historical compounded constant should always be recorded")
+                    - position.compounded_constant))
+                / position.product_constant
+        }
     }
 }

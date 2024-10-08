@@ -5,12 +5,18 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../styles/theme';
 import cdps from "./routes/cdps";
 import errorElement from "./routes/error";
+import StabilityPool from "./routes/stabilityPool";
 
 const router = createHashRouter([
   {
     path: "/",
     errorElement,
     ...cdps,
+  },
+  {
+    path: "/stability-pool/:contractId",
+    element: <StabilityPool />,
+    errorElement,
   },
 ]);
 

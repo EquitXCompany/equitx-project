@@ -1,10 +1,10 @@
-import { useLoaderData, Outlet } from "react-router-dom";
+import { useLoaderData, Outlet, useNavigate } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
 import Connect from "../../components/connect";
 import BigNumber from "bignumber.js";
 import { BASIS_POINTS } from "../../../constants";
-import { Box, Typography, Grid, Paper, Container } from '@mui/material';
+import { Box, Typography, Grid, Paper, Container, Button } from '@mui/material';
 import AddressDisplay from '../../components/cdp/AddressDisplay';
 
 interface StabilityPoolMetadata {
@@ -43,6 +43,11 @@ export const loader: LoaderFunction = async (): Promise<StabilityPoolMetadata> =
 
 function Root() {
   const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = useLoaderData() as StabilityPoolMetadata;
+  const navigate = useNavigate();
+
+  const handleStabilityPoolClick = () => {
+    navigate(`/stability-pool/${contractId}`);
+  };
 
   return (
     <Container maxWidth="md">
@@ -53,6 +58,14 @@ function Root() {
         <Typography variant="h5" component="h4" gutterBottom>
           <AddressDisplay address={contractId} />
         </Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={handleStabilityPoolClick}
+          sx={{ mt: 2, mb: 3 }}
+        >
+          View Stability Pool
+        </Button>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={4}>
             <Paper elevation={3} sx={{ p: 2 }}>

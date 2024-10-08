@@ -9,6 +9,7 @@ use crate::Error;
 #[derive(IntoKey)]
 pub struct MyStabilityPool {
     deposits: Map<Address, StakerPosition>,
+    compound_record: Map<u64, i128>,
     total_xasset: i128,
     total_collateral: i128,
     product_constant: i128,
@@ -28,6 +29,12 @@ pub struct StakerPosition {
     pub epoch: u64,
 }
 
+#[contracttype]
+pub struct AvailableAssets {
+    pub available_xasset: i128,
+    pub available_rewards: i128,
+}
+
 impl Default for StakerPosition {
     fn default() -> Self {
         StakerPosition {
@@ -44,6 +51,7 @@ impl MyStabilityPool {
     pub fn new() -> Self {
         MyStabilityPool {
             deposits: Map::new(env()),
+            compound_record: Map::new(env()),
             total_xasset: 0,
             total_collateral: 0,
             product_constant: 1_000_000,
@@ -59,21 +67,29 @@ impl MyStabilityPool {
     pub fn update_constants(&mut self, xasset_debited: i128, xlm_earned: i128) {
         // Check if total_xasset is zero prior to calculation
         if self.total_xasset == 0 {
-            self.epoch += 1;
-            self.product_constant = 1_000_000;
-            self.compounded_constant = 0;
+            self.increment_epoch();
             return;
         }
 
         // Proceed with updates if total_xasset is not zero
-        let new_product_constant = (self.product_constant as i128
-            * (self.total_xasset - xasset_debited) as i128)
-            / self.total_xasset as i128;
+        let new_product_constant =
+            (self.product_constant * (self.total_xasset - xasset_debited)) / self.total_xasset;
         let new_compounded_constant =
             self.compounded_constant + (xlm_earned * self.product_constant) / self.total_xasset;
 
         self.product_constant = new_product_constant;
         self.compounded_constant = new_compounded_constant;
+        if self.total_xasset == xasset_debited {
+            self.increment_epoch();
+        }
+    }
+
+    pub fn increment_epoch(&mut self) {
+        self.compound_record
+            .set(self.epoch, self.compounded_constant);
+        self.epoch += 1;
+        self.product_constant = 1_000_000;
+        self.compounded_constant = 0;
     }
 
     pub fn get_deposit(&self, address: Address) -> Option<StakerPosition> {
@@ -128,8 +144,8 @@ impl MyStabilityPool {
         self.epoch
     }
 
-    pub fn increment_epoch(&mut self) {
-        self.epoch += 1;
+    pub fn get_compounded_epoch(&self, epoch: u64) -> Option<i128> {
+        self.compound_record.get(epoch)
     }
 
     pub fn get_fees_collected(&self) -> i128 {
@@ -179,16 +195,16 @@ impl Default for MyStabilityPool {
 pub trait IsStabilityPool {
     /// Initializes the Stability Pool.
     fn sp_init(&self);
-    /// Deposits iAsset tokens into the Stability Pool.
-    fn deposit(&mut self, from: Address, amount: i128);
+    /// Deposits xasset tokens into the Stability Pool.
+    fn deposit(&mut self, from: Address, amount: i128) -> Result<(), Error>;
     /// Withdraws xasset tokens from the Stability Pool.
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error>;
     /// Processes a liquidation event for a CDP.
     fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error>;
     /// Allows a user to claim their share of collateral rewards.
-    fn claim_rewards(&mut self, to: Address) -> i128;
+    fn claim_rewards(&mut self, to: Address) -> Result<i128, Error>;
     /// Retrieves the current deposit amount for a given address.
-    fn get_deposit(&self, address: Address) -> i128;
+    fn get_deposit(&self, address: Address) -> Result<i128, Error>;
     /// Retrieves the total amount of xasset tokens in the Stability Pool.
     fn get_total_xasset(&self) -> i128;
     /// Retrieves the total amount of collateral rewards in the Stability Pool.
@@ -196,5 +212,11 @@ pub trait IsStabilityPool {
     /// Allows a user to add their stake to the pool
     fn stake(&mut self, from: Address, amount: i128) -> Result<(), Error>;
     /// Allows a user to remove their stake from the pool
-    fn unstake(&mut self, to: Address, amount: i128) -> Result<(), Error>;
+    fn unstake(&mut self, staker: Address) -> Result<(), Error>;
+    /// Allows a user to view their available xasset and rewards
+    fn get_available_assets(&self, staker: Address) -> Result<AvailableAssets, Error>;
+    /// Allows a user to view their available current position
+    fn get_position(&self, staker: Address) -> Result<StakerPosition, Error>;
+    /// Allows a user to view the stability pool's current constants
+    fn get_constants(&self) -> StakerPosition;
 }

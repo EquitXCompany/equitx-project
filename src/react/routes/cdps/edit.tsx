@@ -104,7 +104,7 @@ function Edit() {
     if (actionData) {
       setMessage({ text: actionData.message, type: actionData.type });
       
-      if (actionData.type === 'success' && actionData.action === 'close') {
+      if (actionData.type === 'success' && (actionData.action === 'close' || actionData.action === 'liquidate')) {
         navigate('/'); // Navigate to root (list view) immediately
       } else {
         const timer = setTimeout(() => {
