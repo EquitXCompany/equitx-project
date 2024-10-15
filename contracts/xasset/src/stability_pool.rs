@@ -4,6 +4,7 @@ use loam_sdk::{
 };
 
 use crate::Error;
+const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 
 #[contracttype]
 #[derive(IntoKey)]
@@ -39,7 +40,7 @@ impl Default for StakerPosition {
     fn default() -> Self {
         StakerPosition {
             xasset_deposit: 0,
-            product_constant: 1_000_000, // Using 1_000_000 to represent 1.0 for better precision
+            product_constant: PRODUCT_CONSTANT, // Using 1_000_000 to represent 1.0 for better precision
             compounded_constant: 0,
             epoch: 0,
         }
@@ -54,7 +55,7 @@ impl MyStabilityPool {
             compound_record: Map::new(env()),
             total_xasset: 0,
             total_collateral: 0,
-            product_constant: 1_000_000,
+            product_constant: PRODUCT_CONSTANT,
             compounded_constant: 0,
             epoch: 0,
             fees_collected: 0,
@@ -88,7 +89,7 @@ impl MyStabilityPool {
         self.compound_record
             .set(self.epoch, self.compounded_constant);
         self.epoch += 1;
-        self.product_constant = 1_000_000;
+        self.product_constant = PRODUCT_CONSTANT;
         self.compounded_constant = 0;
     }
 

@@ -9,6 +9,9 @@ import { authenticatedContractCall, unwrapResult } from '../../utils/contractHel
 import Alert from '@mui/material/Alert';
 import AddressDisplay from '../components/cdp/AddressDisplay';
 
+const PRODUCT_CONSTANT_DECIMALS = 9;
+const PRODUCT_CONSTANT = Math.pow(10, PRODUCT_CONSTANT_DECIMALS);
+
 const MyAlert = React.forwardRef<HTMLDivElement, AlertProps>((
   props,
   ref,
@@ -262,7 +265,7 @@ function StabilityPool() {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Typography variant="body1">
-                    Product Constant: {new BigNumber(poolConstants.product_constant).dividedBy(1e6).toFixed(6)}
+                    Product Constant: {new BigNumber(poolConstants.product_constant).dividedBy(PRODUCT_CONSTANT).toFixed(PRODUCT_CONSTANT_DECIMALS)}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -295,7 +298,7 @@ function StabilityPool() {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Typography variant="body1">
-                    Product Constant: {new BigNumber(stakerPosition.product_constant).dividedBy(1e6).toFixed(6)}
+                    Product Constant: {new BigNumber(stakerPosition.product_constant).dividedBy(PRODUCT_CONSTANT).toFixed(PRODUCT_CONSTANT_DECIMALS)}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>

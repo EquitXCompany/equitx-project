@@ -46,6 +46,32 @@ impl CDPInternal {
     }
 }
 
+fn bankers_round(value: i128, precision: i128) -> i128 {
+    let half = precision / 2;
+
+    // Calculate remainder and halfway point
+    let remainder = value.rem_euclid(precision);
+    let halfway = precision - half; // This is effectively (precision / 2)
+    
+    // Determine if we are exactly in the middle
+    let is_middle = remainder == half || remainder == halfway;
+
+    // Compute rounded value
+    if is_middle {
+        // Check if the current value is even, if so, round down; otherwise, round up
+        if (value / precision) % 2 == 0 {
+            value / precision
+        } else {
+            value / precision + 1
+        }
+    } else if remainder < half {
+        value / precision
+    } else {
+        value / precision + 1
+    }
+}
+
+
 #[contracttype]
 #[derive(IntoKey)]
 pub struct Token {
@@ -505,8 +531,8 @@ impl IsCollateralized for Token {
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
-        if !matches!(cdp.status, CDPStatus::Open) {
-            return Err(Error::CDPNotOpen);
+        if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
+            return Err(Error::CDPNotOpenOrInsolvent);
         }
 
         let new_cdp = self.decorate(
@@ -695,7 +721,8 @@ impl IsStabilityPool for Token {
                     compounded_constant: self.stability_pool.get_compounded_constant(),
                     epoch: self.stability_pool.get_epoch(),
                 });
-        if position.epoch != self.stability_pool.get_epoch() {
+        let xlm_reward = self.calculate_rewards(&position);
+        if xlm_reward > 0 {
             return Err(Error::ClaimRewardsFirst);
         }
         // Collect 1 XLM fee for each new deposit
@@ -721,7 +748,7 @@ impl IsStabilityPool for Token {
     // Modified withdraw method
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
         to.require_auth();
-        self.withdraw_internal(to, amount)
+        self.withdraw_internal(to, amount, false)
     }
 
     fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error> {
@@ -853,17 +880,9 @@ impl IsStabilityPool for Token {
         Ok(())
     }
 
-    // Modified unstake method
     fn unstake(&mut self, staker: Address) -> Result<(), Error> {
         staker.require_auth();
-
-        self.stability_pool
-            .get_deposit(staker.clone())
-            .ok_or_else(|| Error::StakeDoesntExist)?;
-
-        let amount = self.get_deposit(staker.clone())?;
-
-        self.withdraw_internal(staker, amount)
+        self.withdraw_internal(staker, 0, true)
     }
 
     fn get_available_assets(&self, staker: Address) -> Result<AvailableAssets, Error> {
@@ -946,6 +965,9 @@ impl Token {
                 && collateralization_ratio < self.min_collat_ratio
             {
                 CDPStatus::Insolvent
+            } else if matches!(cdp.status, CDPStatus::Insolvent)
+                && collateralization_ratio >= self.min_collat_ratio {
+                CDPStatus::Open
             } else {
                 cdp.status
             },
@@ -985,13 +1007,21 @@ impl Token {
         self.balances.set(from, balance);
     }
 
-    // New common method
-    fn withdraw_internal(&mut self, to: Address, amount: i128) -> Result<(), Error> {
-        let xasset_owed = self.get_deposit(to.clone())?;
-        if xasset_owed < amount {
+    // withdraw the amount specified unless full_withdrawal is true in which case withdraw remaining balance
+    fn withdraw_internal(&mut self, to: Address, amount: i128, full_withdrawal: bool) -> Result<(), Error> {
+        let position = self.stability_pool
+            .get_deposit(to.clone())
+            .ok_or_else(|| Error::StakeDoesntExist)?;
+        let rewards = self.calculate_rewards(&position);
+        if rewards > 0 {
+            return Err(Error::ClaimRewardsFirst);
+        }
+        let xasset_owed = self.calculate_current_deposit(&position);
+        let amount_to_withdraw = if full_withdrawal { xasset_owed } else { amount };
+        if xasset_owed < amount_to_withdraw {
             return Err(Error::InsufficientStake);
         }
-        if xasset_owed == amount {
+        if xasset_owed == amount_to_withdraw {
             //close the position
 
             // Return 2 XLM fee upon closing the SP account
@@ -1007,9 +1037,9 @@ impl Token {
                 .subtract_fees_collected(self.stability_pool.get_unstake_return());
 
             // transfer xasset to address from pool
-            self.transfer_internal(env().current_contract_address(), to.clone(), amount);
+            self.transfer_internal(env().current_contract_address(), to.clone(), amount_to_withdraw);
             self.stability_pool.remove_deposit(to);
-            self.stability_pool.add_total_xasset(-amount);
+            self.stability_pool.add_total_xasset(-amount_to_withdraw);
             return Ok(());
         }
         let mut position = self
@@ -1017,21 +1047,22 @@ impl Token {
             .get_deposit(to.clone())
             .unwrap_or_default();
 
-        position.xasset_deposit = xasset_owed - amount;
+        position.xasset_deposit = xasset_owed - amount_to_withdraw;
 
         position.compounded_constant = self.stability_pool.get_compounded_constant();
         position.product_constant = self.stability_pool.get_product_constant();
         // transfer xasset from pool to address
-        self.transfer_internal(env().current_contract_address(), to.clone(), amount);
+        self.transfer_internal(env().current_contract_address(), to.clone(), amount_to_withdraw);
         self.stability_pool.set_deposit(to, position);
-        self.stability_pool.add_total_xasset(-amount);
+        self.stability_pool.add_total_xasset(-amount_to_withdraw);
         Ok(())
     }
 
     fn calculate_current_deposit(&self, position: &StakerPosition) -> i128 {
         if position.epoch == self.stability_pool.get_epoch() {
-            (position.xasset_deposit * self.stability_pool.get_product_constant())
-                / position.product_constant
+            let value = (BASIS_POINTS * position.xasset_deposit * self.stability_pool.get_product_constant())
+                / position.product_constant;
+            bankers_round(value, BASIS_POINTS)
         } else {
             0
         }
@@ -1039,17 +1070,19 @@ impl Token {
 
     fn calculate_rewards(&self, position: &StakerPosition) -> i128 {
         if position.epoch == self.stability_pool.get_epoch() {
-            (position.xasset_deposit
+            let value = (BASIS_POINTS * position.xasset_deposit
                 * (self.stability_pool.get_compounded_constant() - position.compounded_constant))
-                / position.product_constant
+                / position.product_constant;
+            bankers_round(value, BASIS_POINTS)
         } else {
-            (position.xasset_deposit
+            let value = (BASIS_POINTS * position.xasset_deposit
                 * (self
                     .stability_pool
                     .get_compounded_epoch(position.epoch)
                     .expect("The historical compounded constant should always be recorded")
                     - position.compounded_constant))
-                / position.product_constant
+                / position.product_constant;
+            bankers_round(value, BASIS_POINTS)
         }
     }
 }
