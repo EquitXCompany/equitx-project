@@ -1,21 +1,20 @@
 import { useLoaderData } from "react-router-dom";
 import type { LoaderFunction } from "react-router-dom";
-import xasset from "../../../contracts/xasset";
+//import xasset from "../../../contracts/xasset";
 import type { CDP } from "xasset";
+import { fetchCdps } from '../../../utils/mercury';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
 import { getStatusColor, unwrapResult } from "../../../utils/contractHelpers";
 import { type Result } from "@stellar/stellar-sdk/contract";
 
-export const loader: LoaderFunction = async (): Promise<Result<CDP[]>> => {
-  const tx = await xasset.cdps();
-  return tx.result;
+export const loader: LoaderFunction = async (): Promise<CDP[]> => {
+  return await fetchCdps();
 };
 
 
 function List() {
-  const cdps_result = useLoaderData() as Awaited<Result<CDP[]>>;
-  const cdps = unwrapResult(cdps_result, "Failed to retrieve the list of CDPs, try again later");
+  const cdps = useLoaderData() as Awaited<Result<CDP[]>>;
   const { account } = useWallet();
   const indexOfYours = cdps.findIndex((cdp) => cdp.lender === account);
   const yours = cdps[indexOfYours];

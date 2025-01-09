@@ -1,0 +1,21 @@
+type CDP @entity {
+  id: ID!
+  lender: String!
+  xlmDeposited: BigInt!
+  assetLent: BigInt!
+  collateralizationRatio: BigInt!
+  status: String!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type StakePosition @entity {
+  id: ID!
+  staker: String!
+  xassetDeposit: BigInt!
+  productConstant: BigInt!
+  compoundedConstant: BigInt!
+  epoch: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}

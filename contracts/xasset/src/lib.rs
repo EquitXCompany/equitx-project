@@ -11,8 +11,12 @@ use token::Token;
 
 pub mod collateralized;
 pub mod error;
+mod storage;
 pub mod stability_pool;
 pub mod token;
+
+#[cfg(feature = "mercury")]
+pub mod index_types;
 
 pub use error::Error;
 

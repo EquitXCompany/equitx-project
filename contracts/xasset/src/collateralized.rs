@@ -38,6 +38,9 @@ pub trait IsCollateralized {
     /// Oracle contract used for this contract's XLM price feed. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
     fn xlm_contract(&self) -> loam_sdk::soroban_sdk::Address;
 
+    /// Stellar asset contract address
+    fn xlm_sac(&self) -> loam_sdk::soroban_sdk::Address;
+
     /// Oracle contract used for this contract's pegged asset. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
     fn asset_contract(&self) -> loam_sdk::soroban_sdk::Address;
 
@@ -74,9 +77,6 @@ pub trait IsCollateralized {
 
     /// Retrieves the CDP information for a specific lender
     fn cdp(&self, lender: Address) -> Result<CDP, Error>;
-
-    /// Retrieves all CDPs in the system
-    fn cdps(&self) -> Result<soroban_sdk::Vec<CDP>, Error>;
 
     /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
     /// A frozen CDP is no longer usable or interactable by its former owner.

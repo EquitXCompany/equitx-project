@@ -5,9 +5,9 @@ members = [
 ]
 
 [workspace.dependencies]
-loam-sdk = "0.6.15"
-loam-subcontract-core = "0.7.5"
-loam-subcontract-ft = "0.7.1"
+loam-sdk = { path = "../loam/crates/loam-sdk" }
+loam-subcontract-core = { path = "../loam/crates/loam-subcontract-core" }
+loam-subcontract-ft = { path = "../loam/crates/loam-subcontract-ft" }
 
 [profile.release]
 opt-level = "z"
