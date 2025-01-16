@@ -1,8 +1,7 @@
 use core::cmp;
 
-use loam_sdk::soroban_sdk::{self, contracttype, env, panic_with_error, token, Address, InstanceStore, IntoVal, Lazy, LoamKey, PersistentMap, PersistentStore, String, Symbol, Val, Vec};
+use loam_sdk::soroban_sdk::{self, env, panic_with_error, token, Address, InstanceStore, LoamKey, PersistentMap, PersistentStore, String, Symbol, Val, Vec};
 use loam_sdk::loamstorage;
-use loam_subcontract_core::Core;
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
 use crate::storage::{Allowance, CDPInternal};
@@ -110,24 +109,24 @@ impl Token {
         symbol: String,
         decimals: u32,
     ) {
-        let mut token = Token::new();
-        token.xlm_sac.set(xlm_sac);
-        token.xlm_contract.set(xlm_contract);
-        token.asset_contract.set(asset_contract);
-        token.pegged_asset.set(pegged_asset);
-        token.min_collat_ratio.set(min_collat_ratio);
-        token.name.set(name);
-        token.symbol.set(symbol);
-        token.decimals.set(decimals);
-        token.total_xasset.set(0);
-        token.total_collateral.set(0);
-        token.product_constant.set(PRODUCT_CONSTANT);
-        token.compounded_constant.set(0);
-        token.epoch.set(0);
-        token.fees_collected.set(0);
-        token.deposit_fee.set(DEPOSIT_FEE);
-        token.stake_fee.set(STAKE_FEE);
-        token.unstake_return.set(UNSTAKE_RETURN);
+        let mut token = Token::default();
+        token.xlm_sac.set(&xlm_sac);
+        token.xlm_contract.set(&xlm_contract);
+        token.asset_contract.set(&asset_contract);
+        token.pegged_asset.set(&pegged_asset);
+        token.min_collat_ratio.set(&min_collat_ratio);
+        token.name.set(&name);
+        token.symbol.set(&symbol);
+        token.decimals.set(&decimals);
+        token.total_xasset.set(&0);
+        token.total_collateral.set(&0);
+        token.product_constant.set(&PRODUCT_CONSTANT);
+        token.compounded_constant.set(&0);
+        token.epoch.set(&0);
+        token.fees_collected.set(&0);
+        token.deposit_fee.set(&DEPOSIT_FEE);
+        token.stake_fee.set(&STAKE_FEE);
+        token.unstake_return.set(&UNSTAKE_RETURN);
     }
 }
 
@@ -155,7 +154,7 @@ impl IsSep41 for Token {
         );
         self.allowances.set(
             Txn(from, spender),
-            Allowance {
+            &Allowance {
                 amount,
                 live_until_ledger,
             },
@@ -221,7 +220,7 @@ impl IsFungible for Token {
         let current_ledger = env().ledger().sequence();
         self.allowances.set(
             Txn(from, spender),
-            Allowance {
+            &Allowance {
                 amount: new_amount,
                 live_until_ledger: current_ledger + 1000, // Example: set to expire after 1000 ledgers
             },
@@ -235,7 +234,7 @@ impl IsFungible for Token {
         let current_ledger = env().ledger().sequence();
         self.allowances.set(
             Txn(from, spender),
-            Allowance {
+            &Allowance {
                 amount: new_amount,
                 live_until_ledger: current_ledger + 1000, // Example: set to expire after 1000 ledgers
             },
@@ -252,7 +251,7 @@ impl IsFungible for Token {
 
     fn set_authorized(&mut self, id: Address, authorize: bool) {
         self::Contract::require_auth();
-        self.authorized.set(id, authorize);
+        self.authorized.set(id, &authorize);
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
@@ -263,7 +262,7 @@ impl IsFungible for Token {
     fn clawback(&mut self, from: Address, amount: i128) {
         self::Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
-        self.balances.set(from, balance);
+        self.balances.set(from, &balance);
     }
 
     fn set_admin(&mut self, new_admin: Address) {
@@ -401,7 +400,7 @@ impl IsCollateralized for Token {
         self.mint_internal(lender.clone(), asset_lent);
 
         // 5. create CDP
-        self.cdps.set(lender.clone(), cdp.clone());
+        self.cdps.set(lender.clone(), &cdp.clone());
         
         #[cfg(feature = "mercury")]
         crate::index_types::CDPCreation {
@@ -597,7 +596,7 @@ impl IsCollateralized for Token {
             status: CDPStatus::Frozen,
         };
         let first_lender = lenders.get(0).unwrap();
-        self.cdps.set(first_lender.clone(), merged_cdp);
+        self.cdps.set(first_lender.clone(), &merged_cdp);
 
         // Remove other CDPs
         for lender in lenders.iter().skip(1) {
@@ -655,23 +654,23 @@ impl IsCDPAdmin for Token {
     }
     fn set_xlm_sac(&mut self, to: Address) {
         self::Contract::require_auth();
-        self.xlm_sac.set(to);
+        self.xlm_sac.set(&to);
     }
     fn set_xlm_contract(&mut self, to: Address) {
         self::Contract::require_auth();
-        self.xlm_contract.set(to);
+        self.xlm_contract.set(&to);
     }
     fn set_asset_contract(&mut self, to: Address) {
         self::Contract::require_auth();
-        self.asset_contract.set(to);
+        self.asset_contract.set(&to);
     }
     fn set_pegged_asset(&mut self, to: Symbol) {
         self::Contract::require_auth();
-        self.pegged_asset.set(to);
+        self.pegged_asset.set(&to);
     }
     fn set_min_collat_ratio(&mut self, to: u32) -> u32 {
         self::Contract::require_auth();
-        self.min_collat_ratio.set(to);
+        self.min_collat_ratio.set(&to);
         to
     }
 }
@@ -953,7 +952,7 @@ impl Token {
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDP) {
         self.cdps.set(
             lender,
-            CDPInternal {
+            &CDPInternal {
                 xlm_deposited: decorated_cdp.xlm_deposited,
                 asset_lent: decorated_cdp.asset_lent,
                 status: decorated_cdp.status,
@@ -968,19 +967,19 @@ impl Token {
     // convenience functions for internal minting / transfering of the ft asset
     fn mint_internal(&mut self, to: Address, amount: i128) {
         let balance = self.balance(to.clone()) + amount;
-        self.balances.set(to, balance);
+        self.balances.set(to, &balance);
     }
 
     fn transfer_internal(&mut self, from: Address, to: Address, amount: i128) {
         let from_balance = self.balance(from.clone()) - amount;
         let to_balance = self.balance(to.clone()) + amount;
-        self.balances.set(from, from_balance);
-        self.balances.set(to, to_balance);
+        self.balances.set(from, &from_balance);
+        self.balances.set(to, &to_balance);
     }
 
     fn burn_internal(&mut self, from: Address, amount: i128) {
         let balance = self.balance(from.clone()) - amount;
-        self.balances.set(from, balance);
+        self.balances.set(from, &balance);
     }
 
     // withdraw the amount specified unless full_withdrawal is true in which case withdraw remaining balance
@@ -1083,8 +1082,8 @@ impl Token {
     pub fn increment_epoch(&mut self) {
         let epoch = self.get_epoch();
         self.compound_record
-            .set(epoch, self.get_compounded_constant());
-        self.epoch.set(epoch + 1);
+            .set(epoch, &self.get_compounded_constant());
+        self.epoch.set(&(epoch + 1));
         self.set_product_constant(PRODUCT_CONSTANT);
         self.set_compounded_constant(0);
     }
@@ -1094,7 +1093,7 @@ impl Token {
     }
 
     pub fn set_deposit(&mut self, address: Address, position: StakerPosition) {
-        self.deposits.set(address, position);
+        self.deposits.set(address, &position);
     }
 
     pub fn get_total_xasset(&self) -> i128 {
@@ -1102,11 +1101,11 @@ impl Token {
     }
 
     pub fn add_total_xasset(&mut self, amount: i128) {
-        self.total_xasset.set(self.get_total_xasset() + amount);
+        self.total_xasset.set(&(self.get_total_xasset() + amount));
     }
 
     pub fn subtract_total_xasset(&mut self, amount: i128) {
-        self.total_xasset.set(self.get_total_xasset() - amount);
+        self.total_xasset.set(&(self.get_total_xasset() - amount));
     }
 
     pub fn get_total_collateral(&self) -> i128 {
@@ -1114,11 +1113,11 @@ impl Token {
     }
 
     pub fn add_total_collateral(&mut self, amount: i128) {
-        self.total_collateral.set(self.get_total_collateral() + amount);
+        self.total_collateral.set(&(self.get_total_collateral() + amount));
     }
 
     pub fn subtract_total_collateral(&mut self, amount: i128) {
-        self.total_collateral.set(self.get_total_collateral() - amount);
+        self.total_collateral.set(&(self.get_total_collateral() - amount));
     }
 
     pub fn get_product_constant(&self) -> i128 {
@@ -1126,7 +1125,7 @@ impl Token {
     }
 
     pub fn set_product_constant(&mut self, value: i128) {
-        self.product_constant.set(value);
+        self.product_constant.set(&value);
     }
 
     pub fn get_compounded_constant(&self) -> i128 {
@@ -1134,7 +1133,7 @@ impl Token {
     }
 
     pub fn set_compounded_constant(&mut self, value: i128) {
-        self.compounded_constant.set(value);
+        self.compounded_constant.set(&value);
     }
 
     pub fn get_epoch(&self) -> u64 {
@@ -1150,11 +1149,11 @@ impl Token {
     }
 
     pub fn add_fees_collected(&mut self, amount: i128) {
-        self.fees_collected.set(self.get_fees_collected() + amount);
+        self.fees_collected.set(&(self.get_fees_collected() + amount));
     }
 
     pub fn subtract_fees_collected(&mut self, amount: i128) {
-        self.fees_collected.set(self.get_fees_collected() - amount);
+        self.fees_collected.set(&(self.get_fees_collected() - amount));
     }
 
     pub fn get_stake_fee(&self) -> i128 {
@@ -1166,7 +1165,7 @@ impl Token {
     }
 
     pub fn set_stake_fee(&mut self, value: i128) {
-        self.stake_fee.set(value);
+        self.stake_fee.set(&value);
     }
 
     pub fn get_unstake_return(&self) -> i128 {
@@ -1174,7 +1173,7 @@ impl Token {
     }
 
     pub fn set_unstake_return(&mut self, value: i128) {
-        self.unstake_return.set(value);
+        self.unstake_return.set(&value);
     }
 
     pub fn remove_deposit(&mut self, address: Address) {
