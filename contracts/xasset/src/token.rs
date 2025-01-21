@@ -403,7 +403,7 @@ impl IsCollateralized for Token {
         self.cdps.set(lender.clone(), &cdp.clone());
         
         #[cfg(feature = "mercury")]
-        crate::index_types::CDPCreation {
+        crate::index_types::CDP {
             id: lender.clone(),
             xlm_deposited: cdp.xlm_deposited,
             asset_lent: cdp.asset_lent,
@@ -412,10 +412,6 @@ impl IsCollateralized for Token {
             timestamp: env.ledger().timestamp(),
         }
         .emit(env);
-        env.events().publish(
-            (Symbol::new(env, "open_cdp"),),
-            (lender, cdp),
-        );
         Ok(())
     }
 
@@ -714,10 +710,6 @@ impl IsStabilityPool for Token {
         self.transfer_internal(from.clone(), env().current_contract_address(), amount);
         self.set_deposit(from.clone(), position.clone());
         self.add_total_xasset(amount);
-        env().events().publish(
-            (Symbol::new(env(), "deposit"),),
-            (from, position),
-        );
         Ok(())
     }
     // Modified withdraw method
@@ -766,6 +758,16 @@ impl IsStabilityPool for Token {
 
         // If all debt is repaid, close the CDP
         if cdp.asset_lent == 0 {
+            #[cfg(feature = "mercury")]
+            crate::index_types::CDP {
+                id: cdp_owner.clone(),
+                xlm_deposited: cdp.xlm_deposited,
+                asset_lent: cdp.asset_lent,
+                status: cdp.status,
+                ledger: env().ledger().sequence(),
+                timestamp: env().ledger().timestamp(),
+            }
+            .emit(env());
             self.cdps.remove(cdp_owner);
         } else {
             // Otherwise, update the CDP
@@ -847,10 +849,6 @@ impl IsStabilityPool for Token {
 
         // Set the new position in the stability pool
         self.set_deposit(from.clone(), position.clone());
-        env().events().publish(
-            (Symbol::new(env(), "stake"),),
-            (from, position),
-        );
         self.add_total_xasset(amount);
         Ok(())
     }
@@ -950,6 +948,16 @@ impl Token {
     }
 
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDP) {
+        #[cfg(feature = "mercury")]
+        crate::index_types::CDP {
+            id: lender.clone(),
+            xlm_deposited: decorated_cdp.xlm_deposited,
+            asset_lent: decorated_cdp.asset_lent,
+            status: decorated_cdp.status,
+            ledger: env().ledger().sequence(),
+            timestamp: env().ledger().timestamp(),
+        }
+        .emit(env());
         self.cdps.set(
             lender,
             &CDPInternal {

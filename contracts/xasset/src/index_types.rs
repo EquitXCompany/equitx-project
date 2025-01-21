@@ -4,7 +4,7 @@ use crate::collateralized::CDPStatus;
 
 #[derive(Retroshade)]
 #[contracttype]
-pub struct CDPCreation {
+pub struct CDP {
     pub id: Address,
     pub xlm_deposited: i128,
     pub asset_lent: i128,

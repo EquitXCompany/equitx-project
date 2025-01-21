@@ -5,7 +5,7 @@ export STELLAR_RPC_URL="https://soroban-testnet.stellar.org"
 export STELLAR_ACCOUNT=equitxtestnet
 
 rm -rf target/loam
-loam build
+loam build 
 export XUSD=$(stellar contract deploy --wasm target/loam/xasset.wasm)
 export DATAFEED=$(stellar contract alias show data_feed)
 stellar contract invoke --id $XUSD -- admin_set --new-admin equitxtestnet
