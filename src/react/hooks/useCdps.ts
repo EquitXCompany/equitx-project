@@ -5,7 +5,7 @@ import { apiClient } from '../../utils/apiClient';
 async function fetchCdps(lastQueriedTimestamp: number): Promise<CDP[]> {
   try {
     const { data } = await apiClient.post('/retroshadesv1', {
-      query: `SELECT * FROM cdp0d76cf6277eef1493c34555cdd18c23c WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`
+      query: `SELECT * FROM cdp1a16c60a7890c14872ae7c3a025c31a9 WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`
     });
 
     // Create a map to store the latest entry for each unique id

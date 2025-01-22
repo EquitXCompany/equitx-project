@@ -841,6 +841,8 @@ checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
 [[package]]
 name = "loam-build"
 version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afe8001c87529b6066e49796579a1ca66d4bb1936c4f00833e50e97e396eeb4f"
 dependencies = [
  "cargo_metadata",
  "thiserror",
@@ -849,7 +851,9 @@ dependencies = [
 
 [[package]]
 name = "loam-sdk"
-version = "0.6.15"
+version = "0.6.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a08ffc47d5dbfd2a9f1f24e4cb12f139cd661543ba85d772b50aaee6b1443b83"
 dependencies = [
  "loam-sdk-macro",
  "loam-soroban-sdk",
@@ -857,7 +861,9 @@ dependencies = [
 
 [[package]]
 name = "loam-sdk-macro"
-version = "0.8.5"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6813faaefd11b2ad1d7bebccb60d2a25b0e50d1779ff4277e1068b7940eff5b9"
 dependencies = [
  "Inflector",
  "cargo_metadata",
@@ -878,7 +884,9 @@ dependencies = [
 
 [[package]]
 name = "loam-soroban-sdk"
-version = "0.6.15"
+version = "0.6.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c08e63488991f8967d79b211f8dd6ade832d2940a19e53d2a5df4fd7af92dc9"
 dependencies = [
  "loam-sdk-macro",
  "soroban-sdk",
@@ -886,14 +894,18 @@ dependencies = [
 
 [[package]]
 name = "loam-subcontract-core"
-version = "0.7.8"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d649cc3ec413f6aad3c92dc4aaa1cc49c558186fdf29ffd48aa0fbb2e73b6b37"
 dependencies = [
  "loam-sdk",
 ]
 
 [[package]]
 name = "loam-subcontract-ft"
-version = "0.7.1"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b22112dc562965050b2b50135251b76fdde475993fde16eaf61000f211b89f0f"
 dependencies = [
  "loam-sdk",
 ]

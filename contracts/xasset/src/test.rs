@@ -1,235 +1,238 @@
 #![cfg(test)]
 extern crate std;
+use crate::{collateralized::CDPStatus, data_feed::Asset, Error, PriceData, SorobanContract__, SorobanContract__Client, Token, CDP};
 
-use crate::{token::example_token as token, SorobanContract__, SorobanContract__Client};
-
-use loam_sdk::import_contract;
+use crate::data_feed::DataFeed;
 use loam_sdk::soroban_sdk::{
-    self, symbol_short,
-    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation},
-    Address, BytesN, Env, IntoVal,
+    testutils::Address as _, token, Address, Env, String, Symbol
 };
 
-fn create_token_contract<'a>(e: &Env, admin: &Address) -> token::Client<'a> {
-    token::Client::new(e, &e.register_stellar_asset_contract(admin.clone()))
-}
-
-fn create_stabilitypool_contract<'a>(
+fn create_datafeed_contract<'a>(
     e: &Env,
-    token_wasm_hash: &BytesN<32>,
-    token_a: &Address,
-    token_b: &Address,
-) -> SorobanContract__Client<'a> {
-    let liqpool = SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
-    liqpool.initialize(token_wasm_hash, token_a, token_b);
-    liqpool
+) -> data_feed::SorobanContract__Client<'a> {
+    let datafeed = data_feed::SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
+    let asset_xlm: Asset = Asset::Other(Symbol::new(e, "XLM"));
+    let asset_xusd: Asset = Asset::Other(Symbol::new(e, "XUSD"));
+    let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
+    let admin = Address::generate(&e);
+    datafeed.admin_set(&admin);
+    datafeed.sep40_init(&asset_vec, &asset_xusd, &14, &300);
+    datafeed
 }
 
-fn install_token_wasm(e: &Env) -> BytesN<32> {
-    import_contract!(example_token);
-    e.deployer().upload_contract_wasm(example_token::WASM)
-}
+fn create_token_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
+    let token = SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
+    let xlm_sac = Address::generate(e);
+    let xlm_contract = Address::generate(e);
+    let asset_contract = Address::generate(e);
+    let pegged_asset = Symbol::new(e, "USDT");
+    let min_collat_ratio = 11000;
+    let name = String::from_str(e, "United States Dollar xAsset");
+    let symbol = String::from_str(e, "xUSD");
+    let decimals = 7;
 
-#[test]
-fn test() {
-    let e = Env::default();
-    e.mock_all_auths();
-
-    let mut admin1 = Address::generate(&e);
-    let mut admin2 = Address::generate(&e);
-
-    let mut token1 = create_token_contract(&e, &admin1);
-    let mut token2 = create_token_contract(&e, &admin2);
-    if token2.address < token1.address {
-        std::mem::swap(&mut token1, &mut token2);
-        std::mem::swap(&mut admin1, &mut admin2);
-    }
-    let user1 = Address::generate(&e);
-    let liqpool = create_stabilitypool_contract(
-        &e,
-        &install_token_wasm(&e),
-        &token1.address,
-        &token2.address,
+    token.cdp_init(
+        &xlm_sac,
+        &xlm_contract,
+        &asset_contract,
+        &pegged_asset,
+        &min_collat_ratio,
+        &name,
+        &symbol,
+        &decimals,
     );
 
-    let token_share = token::Client::new(&e, &liqpool.share_id());
-
-    token1.mint(&user1, &1000);
-    assert_eq!(token1.balance(&user1), 1000);
-
-    token2.mint(&user1, &1000);
-    assert_eq!(token2.balance(&user1), 1000);
-
-    liqpool.deposit(&user1, &100, &100, &100, &100);
-    assert_eq!(
-        e.auths(),
-        std::vec![(
-            user1.clone(),
-            AuthorizedInvocation {
-                function: AuthorizedFunction::Contract((
-                    liqpool.address.clone(),
-                    symbol_short!("deposit"),
-                    (&user1, 100_i128, 100_i128, 100_i128, 100_i128).into_val(&e)
-                )),
-                sub_invocations: std::vec![
-                    AuthorizedInvocation {
-                        function: AuthorizedFunction::Contract((
-                            token1.address.clone(),
-                            symbol_short!("transfer"),
-                            (&user1, &liqpool.address, 100_i128).into_val(&e)
-                        )),
-                        sub_invocations: std::vec![]
-                    },
-                    AuthorizedInvocation {
-                        function: AuthorizedFunction::Contract((
-                            token2.address.clone(),
-                            symbol_short!("transfer"),
-                            (&user1, &liqpool.address, 100_i128).into_val(&e)
-                        )),
-                        sub_invocations: std::vec![]
-                    }
-                ]
-            }
-        )]
-    );
-
-    assert_eq!(token_share.balance(&user1), 100);
-    assert_eq!(token_share.balance(&liqpool.address), 0);
-    assert_eq!(token1.balance(&user1), 900);
-    assert_eq!(token1.balance(&liqpool.address), 100);
-    assert_eq!(token2.balance(&user1), 900);
-    assert_eq!(token2.balance(&liqpool.address), 100);
-
-    liqpool.swap(&user1, &false, &49, &100);
-    assert_eq!(
-        e.auths(),
-        std::vec![(
-            user1.clone(),
-            AuthorizedInvocation {
-                function: AuthorizedFunction::Contract((
-                    liqpool.address.clone(),
-                    symbol_short!("swap"),
-                    (&user1, false, 49_i128, 100_i128).into_val(&e)
-                )),
-                sub_invocations: std::vec![AuthorizedInvocation {
-                    function: AuthorizedFunction::Contract((
-                        token1.address.clone(),
-                        symbol_short!("transfer"),
-                        (&user1, &liqpool.address, 97_i128).into_val(&e)
-                    )),
-                    sub_invocations: std::vec![]
-                }]
-            }
-        )]
-    );
-
-    assert_eq!(token1.balance(&user1), 803);
-    assert_eq!(token1.balance(&liqpool.address), 197);
-    assert_eq!(token2.balance(&user1), 949);
-    assert_eq!(token2.balance(&liqpool.address), 51);
-
-    e.budget().reset_unlimited();
-    liqpool.withdraw(&user1, &100, &197, &51);
-
-    assert_eq!(
-        e.auths(),
-        std::vec![(
-            user1.clone(),
-            AuthorizedInvocation {
-                function: AuthorizedFunction::Contract((
-                    liqpool.address.clone(),
-                    symbol_short!("withdraw"),
-                    (&user1, 100_i128, 197_i128, 51_i128).into_val(&e)
-                )),
-                sub_invocations: std::vec![AuthorizedInvocation {
-                    function: AuthorizedFunction::Contract((
-                        token_share.address.clone(),
-                        symbol_short!("transfer"),
-                        (&user1, &liqpool.address, 100_i128).into_val(&e)
-                    )),
-                    sub_invocations: std::vec![]
-                }]
-            }
-        )]
-    );
-
-    assert_eq!(token1.balance(&user1), 1000);
-    assert_eq!(token2.balance(&user1), 1000);
-    assert_eq!(token_share.balance(&user1), 0);
-    assert_eq!(token1.balance(&liqpool.address), 0);
-    assert_eq!(token2.balance(&liqpool.address), 0);
-    assert_eq!(token_share.balance(&liqpool.address), 0);
+    token
 }
 
 #[test]
-#[should_panic]
-fn deposit_amount_zero_should_panic() {
+fn test_token_initialization() {
     let e = Env::default();
     e.mock_all_auths();
 
-    // Create contracts
-    let mut admin1 = Address::generate(&e);
-    let mut admin2 = Address::generate(&e);
+    let token = create_token_contract(&e);
 
-    let mut token_a = create_token_contract(&e, &admin1);
-    let mut token_b = create_token_contract(&e, &admin2);
-    if token_b.address < token_a.address {
-        std::mem::swap(&mut token_a, &mut token_b);
-        std::mem::swap(&mut admin1, &mut admin2);
-    }
-    let liqpool = create_stabilitypool_contract(
-        &e,
-        &install_token_wasm(&e),
-        &token_a.address,
-        &token_b.address,
-    );
-
-    // Create a user
-    let user1 = Address::generate(&e);
-
-    token_a.mint(&user1, &1000);
-    assert_eq!(token_a.balance(&user1), 1000);
-
-    token_b.mint(&user1, &1000);
-    assert_eq!(token_b.balance(&user1), 1000);
-
-    liqpool.deposit(&user1, &1, &0, &0, &0);
+    assert_eq!(token.symbol(), String::from_str(&e, "xUSD"));
+    assert_eq!(token.name(), String::from_str(&e, "United States Dollar xAsset"));
+    assert_eq!(token.decimals(), 7);
 }
 
 #[test]
-#[should_panic]
-fn swap_reserve_one_nonzero_other_zero() {
+fn test_cdp_operations() {
     let e = Env::default();
     e.mock_all_auths();
 
-    // Create contracts
-    let mut admin1 = Address::generate(&e);
-    let mut admin2 = Address::generate(&e);
+    let mut token = create_token_contract(&e);
+    let alice = Address::generate(&e);
+    let bob = Address::generate(&e);
 
-    let mut token_a = create_token_contract(&e, &admin1);
-    let mut token_b = create_token_contract(&e, &admin2);
-    if token_b.address < token_a.address {
-        std::mem::swap(&mut token_a, &mut token_b);
-        std::mem::swap(&mut admin1, &mut admin2);
-    }
-    let liqpool = create_stabilitypool_contract(
-        &e,
-        &install_token_wasm(&e),
-        &token_a.address,
-        &token_b.address,
-    );
+    // Mock XLM price
+    token.set_xlm_contract(&e.register_contract(None, DataFeed::default()));
+    let xlm_price = 10_000_000_000_000;
+    token.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
 
-    // Create a user
-    let user1 = Address::generate(&e);
+    // Mock USDT price
+    token.set_asset_contract(&e.register_contract(None, DataFeed::default()));
+    let usdt_price = 100_000_000_000_000;
+    token.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
 
-    token_a.mint(&user1, &1000);
-    assert_eq!(token_a.balance(&user1), 1000);
+    // Open CDPs
+    token.open_cdp(&alice, &1_700_000_000, &100_000_000).unwrap();
+    token.open_cdp(&bob, &1_300_000_000, &100_000_000).unwrap();
 
-    token_b.mint(&user1, &1000);
-    assert_eq!(token_b.balance(&user1), 1000);
+    // Check CDPs
+    let alice_cdp = token.cdp(alice.clone()).unwrap();
+    let bob_cdp = token.cdp(bob.clone()).unwrap();
 
-    // Try to get to a situation where the reserves are 1 and 0.
-    // It shouldn't be possible.
-    token_b.transfer(&user1, &liqpool.address, &1);
-    liqpool.swap(&user1, &false, &1, &1);
+    assert_eq!(alice_cdp.xlm_deposited, 1_700_000_000);
+    assert_eq!(alice_cdp.asset_lent, 100_000_000);
+    assert_eq!(bob_cdp.xlm_deposited, 1_300_000_000);
+    assert_eq!(bob_cdp.asset_lent, 100_000_000);
+
+    // Update minimum collateralization ratio
+    token.set_min_collat_ratio(&15000);
+    assert_eq!(token.minimum_collateralization_ratio(), 15000);
+
+    // Check if CDPs become insolvent
+    let alice_cdp = token.cdp(alice.clone()).unwrap();
+    let bob_cdp = token.cdp(bob.clone()).unwrap();
+
+    assert_eq!(alice_cdp.status, CDPStatus::Open);
+    assert_eq!(bob_cdp.status, CDPStatus::Insolvent);
+}
+
+#[test]
+fn test_token_transfers() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let mut token = create_token_contract(&e);
+    let alice = Address::generate(&e);
+    let bob = Address::generate(&e);
+
+    // Mint tokens to Alice
+    token.mint(&alice, &1000_0000000);
+
+    assert_eq!(token.balance(alice.clone()), 1000_0000000);
+    assert_eq!(token.balance(bob.clone()), 0);
+
+    // Transfer from Alice to Bob
+    token.transfer(&alice, &bob, &500_0000000);
+
+    assert_eq!(token.balance(alice.clone()), 500_0000000);
+    assert_eq!(token.balance(bob.clone()), 500_0000000);
+}
+
+#[test]
+fn test_allowances() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let mut token = create_token_contract(&e);
+    let alice = Address::generate(&e);
+    let bob = Address::generate(&e);
+
+    // Set allowance
+    token.approve(&alice, &bob, &1000_0000000, &(e.ledger().sequence() + 1000));
+
+    assert_eq!(token.allowance(alice.clone(), bob.clone()), 1000_0000000);
+
+    // Transfer from Alice to Bob using allowance
+    token.transfer_from(&bob, &alice, &bob, &500_0000000);
+
+    assert_eq!(token.allowance(alice.clone(), bob.clone()), 500_0000000);
+    assert_eq!(token.balance(bob.clone()), 500_0000000);
+}
+
+#[test]
+fn test_stability_pool() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let mut token = create_token_contract(&e);
+    let alice = Address::generate(&e);
+    let bob = Address::generate(&e);
+
+    // Mint tokens to Alice and Bob
+    token.mint(&alice, &1000_0000000);
+    token.mint(&bob, &1000_0000000);
+
+    // Stake in stability pool
+    token.stake(&alice, &500_0000000).unwrap();
+    token.stake(&bob, &700_0000000).unwrap();
+
+    // Check stakes
+    let alice_stake = token.get_staker_deposit_amount(alice.clone()).unwrap();
+    let bob_stake = token.get_staker_deposit_amount(bob.clone()).unwrap();
+
+    assert_eq!(alice_stake, 500_0000000);
+    assert_eq!(bob_stake, 700_0000000);
+
+    // Check total xasset in stability pool
+    assert_eq!(token.get_total_xasset(), 1200_0000000);
+
+    // Withdraw from stability pool
+    token.withdraw(&alice, &200_0000000).unwrap();
+
+    let alice_stake = token.get_staker_deposit_amount(alice.clone()).unwrap();
+    assert_eq!(alice_stake, 300_0000000);
+}
+
+#[test]
+fn test_liquidation() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let mut token = create_token_contract(&e);
+    let alice = Address::generate(&e);
+
+    // Open CDP for Alice
+    token.open_cdp(&alice, &1000_0000000, &500_0000000).unwrap();
+
+    // Set XLM price to make the CDP insolvent
+    token.set_xlm_contract(&e.register_contract(None, DataFeed::default()));
+    let xlm_price = 5_000_000_000_000; // Half the original price
+    token.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &2000);
+
+    // Check if the CDP is insolvent
+    let alice_cdp = token.cdp(alice.clone()).unwrap();
+    assert_eq!(alice_cdp.status, CDPStatus::Insolvent);
+
+    // Freeze the CDP
+    token.freeze_cdp(alice.clone()).unwrap();
+
+    // Liquidate the CDP
+    let (liquidated_debt, liquidated_collateral) = token.liquidate_cdp(alice.clone()).unwrap();
+
+    assert!(liquidated_debt > 0);
+    assert!(liquidated_collateral > 0);
+
+    // Check if the CDP is closed or has reduced debt/collateral
+    let alice_cdp = token.cdp(alice.clone()).unwrap();
+    assert!(alice_cdp.xlm_deposited < 1000_0000000);
+    assert!(alice_cdp.asset_lent < 500_0000000);
+}
+
+#[test]
+fn test_error_handling() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let mut token = create_token_contract(&e);
+    let alice = Address::generate(&e);
+    let bob = Address::generate(&e);
+
+    // Try to transfer more than balance
+    let result = token.transfer(&alice, &bob, &1000_0000000);
+    assert!(matches!(result, Err(Error::InsufficientBalance)));
+
+    // Try to open a second CDP for Alice
+    token.open_cdp(&alice, &1000_0000000, &500_0000000).unwrap();
+    let result = token.open_cdp(&alice, &1000_0000000, &500_0000000);
+    assert!(matches!(result, Err(Error::CDPAlreadyExists)));
+
+    // Try to withdraw more than staked
+    token.stake(&bob, &100_0000000).unwrap();
+    let result = token.withdraw(&bob, &200_0000000);
+    assert!(matches!(result, Err(Error::InsufficientStake)));
 }
