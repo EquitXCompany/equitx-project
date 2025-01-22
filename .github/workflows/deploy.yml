@@ -43,11 +43,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Check and install loam-cli --locked
+      - name: Check and install loam-cli
         run: |
           if ! command -v loam &> /dev/null
           then
-            cargo install loam-cli
+            cargo install loam-cli --locked
           else
             echo "loam-cli is already installed"
           fi
