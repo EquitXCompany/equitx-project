@@ -35,6 +35,7 @@
     "@stellar/freighter-api": "^3.0.0",
     "@types/react": "^18.3.6",
     "@types/react-dom": "^18.3.0",
+    "axios": "^1.7.9",
     "bignumber.js": "^9.1.2",
     "modern-normalize": "^3.0.1",
     "react": "^18.3.1",
