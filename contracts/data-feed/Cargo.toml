@@ -1,5 +1,5 @@
 [package]
-name = "data_feed"
+name = "data-feed"
 description = "Feed of data from an Oracle"
 version = "0.0.0"
 authors = ["Aha Labs <help@ahalabs.dev>"]

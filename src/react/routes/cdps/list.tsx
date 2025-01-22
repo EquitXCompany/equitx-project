@@ -1,30 +1,27 @@
-import { useLoaderData } from "react-router-dom";
-import type { LoaderFunction } from "react-router-dom";
-import xasset from "../../../contracts/xasset";
+import { useState } from 'react';
 import type { CDP } from "xasset";
+import { useCdps } from '../../hooks/useCdps';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
-import { getStatusColor, unwrapResult } from "../../../utils/contractHelpers";
-import { type Result } from "@stellar/stellar-sdk/contract";
-
-export const loader: LoaderFunction = async (): Promise<Result<CDP[]>> => {
-  const tx = await xasset.cdps();
-  return tx.result;
-};
-
+import { getStatusColor } from "../../../utils/contractHelpers";
 
 function List() {
-  const cdps_result = useLoaderData() as Awaited<Result<CDP[]>>;
-  const cdps = unwrapResult(cdps_result, "Failed to retrieve the list of CDPs, try again later");
+  const [lastQueriedTimestamp] = useState(() => Math.floor(Date.now() / 1000) - 86400); // Last 24 hours
+  const { data: cdps, isLoading, error } = useCdps(lastQueriedTimestamp);
   const { account } = useWallet();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>An error occurred: {(error as Error).message}</div>;
+  if (!cdps) return <div>No CDPs found</div>;
+
   const indexOfYours = cdps.findIndex((cdp) => cdp.lender === account);
   const yours = cdps[indexOfYours];
-  console.log('yours is');
-  console.log(yours);
+  
+  let sortedCdps = [...cdps];
   if (yours) {
-    cdps.splice(indexOfYours, 1);
-    cdps.unshift(yours);
+    sortedCdps = [yours, ...cdps.filter(cdp => cdp.lender !== account)];
   }
+
   return (
     <div className="grid">
       <ul
@@ -36,7 +33,7 @@ function List() {
           padding: "0",
         }}
       >
-        {cdps.map((cdp) => (
+        {sortedCdps.map((cdp) => (
           <Card
             key={cdp.lender}
             href={`/${cdp.lender}`}
@@ -44,9 +41,9 @@ function List() {
           >
             <div
               style={{
-                color: getStatusColor(cdp.status.tag),
+                color: getStatusColor(cdp.status),
               }} >
-              {cdp.status.tag} ({cdp.collateralization_ratio / 100}%
+              {cdp.status} ({cdp.collateralizationRatio / 100}%
               collateralized)
             </div>
           </Card>
@@ -61,4 +58,4 @@ function List() {
   );
 }
 
-export const element = <List />;
+export default List;

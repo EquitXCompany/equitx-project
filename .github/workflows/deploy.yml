@@ -22,6 +22,7 @@ jobs:
           echo 'export STELLAR_ACCOUNT=equitx' > .env
           echo 'export PUBLIC_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"' >> .env
           echo 'export PUBLIC_RPC_URL="https://soroban-testnet.stellar.org:443"' >> .env
+          echo 'export REACT_APP_MERCURY_API_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXV0aDA2NzYzMzMxOTUyZWQ5YTE0MThmMGViMTIiLCJleHAiOjE3Mzk3Mzc1OTEsInVzZXJfaWQiOjE2NSwidXNlcm5hbWUiOiJiYWhlZmZyb25AZ21haWwuY29tIiwiaWF0IjoxNzM3MTQ1NTkxLCJhdWQiOiJwb3N0Z3JhcGhpbGUiLCJpc3MiOiJwb3N0Z3JhcGhpbGUifQ.OjZB6arueyFB4C3lQyWMcO05tVtwNvIiIMkRnLDfrdw"' >> .env
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable

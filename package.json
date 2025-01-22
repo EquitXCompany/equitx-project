@@ -1,6 +1,8 @@
 {
   "devDependencies": {
     "@astrojs/check": "^0.4.1",
+    "@subql/cli": "^5.4.0",
+    "@subql/types": "^3.11.4",
     "astro": "^4.2.4",
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.1",
@@ -13,12 +15,16 @@
     "build": "LOAM_ENV=staging loam build --build-clients && astro check && astro build",
     "dev": "concurrently \"loam dev --build-clients\" \"astro dev\"",
     "preview": "astro preview",
-    "start": "concurrently \"loam dev --build-clients\" \"astro dev\""
+    "start": "concurrently \"loam dev --build-clients\" \"astro dev\"",
+    "subql:codegen": "cd subquery && subql codegen",
+    "subql:build": "cd subquery && subql build",
+    "subql:start": "cd subquery && docker-compose up"
   },
   "type": "module",
   "version": "0.0.1",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "subquery"
   ],
   "dependencies": {
     "@astrojs/react": "^3.6.2",
@@ -33,6 +39,7 @@
     "modern-normalize": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-query": "^3.39.3",
     "react-router-dom": "^6.26.2"
   }
 }

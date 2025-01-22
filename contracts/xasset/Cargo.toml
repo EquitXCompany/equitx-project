@@ -15,9 +15,14 @@ doctest = false
 loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
 loam-subcontract-core = { workspace = true }
 loam-subcontract-ft = { workspace = true }
+data-feed = { path = "../data-feed" }
+retroshade-sdk = { version = "0.1.0", optional = true }
 
 [dev-dependencies]
 loam-sdk = { workspace = true, features = ["soroban-sdk-testutils"] }
 
 [package.metadata.loam]
 contract = true
+
+[features]
+mercury = ["dep:retroshade-sdk"]
