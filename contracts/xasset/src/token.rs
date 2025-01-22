@@ -1,6 +1,6 @@
 use core::cmp;
 
-use loam_sdk::soroban_sdk::{self, env, panic_with_error, token, Address, InstanceStore, LoamKey, PersistentMap, PersistentStore, String, Symbol, Val, Vec};
+use loam_sdk::soroban_sdk::{self, env, panic_with_error, token, Address, InstanceItem, LoamKey, PersistentMap, PersistentItem, String, Symbol, Val, Vec};
 use loam_sdk::loamstorage;
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
@@ -50,7 +50,7 @@ fn bankers_round(value: i128, precision: i128) -> i128 {
 #[derive(Default)]
 pub struct Token {
     /// Name of the token
-    name: InstanceStore<String>,
+    name: InstanceItem<String>,
     /// Mapping of account addresses to their token balances
     balances: PersistentMap<Address, i128>,
     /// Mapping of transactions to their associated allowances
@@ -58,19 +58,19 @@ pub struct Token {
     /// Mapping of addresses to their authorization status
     authorized: PersistentMap<Address, bool>,
     /// Symbol of the token
-    symbol: InstanceStore<String>,
+    symbol: InstanceItem<String>,
     /// Number of decimal places for token amounts
-    decimals: InstanceStore<u32>,
+    decimals: InstanceItem<u32>,
     /// XLM Stellar Asset Contract address, for XLM transfers
-    xlm_sac: InstanceStore<Address>,
+    xlm_sac: InstanceItem<Address>,
     /// Oracle contract ID for XLM price feed
-    xlm_contract: InstanceStore<Address>,
+    xlm_contract: InstanceItem<Address>,
     /// Oracle contract ID for asset price feed
-    asset_contract: InstanceStore<Address>,
+    asset_contract: InstanceItem<Address>,
     /// Oracle asset ID this asset tracks.
-    pegged_asset: InstanceStore<Symbol>,
+    pegged_asset: InstanceItem<Symbol>,
     /// basis points; default 110%; updateable by admin
-    min_collat_ratio: InstanceStore<u32>,
+    min_collat_ratio: InstanceItem<u32>,
     /// each Address can only have one CDP per Asset
     cdps: PersistentMap<Address, CDPInternal>,
     /* stability pool fields */
@@ -79,23 +79,23 @@ pub struct Token {
     /// stability pool compound records
     compound_record: PersistentMap<u64, i128>,
     /// total xasset in the stability pool
-    total_xasset: PersistentStore<i128>,
+    total_xasset: PersistentItem<i128>,
     /// total collateral in the stability pool
-    total_collateral: PersistentStore<i128>,
+    total_collateral: PersistentItem<i128>,
     /// current product constant of the stability pool
-    product_constant: PersistentStore<i128>,
+    product_constant: PersistentItem<i128>,
     /// current compounded constant of the stability pool
-    compounded_constant: PersistentStore<i128>,
+    compounded_constant: PersistentItem<i128>,
     /// current epoch of the stability pool
-    epoch: PersistentStore<u64>,
+    epoch: PersistentItem<u64>,
     /// current total of collected fees for stability pool
-    fees_collected: PersistentStore<i128>,
+    fees_collected: PersistentItem<i128>,
     /// stability pool deposit fee
-    deposit_fee: InstanceStore<i128>,
+    deposit_fee: InstanceItem<i128>,
     /// stability pool stake fee
-    stake_fee: InstanceStore<i128>,
+    stake_fee: InstanceItem<i128>,
     /// stability pool fee amount returned upon unstaking
-    unstake_return: InstanceStore<i128>,
+    unstake_return: InstanceItem<i128>,
 }
 
 impl Token {
