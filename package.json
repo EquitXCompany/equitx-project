@@ -12,13 +12,14 @@
   "name": "equitx",
   "scripts": {
     "astro": "astro",
-    "build": "LOAM_ENV=staging loam build --build-clients && astro check && astro build",
-    "dev": "concurrently \"loam dev --build-clients\" \"astro dev\"",
+    "build": "LOAM_ENV=staging loam build --build-clients && npm run install:contracts && astro check && astro build",
+    "dev": "LOAM_ENV=development loam build --build-clients && npm run install:contracts && astro dev",
     "preview": "astro preview",
     "start": "concurrently \"loam dev --build-clients\" \"astro dev\"",
-    "subql:codegen": "cd subquery && subql codegen",
-    "subql:build": "cd subquery && subql build",
-    "subql:start": "cd subquery && docker-compose up"
+    "install:contracts": "npm run install:all-contracts && npm run build:all-contracts",
+    "install:all-contracts": "npm run foreach-contract -- npm install",
+    "build:all-contracts": "npm run foreach-contract -- npm run build",
+    "foreach-contract": "node scripts/foreach-contract.js"
   },
   "type": "module",
   "version": "0.0.1",
