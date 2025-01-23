@@ -16,7 +16,7 @@ const config: DataSourceOptions = {
   database: "equitxindexer",
   entities: [Asset, Pricefeed, CDP, Staker, LiquidityPool, Singleton, LastQueriedTimestamp],
   synchronize: false,
-  migrations: ["src/migration/**/*.ts"],
+  migrations: ["migration/**/*.ts"],
 };
 
 const dataSource = new DataSource(config);
