@@ -1,18 +1,21 @@
 import { useState } from 'react';
-import type { CDP } from "xasset";
-import { useCdps } from '../../hooks/useCdps';
+import { useCdps, CalculateCollateralizationRatio } from '../../hooks/useCdps';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
 import { getStatusColor } from "../../../utils/contractHelpers";
+import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
 
 function List() {
   const [lastQueriedTimestamp] = useState(() => Math.floor(Date.now() / 1000) - 86400); // Last 24 hours
-  const { data: cdps, isLoading, error } = useCdps(lastQueriedTimestamp);
+  const { data: cdps, isLoading: cdpsLoading, error: cdpsError } = useCdps(lastQueriedTimestamp);
+  const { data: stabilityData, isLoading: stabilityLoading, error: stabilityError } = useStabilityPoolMetadata();
   const { account } = useWallet();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>An error occurred: {(error as Error).message}</div>;
-  if (!cdps) return <div>No CDPs found</div>;
+  if (cdpsLoading || stabilityLoading) return <div>Loading...</div>;
+  if (cdpsError || stabilityError) return <div>An error occurred: {cdpsError?.message || stabilityError?.message}</div>;
+  if (!cdps || !stabilityData) return <div>No CDPs found</div>;
+
+  const { lastpriceXLM, lastpriceAsset } = stabilityData;
 
   const indexOfYours = cdps.findIndex((cdp) => cdp.lender === account);
   const yours = cdps[indexOfYours];
@@ -43,7 +46,7 @@ function List() {
               style={{
                 color: getStatusColor(cdp.status),
               }} >
-              {cdp.status} ({cdp.collateralizationRatio / 100}%
+              {cdp.status} ({CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).div(100).toFixed(3)}%
               collateralized)
             </div>
           </Card>

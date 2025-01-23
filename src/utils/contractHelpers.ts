@@ -1,5 +1,6 @@
 import { freighter } from "../wallet";
-import { type Result } from "@stellar/stellar-sdk/contract";
+import type { Result } from '@stellar/stellar-sdk/contract';
+
 
 export async function authenticatedContractCall(contractMethod: any, params: any) {
   const publicKey = (await freighter.getAddress()).address;

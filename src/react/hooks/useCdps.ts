@@ -1,8 +1,24 @@
-import { useQuery } from 'react-query';
-import type { CDP } from "xasset";
+import { useQuery, type UseQueryResult } from 'react-query';
 import { apiClient } from '../../utils/apiClient';
+import BigNumber from 'bignumber.js';
 
-async function fetchCdps(lastQueriedTimestamp: number): Promise<CDP[]> {
+export type IndexedCDP = {
+  lender: string;
+  contract_id: string;
+  xlm_deposited: BigNumber;
+  asset_lent: BigNumber;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+export function CalculateCollateralizationRatio(cdp: IndexedCDP, xlm_price: BigNumber, xasset_price: BigNumber): BigNumber {
+  if (cdp.asset_lent === BigNumber(0) || xasset_price === BigNumber(0)) {
+    return BigNumber(Infinity);
+  }
+  return (cdp.xlm_deposited.times(xlm_price)).div(cdp.asset_lent.times(xasset_price));
+}
+
+async function fetchCdps(lastQueriedTimestamp: number): Promise<IndexedCDP[]> {
   try {
     const { data } = await apiClient.post('/retroshadesv1', {
       query: `SELECT * FROM cdp1a16c60a7890c14872ae7c3a025c31a9 WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`
@@ -19,14 +35,13 @@ async function fetchCdps(lastQueriedTimestamp: number): Promise<CDP[]> {
 
     // Transform the data into the CDP type
     return Array.from(latestEntries.values()).map((item: any) => ({
-      id: item.id,
-      lender: item.contract_id,
-      xlmDeposited: BigInt(item.xlm_deposited),
-      assetLent: BigInt(item.asset_lent),
-      collateralizationRatio: 0, // Calculation needed based on your business logic
+      lender: item.id,
+      contract_id: item.contract_id,
+      xlm_deposited: BigNumber(item.xlm_deposited),
+      asset_lent: BigNumber(item.asset_lent),
       status: item.status[0],
-      createdAt: new Date(item.timestamp * 1000).toISOString(),
-      updatedAt: new Date(item.timestamp * 1000).toISOString(),
+      createdAt: new Date(item.timestamp * 1000),
+      updatedAt: new Date(item.timestamp * 1000),
     }));
   } catch (error) {
     console.error(error);
@@ -34,8 +49,14 @@ async function fetchCdps(lastQueriedTimestamp: number): Promise<CDP[]> {
   }
 }
 
-export function useCdps(lastQueriedTimestamp: number) {
-  return useQuery(['cdps', lastQueriedTimestamp], () => fetchCdps(lastQueriedTimestamp), {
-    // Add any additional options here, such as refetch interval, etc.
-  });
+export function useCdps(lastQueriedTimestamp: number): UseQueryResult<IndexedCDP[], Error> {
+  return useQuery<IndexedCDP[], Error>(
+    ['cdps', lastQueriedTimestamp],
+    () => fetchCdps(lastQueriedTimestamp),
+    {
+      refetchInterval: 300000, // Refetch every 5 minutes (300,000 milliseconds)
+      retry: 3,               // Retry failed request up to 3 times
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff with cap at 30 seconds
+    }
+  );
 }

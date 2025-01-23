@@ -15,7 +15,7 @@
     "build": "LOAM_ENV=staging loam build --build-clients && npm run install:contracts && astro check && astro build",
     "dev": "LOAM_ENV=development loam build --build-clients && npm run install:contracts && astro dev",
     "preview": "astro preview",
-    "start": "concurrently \"loam dev --build-clients\" \"astro dev\"",
+    "start": "npm run dev",
     "install:contracts": "npm run install:all-contracts && npm run build:all-contracts",
     "install:all-contracts": "npm run foreach-contract -- npm install",
     "build:all-contracts": "npm run foreach-contract -- npm run build",
@@ -24,8 +24,7 @@
   "type": "module",
   "version": "0.0.1",
   "workspaces": [
-    "packages/*",
-    "subquery"
+    "packages/*"
   ],
   "dependencies": {
     "@astrojs/react": "^3.6.2",
@@ -34,6 +33,7 @@
     "@mui/icons-material": "^6.1.1",
     "@mui/material": "^6.1.1",
     "@stellar/freighter-api": "^3.0.0",
+    "@stellar/stellar-sdk": "13.0.0",
     "@types/react": "^18.3.6",
     "@types/react-dom": "^18.3.0",
     "axios": "^1.7.9",

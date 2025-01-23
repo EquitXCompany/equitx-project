@@ -1,49 +1,20 @@
-import { useLoaderData, Outlet, useNavigate } from "react-router-dom";
-import type { LoaderFunction } from "react-router-dom";
-import xasset from "../../../contracts/xasset";
-import Connect from "../../components/connect";
-import BigNumber from "bignumber.js";
-import { BASIS_POINTS } from "../../../constants";
+import { Outlet, useNavigate } from "react-router-dom";
 import { Box, Typography, Grid, Paper, Container, Button } from '@mui/material';
 import AddressDisplay from '../../components/cdp/AddressDisplay';
-
-interface StabilityPoolMetadata {
-  lastpriceXLM: BigNumber;
-  lastpriceAsset: BigNumber;
-  min_ratio: number;
-  symbolAsset: string;
-  contractId: string;
-}
-
-export const loader: LoaderFunction = async (): Promise<StabilityPoolMetadata> => {
-  const tx = await xasset.minimum_collateralization_ratio();
-  return {
-    lastpriceXLM: new BigNumber(await xasset.lastprice_xlm().then((t) => {
-      if (t.result.isOk()) {
-        return t.result.unwrap().price.toString();
-      } else {
-        console.error(t.result);
-        throw new Error("Failed to fetch XLM price");
-      }
-    })).div(10 ** 14),
-    
-    lastpriceAsset: new BigNumber(await xasset.lastprice_asset().then((t) => {
-      if (t.result.isOk()) {
-        return t.result.unwrap().price.toString();
-      } else {
-        console.error(t.result);
-        throw new Error("Failed to fetch asset price");
-      }
-    })).div(10 ** 14),
-    min_ratio: tx.result,
-    symbolAsset: "xUSD",
-    contractId: xasset.options.contractId,
-  };
-};
+import Connect from "../../components/connect";
+import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
+import BigNumber from "bignumber.js";
+import { BASIS_POINTS } from "../../../constants";
 
 function Root() {
-  const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = useLoaderData() as StabilityPoolMetadata;
+  const { data: stabilityData, error, isLoading } = useStabilityPoolMetadata();
   const navigate = useNavigate();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>An error occurred: {error.message}</div>;
+  if (!stabilityData) return <div>No data available</div>;
+
+  const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = stabilityData;
 
   const handleStabilityPoolClick = () => {
     navigate(`/stability-pool/${contractId}`);
