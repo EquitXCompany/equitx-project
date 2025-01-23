@@ -1,0 +1,42 @@
+{
+    "name": "stellar-cdp-server",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "workspaces": [
+        "../packages/*"
+    ],
+    "scripts": {
+        "typeorm": "typeorm-ts-node-commonjs",
+        "migration:run": "npm run typeorm migration:run -- -d config/ormconfig.ts",
+        "migration:revert": "npm run typeorm migration:revert -- -d config/ormconfig.ts",
+        "start": "node dist/index.js",
+        "dev": "nodemon src/index.ts",
+        "build": "tsc",
+        "test": "jest"
+    },
+    "dependencies": {
+        "axios": "^1.7.9",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "express-rate-limit": "^7.5.0",
+        "helmet": "^8.0.0",
+        "joi": "^17.13.3",
+        "node-cron": "^3.0.3",
+        "pg": "^8.13.1",
+        "stellar-sdk": "^13.1.0",
+        "typeorm": "^0.3.20",
+        "winston": "^3.17.0"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "@types/jest": "^29.5.14",
+        "@types/node": "^22.10.9",
+        "@types/pg": "^8.11.10",
+        "@types/supertest": "^6.0.2",
+        "jest": "^29.7.0",
+        "nodemon": "^3.1.9",
+        "supertest": "^7.0.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.7.3"
+    }
+}

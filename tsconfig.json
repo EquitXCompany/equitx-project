@@ -1,7 +1,8 @@
 {
   "extends": "astro/tsconfigs/strictest",
   "exclude": [
-    "packages"
+    "packages",
+    "server"
   ],
   "compilerOptions": {
     "jsx": "react-jsx",

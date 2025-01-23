@@ -1,0 +1,9 @@
+{
+  "exclude": [
+    "../packages",
+  ],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+  }
+}
