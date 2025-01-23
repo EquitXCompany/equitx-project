@@ -14,6 +14,7 @@ use crate::{Asset, PriceData};
 pub struct DataFeed {
     // key is Asset, value is Map<timestamp, price>
     asset_prices: PersistentMap<Asset, Map<u64, i128>>,
+    // assets available in the contract
     assets: PersistentItem<Vec<Asset>>,
     base: InstanceItem<Asset>,
     decimals: InstanceItem<u32>,
@@ -24,7 +25,7 @@ pub struct DataFeed {
 impl DataFeed {
     #[must_use]
     pub fn new(
-        // The asset_prices supported by the contract.
+        // The assets supported by the contract.
         assets: Vec<Asset>,
         // The base asset for the prices.
         base: Asset,
