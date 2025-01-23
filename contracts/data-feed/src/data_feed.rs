@@ -1,5 +1,5 @@
 use loam_sdk::loamstorage;
-use loam_sdk::soroban_sdk::PersistentItem;
+use loam_sdk::soroban_sdk::{Lazy, PersistentItem};
 use loam_sdk::{
     soroban_sdk::{self, env, InstanceItem, LoamKey, Map, PersistentMap, Vec},
     vec,
@@ -46,15 +46,15 @@ impl DataFeed {
 }
 
 impl IsSep40Admin for DataFeed {
-    fn sep40_init(&self, __assets: Vec<Asset>, __base: Asset, __decimals: u32, __resolution: u32) {
+    fn sep40_init(&self, assets: Vec<Asset>, base: Asset, decimals: u32, resolution: u32) {
         Contract::require_auth();
-        // DataFeed::set_lazy(DataFeed::new(assets, base, decimals, resolution));
+        DataFeed::set_lazy(DataFeed::new(assets, base, decimals, resolution));
     }
 
     fn add_assets(&mut self, assets: Vec<Asset>) {
         Contract::require_auth();
         let env = env();
-        let mut assets_vec = self.assets.get().expect("Assets must be initialized").clone();
+        let mut assets_vec = self.assets.get().clone().unwrap_or(Vec::new(env));
         for asset in assets {
             assets_vec.push_back(asset.clone());
             self.asset_prices.set(asset, &Map::new(env))
@@ -74,7 +74,10 @@ impl IsSep40Admin for DataFeed {
 
 impl IsSep40 for DataFeed {
     fn assets(&self) -> loam_sdk::soroban_sdk::Vec<Asset> {
-        self.assets.get().expect("Assets must be initialized").clone()
+        self.assets
+            .get()
+            .expect("Assets must be initialized")
+            .clone()
     }
 
     fn base(&self) -> Asset {
