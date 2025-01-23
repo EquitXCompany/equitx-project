@@ -1,21 +1,25 @@
+use loam_sdk::loamstorage;
+use loam_sdk::soroban_sdk::{Lazy, PersistentItem};
 use loam_sdk::{
-    soroban_sdk::{self, contracttype, env, Lazy, Map, Vec},
-    vec, IntoKey,
+    soroban_sdk::{self, env, InstanceItem, LoamKey, Map, PersistentMap, Vec},
+    vec,
 };
 
 use crate::sep40::{IsSep40, IsSep40Admin};
 use crate::Contract;
 use crate::{Asset, PriceData};
 
-#[contracttype]
-#[derive(IntoKey)]
+#[loamstorage]
+#[derive(Default)]
 pub struct DataFeed {
     // key is Asset, value is Map<timestamp, price>
-    assets: Map<Asset, Map<u64, i128>>,
-    base: Asset,
-    decimals: u32,
-    resolution: u32,
-    last_timestamp: u64,
+    asset_prices: PersistentMap<Asset, Map<u64, i128>>,
+    // assets available in the contract
+    assets: PersistentItem<Vec<Asset>>,
+    base: InstanceItem<Asset>,
+    decimals: InstanceItem<u32>,
+    resolution: InstanceItem<u32>,
+    last_timestamp: InstanceItem<u64>,
 }
 
 impl DataFeed {
@@ -30,30 +34,15 @@ impl DataFeed {
         // The resolution of the prices.
         resolution: u32,
     ) -> Self {
-        let mut asset_map = Map::new(env());
+        let mut feed = DataFeed::default();
+        feed.assets.set(&assets);
         for asset in assets.into_iter() {
-            asset_map.set(asset, Map::new(env()));
+            feed.asset_prices.set(asset, &Map::new(env()));
         }
-        DataFeed {
-            assets: asset_map,
-            base,
-            decimals,
-            resolution,
-            last_timestamp: 0,
-        }
-    }
-}
-
-/// Loam SDK currently requires us to implement `Default`. This is nonsense and will be fixed in
-/// https://github.com/loambuild/loam/issues/92
-impl Default for DataFeed {
-    fn default() -> Self {
-        DataFeed::new(
-            vec![],
-            Asset::Stellar(env().current_contract_address()),
-            0,
-            0,
-        )
+        feed.base.set(&base);
+        feed.decimals.set(&decimals);
+        feed.resolution.set(&resolution);
+        feed
     }
 }
 
@@ -66,48 +55,60 @@ impl IsSep40Admin for DataFeed {
     fn add_assets(&mut self, assets: Vec<Asset>) {
         Contract::require_auth();
         let env = env();
+        let mut assets_vec = self.assets.get().clone().unwrap_or(Vec::new(env));
         for asset in assets {
-            self.assets.set(asset, Map::new(env))
+            assets_vec.push_back(asset.clone());
+            self.asset_prices.set(asset, &Map::new(env))
         }
+        self.assets.set(&assets_vec);
     }
 
     fn set_asset_price(&mut self, asset_id: Asset, price: i128, timestamp: u64) {
         Contract::require_auth();
-        let Some(mut asset) = self.assets.get(asset_id.clone()) else {
+        let Some(mut asset) = self.asset_prices.get(asset_id.clone()) else {
             panic!("Asset not found");
         };
         asset.set(timestamp, price);
-        self.assets.set(asset_id, asset);
+        self.asset_prices.set(asset_id, &asset);
     }
 }
 
 impl IsSep40 for DataFeed {
     fn assets(&self) -> loam_sdk::soroban_sdk::Vec<Asset> {
-        self.assets.keys()
+        self.assets
+            .get()
+            .expect("Assets must be initialized")
+            .clone()
     }
 
     fn base(&self) -> Asset {
-        self.base.clone()
+        self.base
+            .get()
+            .expect("Base needs to be initialized")
+            .clone()
     }
 
     fn decimals(&self) -> u32 {
         self.decimals
+            .get()
+            .expect("Decimals needs to be initialized")
+            .clone()
     }
 
     fn lastprice(&self, asset: Asset) -> Option<PriceData> {
-        let asset = self.assets.get(asset.clone())?;
+        let asset = self.asset_prices.get(asset.clone())?;
         let timestamp = asset.keys().last()?;
         let price = asset.get(timestamp)?;
         Some(PriceData { price, timestamp })
     }
 
     fn price(&self, asset: Asset, timestamp: u64) -> Option<PriceData> {
-        let price = self.assets.get(asset)?.get(timestamp)?;
+        let price = self.asset_prices.get(asset)?.get(timestamp)?;
         Some(PriceData { price, timestamp })
     }
 
     fn prices(&self, asset: Asset, records: u32) -> Option<Vec<PriceData>> {
-        let asset = self.assets.get(asset)?;
+        let asset = self.asset_prices.get(asset)?;
         let mut prices = vec![];
         asset
             .keys()
@@ -125,5 +126,8 @@ impl IsSep40 for DataFeed {
 
     fn resolution(&self) -> u32 {
         self.resolution
+            .get()
+            .expect("Resolution needs to be initialized")
+            .clone()
     }
 }

@@ -2,17 +2,12 @@
 extern crate std;
 use crate::{Asset, SorobanContract__, SorobanContract__Client};
 
+use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env};
 use loam_sdk::soroban_sdk::{Symbol, Vec};
-use loam_sdk::soroban_sdk::{
-    testutils::Address as _,
-    Address, Env,
-};
 
-
-fn create_datafeed_contract<'a>(
-    e: &Env,
-) -> SorobanContract__Client<'a> {
-    let datafeed = SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
+fn create_datafeed_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
+    let datafeed =
+        SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
     let asset_xlm: Asset = Asset::Other(Symbol::new(e, "XLM"));
     let asset_xusd: Asset = Asset::Other(Symbol::new(e, "XUSD"));
     let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
@@ -55,7 +50,10 @@ fn test_data_feed() {
     let timestamp1: u64 = 1_000_000_000;
     let price1 = 10_000_000;
     datafeed.set_asset_price(&asset_xlm, &price1, &timestamp1);
-    assert_eq!(datafeed.price(&asset_xlm, &timestamp1).unwrap().price, price1);
+    assert_eq!(
+        datafeed.price(&asset_xlm, &timestamp1).unwrap().price,
+        price1
+    );
 
     // Test lastprice
     let last_price = datafeed.lastprice(&asset_xlm).unwrap();
@@ -88,5 +86,7 @@ fn test_data_feed() {
 
     // Test price at non-existent timestamp
     let non_existent_timestamp: u64 = 2_000_000_000;
-    assert!(datafeed.price(&asset_xlm, &non_existent_timestamp).is_none());
+    assert!(datafeed
+        .price(&asset_xlm, &non_existent_timestamp)
+        .is_none());
 }
