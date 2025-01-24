@@ -1,0 +1,17 @@
+interface AssetDetails {
+  feed_address: string;
+  pool_address: string;
+  retroshades_cdp: string;
+}
+
+export interface AssetConfig {
+  [key: string]: AssetDetails;
+}
+
+export const assetConfig: AssetConfig = {
+  'USDT': {
+    feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
+    pool_address: "CCEI7AOWHSNYENMFEADRDNISWPOZYZ4JEUN2H7LKSHVAKHXTQGLEE6RI",
+    retroshades_cdp: 'cdp1a16c60a7890c14872ae7c3a025c31a9',
+  }
+}
