@@ -1,15 +1,15 @@
 import cron from "node-cron";
-import { CDP } from "../entity/CDP";
-import { LastQueriedTimestamp } from "../entity/LastQueriedTimestamp";
+import { CDP, CDPStatus } from "../entity/CDP";
 import { AppDataSource } from "../ormconfig";
 import BigNumber from "bignumber.js";
 import dotenv from "dotenv";
 import axios from "axios";
 import { serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
-import { Asset } from "../entity/Asset";
 import { LiquidityPoolService } from "../services/liquidityPoolService";
 import { assetConfig } from "../config/AssetConfig";
 import { createAssetsIfNotExist } from "./createAssets";
+import { AssetService } from "../services/assetService";
+import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 
 dotenv.config();
 
@@ -38,7 +38,6 @@ async function fetchCDPs(
     const { data } = await apiClient.post("/retroshadesv1", {
       query: `SELECT * FROM ${tableName} WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`,
     });
-
     const latestEntries = new Map<string, RetroShadeCDP>();
     data.forEach((item: RetroShadeCDP) => {
       if (
@@ -56,57 +55,47 @@ async function fetchCDPs(
   }
 }
 
-async function updateCDPsInDatabase(cdps: RetroShadeCDP[]): Promise<void> {
+async function updateCDPsInDatabase(cdps: RetroShadeCDP[], asset_symbol: string): Promise<void> {
   const cdpRepository = AppDataSource.getRepository(CDP);
 
   for (const cdp of cdps) {
-    const [asset_symbol, addr] = cdp.contract_id.split(":");
+    const address = cdp.id;
 
     await cdpRepository.save({
       asset_symbol,
-      addr,
-      xlm_dep: new BigNumber(cdp.xlm_deposited).toString(),
-      asset_lnt: new BigNumber(cdp.asset_lent).toString(),
-      status: cdp.status[0] === "active" ? 1 : 0,
+      address,
+      xlm_deposited: new BigNumber(cdp.xlm_deposited).toString(),
+      asset_lent: new BigNumber(cdp.asset_lent).toString(),
+      status: CDPStatus[cdp.status[0] as keyof typeof CDPStatus],
     });
   }
 }
 
 async function getLastQueriedTimestamp(assetSymbol: string): Promise<number> {
-  const assetRepository = AppDataSource.getRepository(Asset);
-  const timestampRepository = AppDataSource.getRepository(LastQueriedTimestamp);
+  const assetService = await AssetService.create();
+  const lastQueriedTimestampService = await LastQueriedTimestampService.create();
 
-  const asset = await assetRepository.findOne({
-    where: { symbol: assetSymbol },
-  });
+  const asset = await assetService.findOne(assetSymbol);
   if (!asset) {
     throw new Error(`Asset with symbol ${assetSymbol} not found`);
   }
 
-  const lastTimestamp = await timestampRepository.findOne({
-    where: { asset: asset },
-  });
-  return lastTimestamp ? lastTimestamp.timestamp : 0;
+  return await lastQueriedTimestampService.getLastQueriedTimestamp(asset);
 }
 
 async function updateLastQueriedTimestamp(
   assetSymbol: string,
   timestamp: number
 ): Promise<void> {
-  const assetRepository = AppDataSource.getRepository(Asset);
-  const timestampRepository = AppDataSource.getRepository(LastQueriedTimestamp);
+  const assetService = await AssetService.create();
+  const lastQueriedTimestampService = await LastQueriedTimestampService.create();
 
-  const asset = await assetRepository.findOne({
-    where: { symbol: assetSymbol },
-  });
+  const asset = await assetService.findOne(assetSymbol);
   if (!asset) {
     throw new Error(`Asset with symbol ${assetSymbol} not found`);
   }
 
-  await timestampRepository.save({
-    asset: asset,
-    timestamp: timestamp,
-  });
+  await lastQueriedTimestampService.updateLastQueriedTimestamp(asset, timestamp);
 }
 
 async function getLiquidityPoolId(assetSymbol: string): Promise<string> {
@@ -120,22 +109,25 @@ async function updateCDPs() {
   try {
     for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
       const lastTimestamp = await getLastQueriedTimestamp(assetSymbol);
+      console.log(`querying cdps from reflector with timestamp ${lastTimestamp}`);
       const cdps = await fetchCDPs(assetDetails.retroshades_cdp, lastTimestamp);
       const liquidityPoolId = await getLiquidityPoolId(assetSymbol);
-      await updateCDPsInDatabase(cdps);
+      await updateCDPsInDatabase(cdps, assetSymbol);
 
       if (cdps.length > 0) {
         const newLastTimestamp = Math.max(...cdps.map((cdp) => cdp.timestamp));
         await updateLastQueriedTimestamp(assetSymbol, newLastTimestamp);
+        console.log(`Updated last queried timestamp for ${assetSymbol} with ${newLastTimestamp}`);
       }
 
       console.log(`Updated ${cdps.length} CDPs for ${assetSymbol}`);
 
       // Process insolvent and frozen CDPs
+      // todo: also need to periodically check when prices change for newly insolvent CDPs
       for (const cdp of cdps) {
-        const lender = cdp.contract_id;
+        const lender = cdp.id;
 
-        if (cdp.status[0] === "insolvent") {
+        if (cdp.status[0] === "Insolvent") {
           console.log(
             `Attempting to freeze insolvent CDP for lender: ${lender}`
           );
@@ -151,7 +143,7 @@ async function updateCDPs() {
           } catch (error) {
             console.error(`Error freezing CDP for lender ${lender}:`, error);
           }
-        } else if (cdp.status[0] === "frozen") {
+        } else if (cdp.status[0] === "Frozen") {
           console.log(
             `Attempting to liquidate frozen CDP for lender: ${lender}`
           );
