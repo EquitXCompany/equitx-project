@@ -4,6 +4,7 @@ export class InitialSchema1738007856160 implements MigrationInterface {
     name = 'InitialSchema1738007856160'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE TYPE "public"."cdps_status_enum" AS ENUM ('0', '1', '2', '3')`);
         await queryRunner.query(`CREATE TABLE "cdps" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "address" character(56) NOT NULL, "xlm_deposited" bigint NOT NULL, "asset_lent" bigint NOT NULL, "status" "public"."cdps_status_enum" NOT NULL DEFAULT '0', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_766b98b2c5e557794660cb1042a" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_6a90f914124f01984b65d1c5b7" ON "cdps" ("address") `);
         await queryRunner.query(`CREATE INDEX "IDX_d8c8677fcaba2dd0631ddb3d1c" ON "cdps" ("asset_id") `);
@@ -47,6 +48,8 @@ export class InitialSchema1738007856160 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "public"."IDX_d8c8677fcaba2dd0631ddb3d1c"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_6a90f914124f01984b65d1c5b7"`);
         await queryRunner.query(`DROP TABLE "cdps"`);
+        await queryRunner.query(`DROP TYPE "public"."cdps_status_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."cdps_status_enum"`);
     }
 
 }
