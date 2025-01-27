@@ -93,7 +93,7 @@ async function updateLastQueriedTimestamp(
   }
 
   asset.last_queried_timestamp = timestamp;
-  await assetService.update(assetSymbol, asset);
+  await assetService.update(asset.id, asset);
 }
 
 async function getLiquidityPoolId(assetSymbol: string): Promise<string> {

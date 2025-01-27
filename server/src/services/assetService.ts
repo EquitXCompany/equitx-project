@@ -29,9 +29,9 @@ export class AssetService {
     return this.assetRepository.save(asset);
   }
 
-  async update(symbol: string, asset: Partial<Asset>): Promise<Asset | null> {
-    await this.assetRepository.update(symbol, asset);
-    return this.assetRepository.findOne({ where: { symbol } });
+  async update(id: string, asset: Partial<Asset>): Promise<Asset | null> {
+    await this.assetRepository.update(id, asset);
+    return this.assetRepository.findOne({ where: { id } });
   }
 
   async delete(symbol: string): Promise<void> {
