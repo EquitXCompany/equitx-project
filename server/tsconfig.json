@@ -1,0 +1,21 @@
+{
+  "exclude": [
+    "../packages",
+    "./migrations"
+  ],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "moduleResolution": "Node16",
+    "module": "Node16",
+    "baseUrl": "./",
+    "paths": {
+      "*": ["src/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "../node_modules/@types"],
+    "types": ["node", "jest", "urijs"]
+  }
+}

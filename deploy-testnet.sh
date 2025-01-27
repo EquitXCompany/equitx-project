@@ -7,7 +7,7 @@ export STELLAR_ACCOUNT=equitxtestnet
 rm -rf target/loam
 loam build 
 export XUSD=$(stellar contract deploy --wasm target/loam/xasset.wasm)
-export DATAFEED=$(stellar contract alias show data_feed)
+export DATAFEED="CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63"
 stellar contract invoke --id $XUSD -- admin_set --new-admin equitxtestnet
 stellar contract invoke --id $XUSD -- cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --asset_contract "$DATAFEED" --pegged_asset USDT --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7
 sed -i.bak 's/xasset = { id = "\([^"]*\)"/xasset = { id = "'$XUSD'"/' environments.toml
