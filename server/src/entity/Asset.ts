@@ -11,8 +11,7 @@ import {
 import { CDP } from "./CDP";
 import { LiquidityPool } from "./LiquidityPool";
 import { Staker } from "./Staker";
-import { Singleton } from "./Singleton";
-import { LastQueriedTimestamp } from "./LastQueriedTimestamp";
+import { ContractState } from "./ContractState";
 import { PriceHistory } from "./PriceHistory";
 
 @Entity("asset")
@@ -39,11 +38,11 @@ export class Asset {
   @OneToMany(() => Staker, (staker) => staker.asset)
   stakers!: Staker[];
 
-  @OneToMany(() => Singleton, (singleton) => singleton.asset)
-  singletons!: Singleton[];
+  @OneToMany(() => ContractState, (singleton) => singleton.asset)
+  singletons!: ContractState[];
 
-  @OneToOne(() => LastQueriedTimestamp, lastQueriedTimestamp => lastQueriedTimestamp.asset)
-  lastQueriedTimestamp!: LastQueriedTimestamp;
+  @Column({ type: "bigint", default: 0 })
+  last_queried_timestamp!: number;
 
   @CreateDateColumn()
   created_at!: Date;

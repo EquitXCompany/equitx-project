@@ -11,7 +11,7 @@ import {
 import { Asset } from "./Asset";
 
 @Entity("singletons")
-export class Singleton {
+export class ContractState {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 

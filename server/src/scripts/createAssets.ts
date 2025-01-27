@@ -1,7 +1,6 @@
 import { AppDataSource } from "../ormconfig";
 import { AssetService } from "../services/assetService";
 import { LiquidityPoolService } from "../services/liquidityPoolService";
-import { LastQueriedTimestamp } from "../entity/LastQueriedTimestamp";
 import { AssetConfig } from "../config/AssetConfig";
 import { Asset } from "../entity/Asset";
 import { LiquidityPool } from "../entity/LiquidityPool";
@@ -25,12 +24,6 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
         liquidityPool.asset = asset;
         liquidityPool.pool_address = config.pool_address;
         await liquidityPoolService.insert(liquidityPool);
-
-        // Create LastQueriedTimestamp
-        const lastQueriedTimestamp = new LastQueriedTimestamp();
-        lastQueriedTimestamp.asset = asset;
-        lastQueriedTimestamp.timestamp = 0; // Initial timestamp set to 0
-        await AppDataSource.manager.save(lastQueriedTimestamp);
 
         console.log(`Created asset ${symbol} with associated tables`);
       } else {

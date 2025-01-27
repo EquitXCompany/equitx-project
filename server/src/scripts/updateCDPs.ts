@@ -9,7 +9,6 @@ import { LiquidityPoolService } from "../services/liquidityPoolService";
 import { assetConfig } from "../config/AssetConfig";
 import { createAssetsIfNotExist } from "./createAssets";
 import { AssetService } from "../services/assetService";
-import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 
 dotenv.config();
 
@@ -73,14 +72,13 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], asset_symbol: string)
 
 async function getLastQueriedTimestamp(assetSymbol: string): Promise<number> {
   const assetService = await AssetService.create();
-  const lastQueriedTimestampService = await LastQueriedTimestampService.create();
 
   const asset = await assetService.findOne(assetSymbol);
   if (!asset) {
     throw new Error(`Asset with symbol ${assetSymbol} not found`);
   }
 
-  return await lastQueriedTimestampService.getLastQueriedTimestamp(asset);
+  return asset.last_queried_timestamp;
 }
 
 async function updateLastQueriedTimestamp(
@@ -88,14 +86,14 @@ async function updateLastQueriedTimestamp(
   timestamp: number
 ): Promise<void> {
   const assetService = await AssetService.create();
-  const lastQueriedTimestampService = await LastQueriedTimestampService.create();
 
   const asset = await assetService.findOne(assetSymbol);
   if (!asset) {
     throw new Error(`Asset with symbol ${assetSymbol} not found`);
   }
 
-  await lastQueriedTimestampService.updateLastQueriedTimestamp(asset, timestamp);
+  asset.last_queried_timestamp = timestamp;
+  await assetService.update(assetSymbol, asset);
 }
 
 async function getLiquidityPoolId(assetSymbol: string): Promise<string> {

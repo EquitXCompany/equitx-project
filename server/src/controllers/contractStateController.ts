@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
-import { SingletonService } from "../services/singletonService";
+import { ContractStateService } from "../services/contractStateService";
 
-export class SingletonController {
-  private singletonService: SingletonService;
+export class ContractStateController {
+  private singletonService: ContractStateService;
 
-  private constructor(singletonService: SingletonService) {
+  private constructor(singletonService: ContractStateService) {
     this.singletonService = singletonService;
   }
 
-  static async create(): Promise<SingletonController> {
-    const singletonService = await SingletonService.create();
-    return new SingletonController(singletonService);
+  static async create(): Promise<ContractStateController> {
+    const singletonService = await ContractStateService.create();
+    return new ContractStateController(singletonService);
   }
 
   async getAllSingletons(req: Request, res: Response): Promise<void> {
