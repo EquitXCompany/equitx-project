@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "dist/src/index.js",
   "workspaces": [
-    "../packages/*"
+    "../packages/*",
+    "packages/*"
   ],
   "scripts": {
     "typeorm": "typeorm-ts-node-commonjs",

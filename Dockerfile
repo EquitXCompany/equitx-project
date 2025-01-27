@@ -20,11 +20,16 @@ RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
 
 # Install node modules
-COPY package-lock.json package.json ./
+COPY server/package-lock.json server/package.json ./
 RUN npm ci --include=dev
 
 # Copy application code
-COPY . .
+COPY server .
+
+# Copy contract packages
+COPY packages ./packages
+
+# RUN cd packages/xasset && npm install && npm run build
 
 # Build application
 RUN npm run build
