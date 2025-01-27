@@ -3,7 +3,7 @@
     "@astrojs/check": "^0.4.1",
     "@subql/cli": "^5.4.0",
     "@subql/types": "^3.11.4",
-    "astro": "^4.2.4",
+    "astro": "^4.16.18",
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.1",
     "glob": "^10.4.1",
