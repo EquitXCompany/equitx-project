@@ -24,8 +24,9 @@ const publicKey = keypair.publicKey();
 interface XAssetClient {
   freeze_cdp: (params: any) => Promise<any>;
   liquidate_cdp: (params: any) => Promise<any>;
-  lastprice_xlm: () => Promise<any>;
+  lastprice_xlm: () => Promise<any>; 
   lastprice_asset: () => Promise<any>;
+  minimum_collateralization_ratio: () => Promise<any>;
 }
 
 interface DataFeedClient {
@@ -89,6 +90,10 @@ export async function serverAuthenticatedContractCall(
         needsSign = false;
         tx = await xassetClient.lastprice_asset();
         break;
+      case "minimum_collateralization_ratio":
+        needsSign = false;
+        tx = await xassetClient.minimum_collateralization_ratio();
+        break;
       default:
         throw new Error(`Unsupported xasset method: ${contractMethod}`);
     }
@@ -122,7 +127,7 @@ export async function serverAuthenticatedContractCall(
     }
     else{
       return {
-        status: tx.result.isOk() ? "SUCCESS" : "FAILED",
+        status: typeof tx.result.isOk === 'function' ? tx.result.isOk() ? "SUCCESS" : "FAILED" : "SUCCESS",
         result: tx.result,
       }
     }
@@ -157,6 +162,25 @@ export async function getLatestPriceData(
     };
   } catch (error) {
     console.error(`Error getting price data for ${assetSymbol}:`, error);
+    throw error;
+  }
+}
+
+export async function getMinimumCollateralizationRatio(contractId: string) {
+  try {
+    const ratioData = await serverAuthenticatedContractCall(
+      "minimum_collateralization_ratio",
+      null,
+      contractId,
+      "xasset"
+    );
+
+    if (!ratioData){
+      throw new Error("Could not get minimum collateralization ratio");
+    }
+    return Number(ratioData.result);
+  } catch (error) {
+    console.error("Error getting minimum collateralization ratio:", error);
     throw error;
   }
 }

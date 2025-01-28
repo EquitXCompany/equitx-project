@@ -1,8 +1,8 @@
 import "reflect-metadata";
 import express from "express";
-import dotenv from 'dotenv';
-import path from 'path';
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { AppDataSource } from "./ormconfig";
 import assetRoutes from "./routes/assetRoutes";
 import priceHistoryRoutes from "./routes/priceHistoryRoutes";
@@ -12,6 +12,8 @@ import liquidityPoolRoutes from "./routes/liquidityPoolRoutes";
 import singletonRoutes from "./routes/singletonRoutes";
 import { startCDPUpdateJob } from "./scripts/updateCDPs";
 import { startPriceUpdateJob } from "./scripts/updatePrices";
+import { createAssetsIfNotExist } from "./scripts/createAssets";
+import { assetConfig } from "./config/AssetConfig";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +46,9 @@ AppDataSource.initialize()
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
+
+    // add any new assets if needed
+    await createAssetsIfNotExist(assetConfig);
 
     startPriceUpdateJob();
 

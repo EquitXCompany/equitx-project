@@ -14,7 +14,7 @@ export class LiquidityPool {
   @Column({ type: "varchar", length: 56 })
   pool_address!: string;
 
-  @Column({ type: "decimal", precision: 10, scale: 2 })
+  @Column({ type: "integer" })
   minimum_collateralization_ratio!: number;
 
   @CreateDateColumn()

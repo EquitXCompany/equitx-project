@@ -1,24 +1,24 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialSchema1738007856160 implements MigrationInterface {
-    name = 'InitialSchema1738007856160'
+export class InitialSchema1738096190640 implements MigrationInterface {
+    name = 'InitialSchema1738096190640'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TYPE "public"."cdps_status_enum" AS ENUM ('0', '1', '2', '3')`);
         await queryRunner.query(`CREATE TABLE "cdps" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "address" character(56) NOT NULL, "xlm_deposited" bigint NOT NULL, "asset_lent" bigint NOT NULL, "status" "public"."cdps_status_enum" NOT NULL DEFAULT '0', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_766b98b2c5e557794660cb1042a" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_6a90f914124f01984b65d1c5b7" ON "cdps" ("address") `);
         await queryRunner.query(`CREATE INDEX "IDX_d8c8677fcaba2dd0631ddb3d1c" ON "cdps" ("asset_id") `);
-        await queryRunner.query(`CREATE TABLE "liquidity_pools" ("asset_id" uuid NOT NULL, "pool_address" character varying(56) NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_0e9c01f404f36d69a66360da963" PRIMARY KEY ("asset_id"))`);
+        await queryRunner.query(`CREATE TABLE "liquidity_pools" ("asset_id" uuid NOT NULL, "pool_address" character varying(56) NOT NULL, "minimum_collateralization_ratio" integer NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_0e9c01f404f36d69a66360da963" PRIMARY KEY ("asset_id"))`);
         await queryRunner.query(`CREATE UNIQUE INDEX "IDX_66d0177919f16b48f6a8e3d968" ON "liquidity_pools" ("pool_address") `);
-        await queryRunner.query(`CREATE TABLE "stakers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "address" character varying(56) NOT NULL, "xasset_deposit" bigint NOT NULL, "product_constant" bigint NOT NULL, "compounded_constant" bigint NOT NULL, "epoch" bigint NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_3da4a784c61e62ade7612c317e8" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "stakers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "address" character varying(56) NOT NULL, "xasset_deposit" bigint NOT NULL, "product_constant" bigint NOT NULL, "compounded_constant" bigint NOT NULL, "epoch" numeric(20,0) NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_3da4a784c61e62ade7612c317e8" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_567d0f033a43cd6faefa62831f" ON "stakers" ("address") `);
         await queryRunner.query(`CREATE TABLE "singletons" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "key" character varying(255) NOT NULL, "value" text NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_4228e3294dfb966dc99eb20de3f" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_96a84a7b00108d9cfb0e87f4e6" ON "singletons" ("key") `);
         await queryRunner.query(`CREATE INDEX "IDX_bdb5015d1fd9f4a13e4bc27440" ON "singletons" ("asset_id") `);
-        await queryRunner.query(`CREATE TABLE "price_history" ("id" SERIAL NOT NULL, "timestamp" TIMESTAMP NOT NULL, "price" numeric(18,8) NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "is_latest" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_e41e25472373d4b574b153229e9" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "price_history" ("id" SERIAL NOT NULL, "timestamp" TIMESTAMP NOT NULL, "price" bigint NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "is_latest" boolean NOT NULL DEFAULT false, "asset_id" uuid, CONSTRAINT "PK_e41e25472373d4b574b153229e9" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_289db4cdf9022df4eafc0a09cf" ON "price_history" ("timestamp") `);
         await queryRunner.query(`CREATE INDEX "IDX_3485ea7b6ca7303962a159252a" ON "price_history" ("is_latest") `);
-        await queryRunner.query(`CREATE TABLE "asset" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "symbol" character varying(10) NOT NULL, "feed_address" character varying(56) NOT NULL, "last_queried_timestamp" bigint NOT NULL DEFAULT '0', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_1209d107fe21482beaea51b745e" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "asset" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "symbol" character varying(10) NOT NULL, "feed_address" character varying(56) NOT NULL, "price" bigint NOT NULL, "last_queried_timestamp" bigint NOT NULL DEFAULT '0', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "is_deleted" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_1209d107fe21482beaea51b745e" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE UNIQUE INDEX "IDX_45b83954906fc214e750ba5328" ON "asset" ("symbol") `);
         await queryRunner.query(`ALTER TABLE "cdps" ADD CONSTRAINT "FK_d8c8677fcaba2dd0631ddb3d1cb" FOREIGN KEY ("asset_id") REFERENCES "asset"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "liquidity_pools" ADD CONSTRAINT "FK_0e9c01f404f36d69a66360da963" FOREIGN KEY ("asset_id") REFERENCES "asset"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -49,7 +49,5 @@ export class InitialSchema1738007856160 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "public"."IDX_6a90f914124f01984b65d1c5b7"`);
         await queryRunner.query(`DROP TABLE "cdps"`);
         await queryRunner.query(`DROP TYPE "public"."cdps_status_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."cdps_status_enum"`);
     }
-
 }

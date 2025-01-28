@@ -173,8 +173,6 @@ export async function startCDPUpdateJob() {
   // Run the job every 5 minutes
   cron.schedule("*/5 * * * *", updateCDPs);
 
-  // add any new assets if needed
-  await createAssetsIfNotExist(assetConfig);
   // Run the job immediately on startup
   updateCDPs();
 }

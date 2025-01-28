@@ -4,6 +4,7 @@ import { LiquidityPoolService } from "../services/liquidityPoolService";
 import { AssetConfig } from "../config/AssetConfig";
 import { Asset } from "../entity/Asset";
 import { LiquidityPool } from "../entity/LiquidityPool";
+import { getLatestPriceData, getMinimumCollateralizationRatio } from "../utils/serverContractHelpers";
 
 export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
   const assetService = await AssetService.create();
@@ -14,15 +15,22 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
       let asset = await assetService.findOne(symbol);
 
       if (!asset) {
+        const { price } = await getLatestPriceData(
+          "XLM",
+          config.pool_address
+        );
+        const minRatio = await getMinimumCollateralizationRatio(config.pool_address);
         // Create Asset
         asset = new Asset();
         asset.symbol = symbol;
         asset.feed_address = config.feed_address;
+        asset.price = price.toString();
         asset = await assetService.insert(asset);
         // Create LiquidityPool
         const liquidityPool = new LiquidityPool();
         liquidityPool.asset = asset;
         liquidityPool.pool_address = config.pool_address;
+        liquidityPool.minimum_collateralization_ratio = minRatio;
         await liquidityPoolService.insert(liquidityPool);
 
         console.log(`Created asset ${symbol} with associated tables`);
