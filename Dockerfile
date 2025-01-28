@@ -10,7 +10,7 @@ LABEL fly_launch_runtime="Node.js"
 WORKDIR /app
 
 # Set production environment
-ENV NODE_ENV="production"
+ENV NODE_ENV="staging"
 
 # Throw-away build stage to reduce size of final image
 FROM base AS build
@@ -19,31 +19,46 @@ FROM base AS build
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
 
-# Install node modules
-COPY server/package-lock.json server/package.json ./
-RUN npm ci --include=dev
+# Set the working directory to /app
+WORKDIR /app
 
-# Copy application code
-COPY server .
+# Copy the root package.json and package-lock.json
+COPY package.json package-lock.json ./
 
-# Copy contract packages
+# Install root dependencies
+RUN npm install
+
+# Build the contracts in the root directory
 COPY packages ./packages
+COPY scripts ./scripts
+RUN npm run build:all-contracts
 
-# RUN cd packages/xasset && npm install && npm run build
+# Copy the server directory
+COPY server ./server
+# Move the packages directory to the server
+RUN mv ./packages ./server/packages
 
-# Build application
+# Set the working directory to /app/server
+WORKDIR /app/server
+
+# Install server dependencies
+RUN npm install
+
+# Build the server application
 RUN npm run build
 
 # Remove development dependencies
 RUN npm prune --omit=dev
 
-
 # Final stage for app image
 FROM base
 
-# Copy built application
-COPY --from=build /app /app
+# Set the working directory to /app/server
+WORKDIR /app/server
 
-# Start the server by default, this can be overwritten at runtime
+# Copy the built server application from the build stage
+COPY --from=build /app/server .
+
+# Expose the port the app runs on
 EXPOSE 3000
 CMD [ "npm", "run", "start" ]
