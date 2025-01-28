@@ -8,6 +8,7 @@ export interface AssetConfig {
   [key: string]: AssetDetails;
 }
 
+export const XLM_FEED_ADDRESS = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63";
 export const assetConfig: AssetConfig = {
   'USDT': {
     feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",

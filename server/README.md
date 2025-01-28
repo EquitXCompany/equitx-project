@@ -93,7 +93,7 @@ To generate new migrations:
 
 2. Generate a new migration:
 ```bash
-npm run typeorm migration:generate -- -n MigrationName
+npm run typeorm migration:generate -- -d src/ormconfig.ts migration/[name]
 ```
 
 3. The generated migration will be placed in the `migration/` directory with a timestamp prefix

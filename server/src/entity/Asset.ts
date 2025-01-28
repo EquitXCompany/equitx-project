@@ -26,6 +26,10 @@ export class Asset {
   @Column({ type: "varchar", length: 56 })
   feed_address!: string;
 
+  // current dollar denominated price converted to integer with 14 decimal places (multiplied by 10^14)
+  @Column({ type: "bigint" })
+  price!: string; 
+
   @OneToMany(() => CDP, (cdp) => cdp.asset)
   cdps!: CDP[];
 
@@ -38,8 +42,8 @@ export class Asset {
   @OneToMany(() => Staker, (staker) => staker.asset)
   stakers!: Staker[];
 
-  @OneToMany(() => ContractState, (singleton) => singleton.asset)
-  singletons!: ContractState[];
+  @OneToMany(() => ContractState, (contractState) => contractState.asset)
+  contractState!: ContractState[];
 
   @Column({ type: "bigint", default: 0 })
   last_queried_timestamp!: number;

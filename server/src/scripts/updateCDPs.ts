@@ -54,14 +54,16 @@ async function fetchCDPs(
   }
 }
 
-async function updateCDPsInDatabase(cdps: RetroShadeCDP[], asset_symbol: string): Promise<void> {
+async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string): Promise<void> {
+  const assetService = await AssetService.create();
+  const asset = await assetService.findOne(assetSymbol);
   const cdpRepository = AppDataSource.getRepository(CDP);
 
   for (const cdp of cdps) {
     const address = cdp.id;
 
     await cdpRepository.save({
-      asset_symbol,
+      asset_id: asset!.id,
       address,
       xlm_deposited: new BigNumber(cdp.xlm_deposited).toString(),
       asset_lent: new BigNumber(cdp.asset_lent).toString(),

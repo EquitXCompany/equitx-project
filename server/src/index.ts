@@ -11,6 +11,7 @@ import stakerRoutes from "./routes/stakerRoutes";
 import liquidityPoolRoutes from "./routes/liquidityPoolRoutes";
 import singletonRoutes from "./routes/singletonRoutes";
 import { startCDPUpdateJob } from "./scripts/updateCDPs";
+import { startPriceUpdateJob } from "./scripts/updatePrices";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +44,8 @@ AppDataSource.initialize()
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
+
+    startPriceUpdateJob();
 
     startCDPUpdateJob();
   })

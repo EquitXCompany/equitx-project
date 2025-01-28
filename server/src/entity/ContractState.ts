@@ -23,7 +23,7 @@ export class ContractState {
   value!: string;
 
   @Index()
-  @ManyToOne(() => Asset, (asset) => asset.singletons)
+  @ManyToOne(() => Asset, (asset) => asset.contractState)
   @JoinColumn({ name: "asset_id" })
   asset!: Asset;
 

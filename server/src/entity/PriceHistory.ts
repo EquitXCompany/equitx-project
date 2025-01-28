@@ -14,8 +14,8 @@ export class PriceHistory {
   @Column({ type: "timestamp" })
   timestamp!: Date;
 
-  @Column({ type: "decimal", precision: 18, scale: 8 })
-  price!: number;
+  @Column({ type: "bigint" })
+  price!: string; 
 
   @CreateDateColumn()
   created_at!: Date;
