@@ -16,15 +16,10 @@ export class AssetController {
     return new AssetController(assetService);
   }
 
-  private transformAsset(asset: Asset): AssetResponse {
-    const { last_queried_timestamp, ...assetWithoutTimestamp } = asset;
-    return assetWithoutTimestamp;
-  }
-
   async getAllAssets(req: Request, res: Response): Promise<void> {
     try {
       const assets = await this.assetService.findAll();
-      res.json(assets.map(this.transformAsset));
+      res.json(assets);
     } catch (error) {
       res.status(500).json({ message: "Error fetching assets" });
     }
@@ -34,7 +29,7 @@ export class AssetController {
     try {
       const asset = await this.assetService.findOne(req.params.symbol);
       if (asset) {
-        res.json(this.transformAsset(asset));
+        res.json(asset);
       } else {
         res.status(404).json({ message: "Asset not found" });
       }

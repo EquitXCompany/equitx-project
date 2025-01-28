@@ -14,6 +14,7 @@ import { startCDPUpdateJob } from "./scripts/updateCDPs";
 import { startPriceUpdateJob } from "./scripts/updatePrices";
 import { createAssetsIfNotExist } from "./scripts/createAssets";
 import { assetConfig } from "./config/AssetConfig";
+import { startStakeUpdateJob } from "./scripts/updateStakes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,5 +54,7 @@ AppDataSource.initialize()
     startPriceUpdateJob();
 
     startCDPUpdateJob();
+
+    startStakeUpdateJob();
   })
   .catch((error) => console.log("TypeORM connection error: ", error));

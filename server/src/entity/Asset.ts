@@ -45,9 +45,6 @@ export class Asset {
   @OneToMany(() => ContractState, (contractState) => contractState.asset)
   contractState!: ContractState[];
 
-  @Column({ type: "bigint", default: 0 })
-  last_queried_timestamp!: number;
-
   @CreateDateColumn()
   created_at!: Date;
 

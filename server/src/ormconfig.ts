@@ -5,6 +5,7 @@ import { CDP } from "./entity/CDP";
 import { Staker } from "./entity/Staker";
 import { LiquidityPool } from "./entity/LiquidityPool";
 import { ContractState } from "./entity/ContractState";
+import { LastQueriedTimestamp } from "./entity/LastQueriedTimestamp";
 
 const config: DataSourceOptions = {
   type: "postgres",
@@ -13,7 +14,7 @@ const config: DataSourceOptions = {
   username: process.env.DB_USER || "postgres",
   password: process.env.DB_PASSWORD || "postgres",
   database: process.env.DB_NAME || "equitxindexer",
-  entities: [Asset, PriceHistory, CDP, Staker, LiquidityPool, ContractState ],
+  entities: [Asset, PriceHistory, CDP, Staker, LiquidityPool, ContractState, LastQueriedTimestamp ],
   synchronize: false,
   migrations: [__dirname + "/../migration/*.ts"],
 };
