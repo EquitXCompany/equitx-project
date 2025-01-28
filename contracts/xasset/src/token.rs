@@ -1,6 +1,6 @@
 use core::cmp;
 
-use loam_sdk::soroban_sdk::{self, env, panic_with_error, token, Address, InstanceItem, LoamKey, PersistentMap, PersistentItem, String, Symbol, Val, Vec};
+use loam_sdk::soroban_sdk::{self, env, panic_with_error, token, Address, InstanceItem, LoamKey, PersistentMap, PersistentItem, String, Symbol, Vec};
 use loam_sdk::loamstorage;
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
@@ -712,7 +712,7 @@ impl IsStabilityPool for Token {
         self.add_total_xasset(amount);
         Ok(())
     }
-    // Modified withdraw method
+
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
         to.require_auth();
         self.withdraw_internal(to, amount, false)
@@ -1101,6 +1101,17 @@ impl Token {
     }
 
     pub fn set_deposit(&mut self, address: Address, position: StakerPosition) {
+        #[cfg(feature = "mercury")]
+        crate::index_types::StakePosition {
+            id: address.clone(),
+            xasset_deposit: position.xasset_deposit,
+            product_constant: position.product_constant,
+            compounded_constant: position.compounded_constant,
+            epoch: position.epoch,
+            ledger: env().ledger().sequence(),
+            timestamp: env().ledger().timestamp(),
+        }
+        .emit(env());
         self.deposits.set(address, &position);
     }
 

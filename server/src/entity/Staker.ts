@@ -28,7 +28,7 @@ export class Staker {
   @Column({ type: "bigint" })
   compounded_constant!: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: 20, scale: 0 })
   epoch!: string;
 
   @ManyToOne(() => Asset, (asset) => asset.stakers)

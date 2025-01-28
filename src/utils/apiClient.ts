@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: 'https://api.mercurydata.app',
+  baseURL: import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000",
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${import.meta.env.PUBLIC_MERCURY_API_TOKEN}`
   }
 });
