@@ -28,13 +28,18 @@ COPY package.json package-lock.json ./
 # Install root dependencies
 RUN npm install
 
-# Build the contracts in the root directory
-COPY packages ./packages
-COPY scripts ./scripts
-RUN npm run build:all-contracts
+# Install loam CLI and build contracts
+RUN apt-get install -y curl
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup target add wasm32-unknown-unknown
+RUN cargo install loam-cli --locked
 
-# Copy the server directory
-COPY server ./server
+# Copy everything so we can build contracts
+COPY . .
+RUN LOAM_ENV=staging loam build --build-clients
+RUN npm run install:contracts
+
 # Move the packages directory to the server
 RUN mv ./packages ./server/packages
 
