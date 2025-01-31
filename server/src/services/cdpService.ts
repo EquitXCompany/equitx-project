@@ -1,6 +1,7 @@
 import { Repository, DataSource } from "typeorm";
 import { CDP } from "../entity/CDP";
 import { AppDataSource } from "../ormconfig";
+import { CDPDTO, toCDPDTO } from "../dto/cdpDTO";
 
 export class CDPService {
   private cdpRepository: Repository<CDP>;
@@ -16,17 +17,20 @@ export class CDPService {
     return new CDPService(AppDataSource);
   }
 
-  async findAll(): Promise<CDP[]> {
-    return this.cdpRepository.find();
+  async findAll(): Promise<CDPDTO[]> {
+    const cdps = await this.cdpRepository.find();
+    return cdps.map(toCDPDTO);
   }
 
-  async findOne(asset_symbol: string, address: string): Promise<CDP | null> {
-    return this.cdpRepository
+  async findOne(asset_symbol: string, lender: string): Promise<CDPDTO | null> {
+    const cdp = await this.cdpRepository
       .createQueryBuilder("cdp")
       .innerJoinAndSelect("cdp.asset", "asset")
       .where("asset.symbol = :asset_symbol", { asset_symbol })
-      .andWhere("cdp.address = :address", { address })
+      .andWhere("cdp.lender = :lender", { lender })
       .getOne();
+    
+    return cdp ? toCDPDTO(cdp) : null;
   }
 
   async insert(cdp: CDP): Promise<CDP> {
@@ -35,13 +39,13 @@ export class CDPService {
 
   async update(
     asset_symbol: string,
-    address: string,
+    lender: string,
     cdp: Partial<CDP>
   ): Promise<CDP | null> {
     const existingCDP = await this.cdpRepository.createQueryBuilder('cdp')
       .innerJoinAndSelect('cdp.asset', 'asset')
       .where('asset.symbol = :asset_symbol', { asset_symbol })
-      .andWhere('cdp.address = :address', { address })
+      .andWhere('cdp.lender = :lender', { lender })
       .getOne();
 
     if (!existingCDP) {
@@ -53,11 +57,11 @@ export class CDPService {
     return existingCDP;
   }
 
-  async delete(asset_symbol: string, address: string): Promise<void> {
+  async delete(asset_symbol: string, lender: string): Promise<void> {
     const cdp = await this.cdpRepository.createQueryBuilder('cdp')
       .innerJoinAndSelect('cdp.asset', 'asset')
       .where('asset.symbol = :asset_symbol', { asset_symbol })
-      .andWhere('cdp.address = :address', { address })
+      .andWhere('cdp.lender = :lender', { lender })
       .getOne();
 
     if (cdp) {

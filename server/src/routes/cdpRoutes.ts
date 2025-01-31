@@ -8,7 +8,7 @@ async function initializeRoutes() {
   const cdpController = await CDPController.create();
 
   router.get("/", apiLimiter, cdpController.getAllCDPs.bind(cdpController));
-  router.get("/:asset_symbol/:address", apiLimiter, cdpController.getCDPByAssetSymbolAndAddr.bind(cdpController));
+  router.get("/:asset_symbol/:lender", apiLimiter, cdpController.getCDPByAssetSymbolAndAddr.bind(cdpController));
 
   return router;
 }

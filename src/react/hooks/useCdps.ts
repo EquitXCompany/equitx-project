@@ -1,8 +1,11 @@
-import { useQuery, type UseQueryResult } from 'react-query';
+import { useQuery, type UseQueryResult, type UseQueryOptions } from 'react-query';
 import { apiClient } from '../../utils/apiClient';
 import BigNumber from 'bignumber.js';
+import xasset from '../../contracts/xasset';
+import { unwrapResult } from '../../utils/contractHelpers';
+import type { CDP as ContractCDP } from 'xasset';
 
-export type IndexedCDP = {
+export type CDP = {
   lender: string;
   contract_id: string;
   xlm_deposited: BigNumber;
@@ -11,52 +14,111 @@ export type IndexedCDP = {
   createdAt: Date;
   updatedAt: Date;
 };
-export function CalculateCollateralizationRatio(cdp: IndexedCDP, xlm_price: BigNumber, xasset_price: BigNumber): BigNumber {
-  if (cdp.asset_lent === BigNumber(0) || xasset_price === BigNumber(0)) {
-    return BigNumber(Infinity);
+
+export function CalculateCollateralizationRatio(cdp: CDP, xlm_price: BigNumber, xasset_price: BigNumber): BigNumber {
+  if (cdp.asset_lent.isEqualTo(0) || xasset_price.isEqualTo(0)) {
+    return new BigNumber(Infinity);
   }
-  return (cdp.xlm_deposited.times(xlm_price)).div(cdp.asset_lent.times(xasset_price));
+  return cdp.xlm_deposited.times(xlm_price).div(cdp.asset_lent.times(xasset_price));
 }
 
-async function fetchCdps(lastQueriedTimestamp: number): Promise<IndexedCDP[]> {
-  try {
-    const { data } = await apiClient.post('/retroshadesv1', {
-      query: `SELECT * FROM cdp1a16c60a7890c14872ae7c3a025c31a9 WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`
-    });
-
-    // Create a map to store the latest entry for each unique id
-    const latestEntries = new Map<string, any>();
-
-    data.forEach((item: any) => {
-      if (!latestEntries.has(item.id) || item.timestamp > latestEntries.get(item.id).timestamp) {
-        latestEntries.set(item.id, item);
-      }
-    });
-
-    // Transform the data into the CDP type
-    return Array.from(latestEntries.values()).map((item: any) => ({
-      lender: item.id,
-      contract_id: item.contract_id,
-      xlm_deposited: BigNumber(item.xlm_deposited),
-      asset_lent: BigNumber(item.asset_lent),
-      status: item.status[0],
-      createdAt: new Date(item.timestamp * 1000),
-      updatedAt: new Date(item.timestamp * 1000),
-    }));
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
+async function fetchCdps(): Promise<CDP[]> {
+  const { data } = await apiClient.get('/api/cdps');
+  return data.map((cdp: any) => ({
+    ...cdp,
+    xlm_deposited: new BigNumber(cdp.xlm_deposited),
+    asset_lent: new BigNumber(cdp.asset_lent),
+    createdAt: new Date(cdp.createdAt),
+    updatedAt: new Date(cdp.updatedAt),
+  }));
 }
 
-export function useCdps(lastQueriedTimestamp: number): UseQueryResult<IndexedCDP[], Error> {
-  return useQuery<IndexedCDP[], Error>(
-    ['cdps', lastQueriedTimestamp],
-    () => fetchCdps(lastQueriedTimestamp),
+async function fetchCdpByAssetAndAddress(assetSymbol: string, address: string): Promise<CDP> {
+  const { data } = await apiClient.get(`/api/cdp/${assetSymbol}/${address}`);
+  return {
+    ...data,
+    xlm_deposited: new BigNumber(data.xlm_deposited),
+    asset_lent: new BigNumber(data.asset_lent),
+    createdAt: new Date(data.createdAt),
+    updatedAt: new Date(data.updatedAt),
+  };
+}
+
+export function useCdps(
+  options?: Omit<UseQueryOptions<CDP[], Error>, 'queryKey' | 'queryFn'>
+): UseQueryResult<CDP[], Error> {
+  return useQuery<CDP[], Error>(['cdps'], fetchCdps, {
+    refetchInterval: 300000,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    ...options
+  });
+}
+
+export function useCdpByAssetAndAddress(
+  assetSymbol: string,
+  address: string,
+  options?: Omit<UseQueryOptions<CDP, Error>, 'queryKey' | 'queryFn'>
+): UseQueryResult<CDP, Error> {
+  return useQuery<CDP, Error>(
+    ['cdp', assetSymbol, address],
+    () => fetchCdpByAssetAndAddress(assetSymbol, address),
     {
-      refetchInterval: 300000, // Refetch every 5 minutes (300,000 milliseconds)
-      retry: 3,               // Retry failed request up to 3 times
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff with cap at 30 seconds
+      refetchInterval: 300000,
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      ...options
+    }
+  );
+}
+
+export function useContractCdp(
+  lender: string,
+  options?: Omit<UseQueryOptions<ContractCDP, Error>, 'queryKey' | 'queryFn'>
+): UseQueryResult<ContractCDP, Error> {
+  return useQuery<ContractCDP, Error>(
+    ['contract-cdp', lender],
+    async () => {
+      console.log(lender)
+      const tx = await xasset.cdp({ lender });
+      return unwrapResult(tx.result, "Failed to retrieve CDP from contract");
+    },
+    {
+      refetchInterval: 300000,
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      ...options
+    }
+  );
+}
+
+export function useAllContractCdps(
+  lenders: string[],
+  options?: Omit<UseQueryOptions<Record<string, ContractCDP>, Error>, 'queryKey' | 'queryFn'>
+): UseQueryResult<Record<string, ContractCDP>, Error> {
+  return useQuery<Record<string, ContractCDP>, Error>(
+    ['contract-cdps', lenders],
+    async () => {
+      const cdpPromises = lenders.map(async (lender) => {
+        try {
+          const tx = await xasset.cdp({ lender });
+          const cdp = unwrapResult(tx.result, "Failed to retrieve CDP from contract");
+          return [lender, cdp];
+        } catch (error) {
+          console.error(`Failed to fetch CDP for ${lender}:`, error);
+          return [lender, null];
+        }
+      });
+
+      const cdps = await Promise.all(cdpPromises);
+      return Object.fromEntries(cdps.filter(([_, cdp]) => cdp !== null));
+    },
+    {
+      refetchInterval: 300000,
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      enabled: lenders.length > 0,
+      ...options
     }
   );
 }

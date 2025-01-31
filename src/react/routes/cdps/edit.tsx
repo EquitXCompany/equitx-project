@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { useLoaderData, useParams, Link as RouterLink, Form, useNavigate, useActionData } from "react-router-dom";
-import type { LoaderFunction, ActionFunction } from "react-router-dom";
+import { useParams, Link as RouterLink, Form, useNavigate, useActionData } from "react-router-dom";
+import type { ActionFunction } from "react-router-dom";
 import xasset from "../../../contracts/xasset";
-import type { CDP } from "xasset";
 import BigNumber from "bignumber.js";
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import { CDPDisplay } from "../../components/cdp/CDPDisplay";
 import AddressDisplay from "../../components/cdp/AddressDisplay";
-import { unwrapResult } from "../../../utils/contractHelpers";
+import { useContractCdp } from "../../hooks/useCdps";
 import { 
   Button, 
   TextField, 
@@ -20,15 +19,7 @@ import {
   Snackbar,
   Link as MuiLink
 } from "@mui/material";
-import type { PriceData } from "data_feed";
-
-interface LoaderData {
-  cdp: CDP;
-  decimals: number;
-  lastpriceXLM: BigNumber;
-  lastpriceAsset: BigNumber;
-  symbolAsset: string;
-}
+import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
 
 interface ActionData {
   message: string;
@@ -36,19 +27,6 @@ interface ActionData {
   lender: string;
   action: string;
 }
-
-export const loader: LoaderFunction = async ({ params }): Promise<LoaderData> => {
-  const { lender } = params as { lender: string };
-  return {
-    cdp: await xasset.cdp({ lender }).then((tx) => unwrapResult(tx.result, "Failed to retrieve CDP")),
-    decimals: 7, // FIXME: get from xasset (to be implemented as part of ft)
-    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => (unwrapResult(t.result, "Failed to retrieve the XLM price") as PriceData).price)).toString())
-      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
-    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => (unwrapResult(t.result, "Failed to retrieve the asset price") as PriceData).price)).toString())
-      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
-    symbolAsset: "xUSD", // FIXME: get from xasset (to be implemented as part of ft)
-  };
-};
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
@@ -93,19 +71,21 @@ export const action: ActionFunction = async ({ request }) => {
 
 function Edit() {
   const { lender } = useParams() as { lender: string };
-  const { cdp, decimals, lastpriceXLM, lastpriceAsset, symbolAsset } = useLoaderData() as LoaderData;
+  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(lender);
+  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata();
   const { account, isSignedIn } = useWallet();
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const navigate = useNavigate();
   const actionData = useActionData() as ActionData;
+  const decimals = 7;
 
   useEffect(() => {
     if (actionData) {
       setMessage({ text: actionData.message, type: actionData.type });
       
       if (actionData.type === 'success' && (actionData.action === 'close' || actionData.action === 'liquidate')) {
-        navigate('/'); // Navigate to root (list view) immediately
+        navigate('/');
       } else {
         const timer = setTimeout(() => {
           setMessage(null);
@@ -117,6 +97,10 @@ function Edit() {
     }
     return;
   }, [actionData, navigate]);
+
+  if (isLoadingCdp || isLoadingMetadata || !metadata) {
+    return <div>Loading...</div>;
+  }
 
   const isOwner = account === lender;
 
@@ -138,14 +122,14 @@ function Edit() {
 
         {cdp && (
           <>
-            <CDPDisplay
-              cdp={cdp}
-              decimals={decimals}
-              lastpriceXLM={lastpriceXLM}
-              lastpriceAsset={lastpriceAsset}
-              symbolAsset={symbolAsset}
-              lender={lender}
-            />
+          <CDPDisplay
+            cdp={cdp}
+            decimals={decimals}
+            lastpriceXLM={metadata.lastpriceXLM}
+            lastpriceAsset={metadata.lastpriceAsset}
+            symbolAsset={metadata.symbolAsset}
+            lender={lender}
+          />
 
             {isOwner && (
               <Form method="post">
@@ -175,7 +159,7 @@ function Edit() {
                   </Grid>
                   <Grid item xs={6} sm={4}>
                     <Button fullWidth variant="contained" type="submit" name="action" value="borrowXAsset" disabled={!isSignedIn}>
-                      Borrow {symbolAsset}
+                      Borrow {metadata.symbolAsset}
                     </Button>
                   </Grid>
                   <Grid item xs={6} sm={4}>

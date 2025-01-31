@@ -2,6 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import dotenv from "dotenv";
 import path from "path";
+import cors from "cors";
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { AppDataSource } from "./ormconfig";
 import assetRoutes from "./routes/assetRoutes";
@@ -18,6 +19,16 @@ import { startStakeUpdateJob } from "./scripts/updateStakes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const CLIENTPORT = process.env.CLIENTPORT || 4321;
+
+const corsOptions = {
+  origin: ['https://equitxcompany.github.io', 'http://localhost:' + CLIENTPORT],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 
 async function initializeRoutes() {
   const assetRouter = await assetRoutes();

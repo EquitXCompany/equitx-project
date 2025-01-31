@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import BigNumber from 'bignumber.js';
 import xasset from '../../contracts/xasset';
 
+
 interface StabilityPoolMetadata {
   lastpriceXLM: BigNumber;
   lastpriceAsset: BigNumber;
@@ -11,6 +12,7 @@ interface StabilityPoolMetadata {
 }
 
 export function useStabilityPoolMetadata() {
+  console.log('getting metadat')
   const [data, setData] = useState<StabilityPoolMetadata | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);

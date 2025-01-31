@@ -1,32 +1,26 @@
 import { useEffect, useState } from "react";
 import { Form, useLoaderData, redirect } from "react-router-dom";
 import type { ActionFunction } from "react-router-dom";
-import xasset from "../../../contracts/xasset";
+import xasset from '../../../contracts/xasset';
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import BigNumber from 'bignumber.js';
 import { BASIS_POINTS } from "../../../constants";
 import { Box, Button, TextField, Typography } from '@mui/material';
-import { unwrapResult } from "../../../utils/contractHelpers";
-import { type PriceData } from "xasset";
+import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
 
 export const loader = async () => {
   return {
     minRatio: await xasset
       .minimum_collateralization_ratio()
       .then((t) => new BigNumber(t.result)),
-    lastpriceXLM: new BigNumber((await xasset.lastprice_xlm().then((t) => (unwrapResult(t.result, "Failed to retrieve the XLM price") as PriceData).price)).toString())
-      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
-    lastpriceAsset: new BigNumber((await xasset.lastprice_asset().then((t) => (unwrapResult(t.result, "Failed to retrieve the asset price") as PriceData).price)).toString())
-      .div(new BigNumber(10).pow(14)), // FIXME: get `14` from xasset (currently erroring in stellar-sdk)
-    symbolAsset: "xUSD", // FIXME: get from xasset, pending FT implementation
   };
 };
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = Object.fromEntries(await request.formData());
-  const decimalsXLM = 7; // FIXME: get from xlmSac.decimals (currently erroring in stellar-sdk)
-  const decimalsAsset = 7; // FIXME: get from xasset.decimals (currently erroring in stellar-sdk)
+  const decimalsXLM = 7;
+  const decimalsAsset = 7;
   const cdp = {
     lender: formData.lender as string,
     collateral: new BigNumber(formData.collateral?.toString() || '0').times(new BigNumber(10).pow(decimalsXLM)).toFixed(0),
@@ -38,22 +32,22 @@ export const action: ActionFunction = async ({ request }) => {
 
 function New() {
   const { account, isSignedIn } = useWallet();
-  const { lastpriceXLM, lastpriceAsset, minRatio, symbolAsset } =
-    useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const { minRatio } = useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const { data: metadata, isLoading } = useStabilityPoolMetadata();
 
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));
   const [ratio, setRatio] = useState(new BigNumber(0));
-  const decimalsXLM = 7; // FIXME: get from xlmSac.decimals (currently erroring in stellar-sdk)
-  const decimalsAsset = 7; // FIXME: get from xasset.decimals (currently erroring in stellar-sdk)
+  const decimalsXLM = 7;
+  const decimalsAsset = 7;
   const stepValueXLM = `0.${'0'.repeat(decimalsXLM - 1)}1`;
   const stepValueAsset = `0.${'0'.repeat(decimalsAsset - 1)}1`;
 
   const updateRatio = (newCollateral: BigNumber, newToLend: BigNumber) => {
-    if (newToLend.isZero()) {
+    if (newToLend.isZero() || !metadata) {
       setRatio(new BigNumber(0));
     } else {
-      const newRatio = newCollateral.times(lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(lastpriceAsset));
+      const newRatio = newCollateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(metadata.lastpriceAsset));
       setRatio(newRatio);
     }
   };
@@ -71,16 +65,20 @@ function New() {
   };
 
   const handleRatioChange = (value: string) => {
+    if (!metadata) return;
     const newRatio = new BigNumber(value).times(BASIS_POINTS).div(100);
     setRatio(newRatio);
-    const newToLend = collateral.times(lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(lastpriceAsset);
+    const newToLend = collateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(metadata.lastpriceAsset);
     setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
   };
 
   useEffect(() => {
-    // Initialize ratio when collateral is set
     updateRatio(collateral, toLend);
-  }, []);
+  }, [metadata]);
+
+  if (isLoading || !metadata) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -121,7 +119,7 @@ function New() {
         <Box sx={{ mt: 2 }}>
           <TextField
             fullWidth
-            label={`Amount of ${symbolAsset} you'll mint:`}
+            label={`Amount of ${metadata.symbolAsset} you'll mint:`}
             type="number"
             name="asset_lent"
             value={toLend.toFixed(decimalsAsset)}
@@ -129,8 +127,8 @@ function New() {
             inputProps={{
               step: stepValueAsset,
               max: collateral
-                .times(lastpriceXLM)
-                .div(lastpriceAsset)
+                .times(metadata.lastpriceXLM)
+                .div(metadata.lastpriceAsset)
                 .times(new BigNumber(minRatio).div(BASIS_POINTS))
                 .toFixed(decimalsAsset),
             }}

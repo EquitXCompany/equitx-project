@@ -41,25 +41,25 @@ async function checkAndFreezeCDPs(
     if (currentRatio.isLessThan(minimumCollateralizationRatio)) {
       console.log(
         `CDP ${
-          cdp.address
+          cdp.lender
         } is undercollateralized. Current ratio: ${currentRatio.toString()}, Minimum required: ${minimumCollateralizationRatio}`
       );
 
       try {
         const result = await serverAuthenticatedContractCall(
           "freeze_cdp",
-          { lender: cdp.address },
+          { lender: cdp.lender },
           liquidityPool.pool_address
         );
         console.log(
-          `Successfully frozen CDP for lender: ${cdp.address}. Result: ${result}`
+          `Successfully frozen CDP for lender: ${cdp.lender}. Result: ${result}`
         );
 
         // Update CDP status in database
         cdp.status = CDPStatus.Frozen;
         await cdpRepository.save(cdp);
       } catch (error) {
-        console.error(`Error freezing CDP for lender ${cdp.address}:`, error);
+        console.error(`Error freezing CDP for lender ${cdp.lender}:`, error);
       }
     }
   }

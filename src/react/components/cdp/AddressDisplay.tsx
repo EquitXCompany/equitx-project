@@ -18,7 +18,7 @@ const AddressDisplay: React.FC<AddressDisplayProps> = ({ address: address }) => 
   const truncatedLender = `${address.slice(0, 5)}...`;
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
       <Tooltip title={address}>
         <span>{truncatedLender}</span>
       </Tooltip>
@@ -27,7 +27,7 @@ const AddressDisplay: React.FC<AddressDisplayProps> = ({ address: address }) => 
           <ContentCopyIcon fontSize="inherit" />
         </IconButton>
       </Tooltip>
-    </div>
+    </span>
   );
 };
 

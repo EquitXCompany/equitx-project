@@ -63,11 +63,11 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
   const cdpRepository = AppDataSource.getRepository(CDP);
 
   for (const cdp of cdps) {
-    const address = cdp.id;
+    const lender = cdp.id;
 
     await cdpRepository.save({
       asset_id: asset!.id,
-      address,
+      lender,
       xlm_deposited: new BigNumber(cdp.xlm_deposited).toString(),
       asset_lent: new BigNumber(cdp.asset_lent).toString(),
       status: CDPStatus[cdp.status[0] as keyof typeof CDPStatus],

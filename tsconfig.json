@@ -6,7 +6,13 @@
   ],
   "compilerOptions": {
     "jsx": "react-jsx",
+    "verbatimModuleSyntax": false,
     "jsxImportSource": "react",
-    "exactOptionalPropertyTypes": false
+    "exactOptionalPropertyTypes": false,
+    "types": ["jest", "@testing-library/jest-dom"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "esnext", 
+    "target": "ESNext", 
   }
 }

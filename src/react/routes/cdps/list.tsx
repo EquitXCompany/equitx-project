@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useCdps, CalculateCollateralizationRatio } from '../../hooks/useCdps';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
@@ -6,8 +5,7 @@ import { getStatusColor } from "../../../utils/contractHelpers";
 import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
 
 function List() {
-  const [lastQueriedTimestamp] = useState(() => Math.floor(Date.now() / 1000) - 86400); // Last 24 hours
-  const { data: cdps, isLoading: cdpsLoading, error: cdpsError } = useCdps(lastQueriedTimestamp);
+  const { data: cdps, isLoading: cdpsLoading, error: cdpsError } = useCdps();
   const { data: stabilityData, isLoading: stabilityLoading, error: stabilityError } = useStabilityPoolMetadata();
   const { account } = useWallet();
 
@@ -61,4 +59,4 @@ function List() {
   );
 }
 
-export default List;
+export const element = <List />;

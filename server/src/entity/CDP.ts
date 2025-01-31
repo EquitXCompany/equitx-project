@@ -15,7 +15,7 @@ export class CDP {
 
   @Index()
   @Column({ type: "char", length: 56 })
-  address!: string;
+  lender!: string;
 
   @Column({ type: "bigint" })
   xlm_deposited!: string;
