@@ -41,7 +41,7 @@
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.1",
     "@mui/material": "^6.1.1",
-    "@stellar/freighter-api": "^3.0.0",
+    "@stellar/freighter-api": "^4.0.0",
     "@stellar/stellar-sdk": "13.0.0",
     "@types/react": "^18.3.6",
     "@types/react-dom": "^18.3.0",

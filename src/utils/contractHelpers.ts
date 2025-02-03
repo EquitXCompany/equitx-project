@@ -1,11 +1,11 @@
-import { freighter } from "../wallet";
 import type { Result } from '@stellar/stellar-sdk/contract';
+import { getAddress, signTransaction } from '@stellar/freighter-api';
 
 
 export async function authenticatedContractCall(contractMethod: any, params: any) {
-  const publicKey = (await freighter.getAddress()).address;
+  const publicKey = (await getAddress()).address;
   const tx = await contractMethod(params, { publicKey });
-  let result = await tx.signAndSend({ signTransaction: freighter.signTransaction });
+  let result = await tx.signAndSend({ signTransaction: signTransaction });
   return result;
 }
 

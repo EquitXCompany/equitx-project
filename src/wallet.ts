@@ -1,19 +1,5 @@
 import { useEffect, useState } from "react";
-import * as Freighter from "@stellar/freighter-api";
-
-export const freighter = {
-  ...Freighter,
-  signTransaction: async (
-    transactionXdr: string,
-    opts?: {
-      networkPassphrase?: string;
-      address?: string;
-    },
-  ) => {
-    const resp = await Freighter.signTransaction(transactionXdr, opts);
-    return resp.signedTxXdr;
-  },
-};
+import { getAddress, isConnected, getNetwork } from "@stellar/freighter-api";
 
 let account: string;
 let connected: boolean;
@@ -65,9 +51,9 @@ export function useWallet() {
 
 export async function refresh(forceUpdate = false) {
   const [newUserInfo, newIsConnected, newNetworkDetails] = await Promise.all([
-    freighter.getAddress(),
-    freighter.isConnected(),
-    freighter.getNetwork(),
+    getAddress(),
+    isConnected(),
+    getNetwork(),
   ]);
   if (
     forceUpdate ||

@@ -1,5 +1,6 @@
-import { useWallet, freighter } from "../../../wallet";
+import { useWallet } from "../../../wallet";
 import AddressDisplay from "../cdp/AddressDisplay";
+import { setAllowed } from "@stellar/freighter-api";
 
 export default function Connect() {
   const { isSignedIn, networkPassphrase, account } = useWallet();
@@ -21,7 +22,7 @@ export default function Connect() {
   }
   return (
     <div style={{ textAlign: "center" }}>
-      <button type="button" onClick={() => freighter.setAllowed()}>
+      <button type="button" onClick={() => setAllowed()}>
         Connect Freighter Wallet
       </button>
     </div>
