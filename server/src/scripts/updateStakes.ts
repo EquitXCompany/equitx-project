@@ -66,23 +66,14 @@ async function updateStakesInDatabase(
   }
 
   for (const stake of stakes) {
-    const address = stake.id;
-    const existingStaker = await stakerService.findOne(assetSymbol, address);
-
-    const stakerData = {
-      address,
+    await stakerService.upsert(assetSymbol, stake.id, {
+      address: stake.id,
       xasset_deposit: stake.xasset_deposit,
       product_constant: stake.product_constant,
       compounded_constant: stake.compounded_constant,
       epoch: stake.epoch,
       asset,
-    };
-
-    if (existingStaker) {
-      await stakerService.update(assetSymbol, address, stakerData);
-    } else {
-      await stakerService.insert(stakerData as Staker);
-    }
+    });
   }
 }
 

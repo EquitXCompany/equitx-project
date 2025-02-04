@@ -3,7 +3,7 @@ use loam_sdk::{
     subcontract,
 };
 
-use crate::Error;
+use crate::{collateralized::CDPStatus, Error};
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 
 
@@ -40,7 +40,7 @@ pub trait IsStabilityPool {
     /// Withdraws xasset tokens from the Stability Pool.
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error>;
     /// Processes a liquidation event for a CDP.
-    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error>;
+    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128, CDPStatus), Error>;
     /// Allows a user to claim their share of collateral rewards.
     fn claim_rewards(&mut self, to: Address) -> Result<i128, Error>;
     /// Retrieves the current deposit amount for a given address.

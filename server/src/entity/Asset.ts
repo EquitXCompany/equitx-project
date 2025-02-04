@@ -30,6 +30,10 @@ export class Asset {
   @Column({ type: "bigint" })
   price!: string; 
 
+  // Store the XLM price at the time this asset's price was last updated
+  @Column({ type: "bigint", nullable: true })
+  last_xlm_price!: string;
+
   @OneToMany(() => CDP, (cdp) => cdp.asset)
   cdps!: CDP[];
 

@@ -14,6 +14,7 @@ export class LiquidityPool {
   @Column({ type: "varchar", length: 56 })
   pool_address!: string;
 
+  // ratio multiplied by 10^5 
   @Column({ type: "integer" })
   minimum_collateralization_ratio!: number;
 

@@ -44,7 +44,7 @@ function List() {
               style={{
                 color: getStatusColor(cdp.status),
               }} >
-              {cdp.status} ({CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).div(100).toFixed(3)}%
+              {cdp.status} ({CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).times(100).toFixed(1)}%
               collateralized)
             </div>
           </Card>

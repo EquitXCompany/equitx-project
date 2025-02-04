@@ -184,3 +184,41 @@ export async function getMinimumCollateralizationRatio(contractId: string) {
     throw error;
   }
 }
+
+export async function getTotalXAsset(contractId: string) {
+  try {
+    const totalXAssetData = await serverAuthenticatedContractCall(
+      "get_total_xasset",
+      null,
+      contractId,
+      "xasset"
+    );
+
+    if (!totalXAssetData || !totalXAssetData.result) {
+      throw new Error("Could not get total xAsset");
+    }
+    return new BigNumber(totalXAssetData.result.toString());
+  } catch (error) {
+    console.error("Error getting total xAsset:", error);
+    throw error;
+  }
+}
+
+export async function getTotalCollateral(contractId: string) {
+  try {
+    const totalCollateralData = await serverAuthenticatedContractCall(
+      "get_total_collateral",
+      null,
+      contractId,
+      "xasset"
+    );
+
+    if (!totalCollateralData || !totalCollateralData.result) {
+      throw new Error("Could not get total collateral");
+    }
+    return new BigNumber(totalCollateralData.result.toString());
+  } catch (error) {
+    console.error("Error getting total collateral:", error);
+    throw error;
+  }
+}

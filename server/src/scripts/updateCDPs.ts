@@ -1,16 +1,16 @@
 import cron from "node-cron";
 import { CDP, CDPStatus } from "../entity/CDP";
-import { AppDataSource } from "../ormconfig";
 import BigNumber from "bignumber.js";
 import dotenv from "dotenv";
 import axios from "axios";
-import { serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
+import { getTotalXAsset, serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
 import { LiquidityPoolService } from "../services/liquidityPoolService";
 import { assetConfig } from "../config/AssetConfig";
-import { createAssetsIfNotExist } from "./createAssets";
 import { AssetService } from "../services/assetService";
 import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 import { TableType } from "../entity/LastQueriedTimestamp";
+import { CDPService } from "../services/cdpService";
+import { AppDataSource } from "../ormconfig";
 
 
 dotenv.config();
@@ -60,13 +60,17 @@ async function fetchCDPs(
 async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string): Promise<void> {
   const assetService = await AssetService.create();
   const asset = await assetService.findOne(assetSymbol);
-  const cdpRepository = AppDataSource.getRepository(CDP);
+  const cdpService = await CDPService.create();
+
+  if (!asset) {
+    console.error(`Could not find asset ${assetSymbol}`);
+    return;
+  }
 
   for (const cdp of cdps) {
     const lender = cdp.id;
-
-    await cdpRepository.save({
-      asset_id: asset!.id,
+    await cdpService.upsert(assetSymbol, lender, {
+      asset: asset,
       lender,
       xlm_deposited: new BigNumber(cdp.xlm_deposited).toString(),
       asset_lent: new BigNumber(cdp.asset_lent).toString(),
@@ -104,6 +108,7 @@ async function getLiquidityPoolId(assetSymbol: string): Promise<string> {
 
 async function updateCDPs() {
   try {
+    const cdpRepository = AppDataSource.getRepository(CDP);
     for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
       const lastTimestamp = await getLastQueriedTimestamp(assetSymbol);
       console.log(`querying cdps from reflector with timestamp ${lastTimestamp}`);
@@ -123,6 +128,9 @@ async function updateCDPs() {
       // todo: also need to periodically check when prices change for newly insolvent CDPs
       for (const cdp of cdps) {
         const lender = cdp.id;
+        const serverCDP = await cdpRepository.findOne({
+          where: { lender },
+        });
 
         if (cdp.status[0] === "Insolvent") {
           console.log(
@@ -134,6 +142,8 @@ async function updateCDPs() {
               { lender },
               liquidityPoolId
             );
+            serverCDP!.status = CDPStatus.Frozen;
+            await cdpRepository.save(serverCDP!);
             console.log(
               `Successfully frozen CDP for lender: ${lender}. Result: ${result}`
             );
@@ -145,14 +155,27 @@ async function updateCDPs() {
             `Attempting to liquidate frozen CDP for lender: ${lender}`
           );
           try {
-            const result = await serverAuthenticatedContractCall(
-              "liquidate_cdp",
-              { lender },
-              liquidityPoolId
-            );
-            console.log(
-              `Successfully liquidated CDP for lender: ${lender}. Result: ${result}`
-            );
+            const totalXLM = await getTotalXAsset(liquidityPoolId);
+            if(totalXLM.isGreaterThan(0)){
+              const {result, status} = await serverAuthenticatedContractCall(
+                "liquidate_cdp",
+                { lender },
+                liquidityPoolId
+              );
+              console.log(
+                `Successfully liquidated CDP for lender: ${lender}. Result: ${result}`
+              );
+              const cdpStatus = result.value[2];
+              console.log(`CDP status after liquidation: ${cdpStatus}`);
+              if(cdpStatus === CDPStatus.Closed){
+                serverCDP!.status = CDPStatus.Closed;
+                await cdpRepository.save(serverCDP!);
+              }
+            }
+            else{
+              console.log("No XLM in the pool for liquidation, skipping");
+            }
+
           } catch (error) {
             console.error(`Error liquidating CDP for lender ${lender}:`, error);
           }

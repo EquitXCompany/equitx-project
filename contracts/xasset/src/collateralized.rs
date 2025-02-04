@@ -101,7 +101,7 @@ pub trait IsCollateralized {
     /// Liquidates a frozen CDP. Upon liquidation, CDP debt is repaid by withdrawing xAsset from a Stability Pool.
     /// As debt is repaid, collateral is withdrawn from the CDP.
     /// If all debt is repaid, then all collateral is withdrawn, and the CDP is closed.
-    fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128), Error>;
+    fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128, CDPStatus), Error>;
 
     /// Merges two or more frozen CDPs into one CDP.
     /// Upon merging, all but one of the CDPs are closed, and their debt and collateral are transferred into a single CDP.

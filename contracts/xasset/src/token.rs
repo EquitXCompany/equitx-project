@@ -564,7 +564,7 @@ impl IsCollateralized for Token {
         Ok(())
     }
 
-    fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128), Error> {
+    fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         self.liquidate(lender)
     }
 
@@ -718,7 +718,7 @@ impl IsStabilityPool for Token {
         self.withdraw_internal(to, amount, false)
     }
 
-    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128), Error> {
+    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128, CDPStatus), Error> {
         let mut cdp = self.cdp(cdp_owner.clone())?;
         let debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
@@ -763,18 +763,18 @@ impl IsStabilityPool for Token {
                 id: cdp_owner.clone(),
                 xlm_deposited: cdp.xlm_deposited,
                 asset_lent: cdp.asset_lent,
-                status: cdp.status,
+                status: CDPStatus::Closed,
                 ledger: env().ledger().sequence(),
                 timestamp: env().ledger().timestamp(),
             }
             .emit(env());
             self.cdps.remove(cdp_owner);
+            Ok((liquidated_debt, liquidated_collateral, CDPStatus::Closed))
         } else {
             // Otherwise, update the CDP
             self.set_cdp_from_decorated(cdp_owner, cdp);
+            Ok((liquidated_debt, liquidated_collateral, CDPStatus::Frozen))
         }
-
-        Ok((liquidated_debt, liquidated_collateral))
     }
 
     fn claim_rewards(&mut self, to: Address) -> Result<i128, Error> {

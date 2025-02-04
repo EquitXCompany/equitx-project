@@ -12,7 +12,6 @@ interface StabilityPoolMetadata {
 }
 
 export function useStabilityPoolMetadata() {
-  console.log('getting metadat')
   const [data, setData] = useState<StabilityPoolMetadata | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +40,7 @@ export function useStabilityPoolMetadata() {
           lastpriceXLM,
           lastpriceAsset,
           min_ratio: tx.result,
-          symbolAsset: "xUSD",
+          symbolAsset: "xUSD", // todo call contract for this
           contractId: xasset.options.contractId,
         });
       } catch (err) {

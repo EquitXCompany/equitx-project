@@ -40,6 +40,21 @@ export class StakerService {
     return this.stakerRepository.save(existingStaker);
   }
 
+  async upsert(
+    asset_symbol: string, 
+    address: string, 
+    stakerData: Partial<Staker>
+  ): Promise<Staker> {
+    const existingStaker = await this.findOne(asset_symbol, address);
+
+    if (existingStaker) {
+      Object.assign(existingStaker, stakerData);
+      return this.stakerRepository.save(existingStaker);
+    }
+
+    return this.stakerRepository.save(stakerData);
+  }
+
   async delete(asset_symbol: string, address: string): Promise<void> {
     const existingStaker = await this.findOne(asset_symbol, address);
     if (existingStaker) {

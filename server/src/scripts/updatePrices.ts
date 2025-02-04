@@ -22,6 +22,7 @@ async function checkAndFreezeCDPs(
   const cdpRepository = AppDataSource.getRepository(CDP);
   const liquidityPoolService = await LiquidityPoolService.create();
   const liquidityPool = await liquidityPoolService.findOne(asset.symbol);
+  minimumCollateralizationRatio = minimumCollateralizationRatio / 1e5;
 
   if (!liquidityPool) {
     throw new Error(`No liquidity pool found for ${asset}`);
@@ -37,6 +38,9 @@ async function checkAndFreezeCDPs(
     );
     const debtValue = new BigNumber(cdp.asset_lent).multipliedBy(assetPrice);
     const currentRatio = collateralValue.dividedBy(debtValue);
+    console.log(`info for cdp: ${cdp.lender}`);
+    console.log(`debt value is ${debtValue}, collateral value is ${collateralValue}`);
+    console.log(`current ratio is ${currentRatio}`);
 
     if (currentRatio.isLessThan(minimumCollateralizationRatio)) {
       console.log(
@@ -96,16 +100,19 @@ async function updatePrices() {
         // Update asset current price
         const asset = await assetService.findOne(assetSymbol);
         if (asset) {
-          const oldPrice = new BigNumber(asset.price);
+          const oldAssetPrice = new BigNumber(asset.price);
+          const oldXlmPrice = new BigNumber(asset.last_xlm_price || xlmPrice);
+          const oldPriceRatio = oldAssetPrice.dividedBy(oldXlmPrice);
+          const newPriceRatio = priceValue.dividedBy(xlmPrice);
           asset.price = priceValue.toString();
+          asset.last_xlm_price = xlmPrice.toString();
           await assetService.update(asset.id, asset);
 
           // Check if price ratio has increased
-          if (xlmPrice && assetSymbol !== "XLM") {
-            const oldPriceRatio = oldPrice.dividedBy(xlmPrice);
-            const newPriceRatio = priceValue.dividedBy(xlmPrice);
-
+          console.log(`XLM price is ${xlmPrice}, price is ${priceValue}`);
+          if (xlmPrice) {
             if (newPriceRatio.isGreaterThan(oldPriceRatio)) {
+              console.log(`New price ratio is ${newPriceRatio} which is greater than ${oldPriceRatio} so checking for CDPs that need to be liquidated.`);
               // freeze CDPs that have become insolvent
               await checkAndFreezeCDPs(
                 asset,
@@ -115,6 +122,9 @@ async function updatePrices() {
               );
             }
           }
+        }
+        else{
+          console.log(`Could not find asset for ${assetSymbol}`);
         }
       } catch (error) {
         console.error(`Error updating price for ${assetSymbol}:`, error);

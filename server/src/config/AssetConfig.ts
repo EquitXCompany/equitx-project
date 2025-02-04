@@ -13,8 +13,8 @@ export const XLM_FEED_ADDRESS = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5O
 export const assetConfig: AssetConfig = {
   'USDT': {
     feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
-    pool_address: "CCECE32QRX3PYIFAKH65ITCUT2JTYZTS4GEIFDWMQFSKJ5W6PVZWH2EE",
-    retroshades_cdp: 'cdpb40df2a82e55c35f5fe3abb8faa758fc',
-    retroshades_stake: 'stake_positionb40df2a82e55c35f5fe3abb8faa758fc',
+    pool_address: "CD7F3DA5Q3PZ2MYN52XFVN2VWTN4I3VXLDR5BRKD67KVUURKJR6K6DOJ",
+    retroshades_cdp: 'cdp4d0b29a216e7c4c64f057e80ee39d69a',
+    retroshades_stake: 'stake_position4d0b29a216e7c4c64f057e80ee39d69a',
   }
 }

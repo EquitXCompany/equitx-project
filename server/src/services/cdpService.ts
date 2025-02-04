@@ -33,7 +33,7 @@ export class CDPService {
     return cdp ? toCDPDTO(cdp) : null;
   }
 
-  async insert(cdp: CDP): Promise<CDP> {
+  async insert(cdp: Partial<CDP>): Promise<CDP> {
     return this.cdpRepository.save(cdp);
   }
 
@@ -55,6 +55,25 @@ export class CDPService {
     Object.assign(existingCDP, cdp);
     await this.cdpRepository.save(existingCDP);
     return existingCDP;
+  }
+
+  async upsert(
+    asset_symbol: string,
+    lender: string,
+    cdpData: Partial<CDP>
+  ): Promise<CDP> {
+    const existingCDP = await this.cdpRepository.createQueryBuilder('cdp')
+      .innerJoinAndSelect('cdp.asset', 'asset')
+      .where('asset.symbol = :asset_symbol', { asset_symbol })
+      .andWhere('cdp.lender = :lender', { lender })
+      .getOne();
+
+    if (existingCDP) {
+      Object.assign(existingCDP, cdpData);
+      return this.cdpRepository.save(existingCDP);
+    }
+
+    return this.cdpRepository.save(cdpData);
   }
 
   async delete(asset_symbol: string, lender: string): Promise<void> {
