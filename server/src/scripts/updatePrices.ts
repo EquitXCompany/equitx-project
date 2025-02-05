@@ -22,7 +22,7 @@ async function checkAndFreezeCDPs(
   const cdpRepository = AppDataSource.getRepository(CDP);
   const liquidityPoolService = await LiquidityPoolService.create();
   const liquidityPool = await liquidityPoolService.findOne(asset.symbol);
-  minimumCollateralizationRatio = minimumCollateralizationRatio / 1e5;
+  minimumCollateralizationRatio = minimumCollateralizationRatio / 1e4;
 
   if (!liquidityPool) {
     throw new Error(`No liquidity pool found for ${asset}`);
@@ -41,6 +41,7 @@ async function checkAndFreezeCDPs(
     console.log(`info for cdp: ${cdp.lender}`);
     console.log(`debt value is ${debtValue}, collateral value is ${collateralValue}`);
     console.log(`current ratio is ${currentRatio}`);
+    console.log(`minimum collateralization ratio is ${minimumCollateralizationRatio}`);
 
     if (currentRatio.isLessThan(minimumCollateralizationRatio)) {
       console.log(

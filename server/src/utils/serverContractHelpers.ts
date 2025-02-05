@@ -27,6 +27,8 @@ interface XAssetClient {
   lastprice_xlm: () => Promise<any>; 
   lastprice_asset: () => Promise<any>;
   minimum_collateralization_ratio: () => Promise<any>;
+  get_total_xasset: () => Promise<any>;
+  get_total_collateral: () => Promise<any>;
 }
 
 interface DataFeedClient {
@@ -93,6 +95,14 @@ export async function serverAuthenticatedContractCall(
       case "minimum_collateralization_ratio":
         needsSign = false;
         tx = await xassetClient.minimum_collateralization_ratio();
+        break;
+      case "get_total_xasset":
+        needsSign = false;
+        tx = await xassetClient.get_total_xasset();
+        break;
+      case "get_total_collateral":
+        needsSign = false;
+        tx = await xassetClient.get_total_collateral();
         break;
       default:
         throw new Error(`Unsupported xasset method: ${contractMethod}`);
