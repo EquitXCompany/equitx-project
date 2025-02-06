@@ -3,6 +3,14 @@ import { basicNodeSigner } from "@stellar/stellar-sdk/contract";
 import * as bip39 from "bip39";
 import { derivePath } from "ed25519-hd-key";
 import BigNumber from "bignumber.js";
+import { assetConfig } from "../config/AssetConfig";
+
+// Reverse mapping from pool address to asset symbol
+const poolAddressToSymbol: Record<string, string> = Object.entries(assetConfig)
+  .reduce((accumulator, [symbol, details]) => {
+    accumulator[details.pool_address] = symbol;
+    return accumulator;
+  }, {} as Record<string, string>);
 
 const serverSecretKey = process.env.SERVER_SECRET_KEY;
 
@@ -35,21 +43,33 @@ interface DataFeedClient {
   lastprice: (params: any) => Promise<any>;
 }
 
+async function getClientByPoolAddress(poolAddress: string): Promise<XAssetClient | DataFeedClient> {
+  const symbol = poolAddressToSymbol[poolAddress];
+
+  if (!symbol) {
+    throw new Error(`No symbol found for pool address: ${poolAddress}`);
+  }
+  console.log(`symbol ${symbol} for contract ${poolAddress}`);
+
+  const module = await import(/* @vite-ignore */ symbol);
+  return new module.Client(
+    {
+      networkPassphrase:
+        process.env.SERVER_NETWORK_PASSPHRASE ??
+        "Test SDF Network ; September 2015",
+      contractId: poolAddress,
+      rpcUrl:
+        process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
+      publicKey,
+    });
+}
+
 async function getClient(
   contractId: string,
   clientType: "xasset" | "datafeed"
 ): Promise<XAssetClient | DataFeedClient> {
   if (clientType === "xasset") {
-    const Client = await import("xasset");
-    return new Client.Client({
-      networkPassphrase:
-        process.env.SERVER_NETWORK_PASSPHRASE ??
-        "Test SDF Network ; September 2015",
-      contractId,
-      rpcUrl:
-        process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
-      publicKey,
-    }) as XAssetClient;
+    return await getClientByPoolAddress(contractId);
   } else {
     const Client = await import("data_feed");
     return new Client.Client({

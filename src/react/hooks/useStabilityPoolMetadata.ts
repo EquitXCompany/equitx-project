@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import BigNumber from 'bignumber.js';
-import xasset from '../../contracts/xasset';
-
+import { getContractBySymbol } from '../../contracts/util';
+import type { XAssetSymbol } from '../../contracts/contractConfig';
 
 interface StabilityPoolMetadata {
   lastpriceXLM: BigNumber;
   lastpriceAsset: BigNumber;
   min_ratio: number;
-  symbolAsset: string;
+  symbolAsset: XAssetSymbol;
   contractId: string;
 }
 
-export function useStabilityPoolMetadata() {
+export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
   const [data, setData] = useState<StabilityPoolMetadata | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,8 +19,10 @@ export function useStabilityPoolMetadata() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const tx = await xasset.minimum_collateralization_ratio();
-        const lastpriceXLM = new BigNumber(await xasset.lastprice_xlm().then((t) => {
+        const contract = await getContractBySymbol(assetSymbol);
+        
+        const tx = await contract.minimum_collateralization_ratio();
+        const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t) => {
           if (t.result.isOk()) {
             return t.result.unwrap().price.toString();
           } else {
@@ -28,7 +30,7 @@ export function useStabilityPoolMetadata() {
           }
         })).div(10 ** 14);
 
-        const lastpriceAsset = new BigNumber(await xasset.lastprice_asset().then((t) => {
+        const lastpriceAsset = new BigNumber(await contract.lastprice_asset().then((t) => {
           if (t.result.isOk()) {
             return t.result.unwrap().price.toString();
           } else {
@@ -40,8 +42,8 @@ export function useStabilityPoolMetadata() {
           lastpriceXLM,
           lastpriceAsset,
           min_ratio: tx.result,
-          symbolAsset: "xUSD", // todo call contract for this
-          contractId: xasset.options.contractId,
+          symbolAsset: assetSymbol,
+          contractId: contract.options.contractId,
         });
       } catch (err) {
         setError(err as Error);
@@ -51,7 +53,7 @@ export function useStabilityPoolMetadata() {
     };
 
     fetchData();
-  }, []);
+  }, [assetSymbol]);
 
   return { data, error, isLoading };
 }

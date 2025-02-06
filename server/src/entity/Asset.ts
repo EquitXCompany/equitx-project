@@ -27,11 +27,11 @@ export class Asset {
   feed_address!: string;
 
   // current dollar denominated price converted to integer with 14 decimal places (multiplied by 10^14)
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: 30, scale: 0 }) 
   price!: string; 
 
   // Store the XLM price at the time this asset's price was last updated
-  @Column({ type: "bigint", nullable: true })
+  @Column({ type: "numeric", precision: 30, scale: 0 }) 
   last_xlm_price!: string;
 
   @OneToMany(() => CDP, (cdp) => cdp.asset)

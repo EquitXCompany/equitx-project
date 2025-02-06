@@ -29,7 +29,7 @@ export class CDPService {
       .where("asset.symbol = :asset_symbol", { asset_symbol })
       .andWhere("cdp.lender = :lender", { lender })
       .getOne();
-    
+
     return cdp ? toCDPDTO(cdp) : null;
   }
 
@@ -42,10 +42,11 @@ export class CDPService {
     lender: string,
     cdp: Partial<CDP>
   ): Promise<CDP | null> {
-    const existingCDP = await this.cdpRepository.createQueryBuilder('cdp')
-      .innerJoinAndSelect('cdp.asset', 'asset')
-      .where('asset.symbol = :asset_symbol', { asset_symbol })
-      .andWhere('cdp.lender = :lender', { lender })
+    const existingCDP = await this.cdpRepository
+      .createQueryBuilder("cdp")
+      .innerJoinAndSelect("cdp.asset", "asset")
+      .where("asset.symbol = :asset_symbol", { asset_symbol })
+      .andWhere("cdp.lender = :lender", { lender })
       .getOne();
 
     if (!existingCDP) {
@@ -62,10 +63,11 @@ export class CDPService {
     lender: string,
     cdpData: Partial<CDP>
   ): Promise<CDP> {
-    const existingCDP = await this.cdpRepository.createQueryBuilder('cdp')
-      .innerJoinAndSelect('cdp.asset', 'asset')
-      .where('asset.symbol = :asset_symbol', { asset_symbol })
-      .andWhere('cdp.lender = :lender', { lender })
+    const existingCDP = await this.cdpRepository
+      .createQueryBuilder("cdp")
+      .innerJoinAndSelect("cdp.asset", "asset")
+      .where("asset.symbol = :asset_symbol", { asset_symbol })
+      .andWhere("cdp.lender = :lender", { lender })
       .getOne();
 
     if (existingCDP) {
@@ -77,15 +79,26 @@ export class CDPService {
   }
 
   async delete(asset_symbol: string, lender: string): Promise<void> {
-    const cdp = await this.cdpRepository.createQueryBuilder('cdp')
-      .innerJoinAndSelect('cdp.asset', 'asset')
-      .where('asset.symbol = :asset_symbol', { asset_symbol })
-      .andWhere('cdp.lender = :lender', { lender })
+    const cdp = await this.cdpRepository
+      .createQueryBuilder("cdp")
+      .innerJoinAndSelect("cdp.asset", "asset")
+      .where("asset.symbol = :asset_symbol", { asset_symbol })
+      .andWhere("cdp.lender = :lender", { lender })
       .getOne();
 
     if (cdp) {
       cdp.is_deleted = true;
       await this.cdpRepository.save(cdp);
     }
+  }
+
+  async findAllByAssetSymbol(asset_symbol: string): Promise<CDPDTO[]> {
+    const cdps = await this.cdpRepository
+      .createQueryBuilder("cdp")
+      .innerJoinAndSelect("cdp.asset", "asset")
+      .where("asset.symbol = :asset_symbol", { asset_symbol })
+      .getMany();
+
+    return cdps.map(toCDPDTO);
   }
 }

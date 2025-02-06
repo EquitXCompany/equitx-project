@@ -2,26 +2,22 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  JoinColumn,
-  CreateDateColumn,
+  CreateDateColumn, 
   UpdateDateColumn,
 } from "typeorm";
-import { Asset } from "./Asset";
 
 export enum TableType {
   CDP = "CDP",
   STAKE = "STAKE"
 }
 
-@Entity("last_queried_timestamps")
+@Entity("last_queried_timestamps") 
 export class LastQueriedTimestamp {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @ManyToOne(() => Asset)
-  @JoinColumn({ name: "asset_id" })
-  asset!: Asset;
+  @Column({ type: "varchar", length: 32 })
+  wasm_hash!: string;
 
   @Column({
     type: "enum",
@@ -35,6 +31,6 @@ export class LastQueriedTimestamp {
   @CreateDateColumn()
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn() 
   updated_at!: Date;
 }

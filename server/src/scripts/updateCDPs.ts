@@ -6,12 +6,11 @@ import axios from "axios";
 import { getTotalXAsset, serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
 import { LiquidityPoolService } from "../services/liquidityPoolService";
 import { assetConfig } from "../config/AssetConfig";
-import { AssetService } from "../services/assetService";
 import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 import { TableType } from "../entity/LastQueriedTimestamp";
 import { CDPService } from "../services/cdpService";
 import { AppDataSource } from "../ormconfig";
-
+import { AssetService } from "../services/assetService";
 
 dotenv.config();
 
@@ -79,24 +78,17 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
   }
 }
 
-async function getLastQueriedTimestamp(assetSymbol: string): Promise<number> {
+async function getLastQueriedTimestamp(wasmHash: string): Promise<number> {
   const timestampService = await LastQueriedTimestampService.create();
-  return timestampService.getTimestamp(assetSymbol, TableType.CDP);
+  return timestampService.getTimestamp(wasmHash, TableType.CDP);
 }
 
 async function updateLastQueriedTimestamp(
-  assetSymbol: string,
+  wasmHash: string,
   timestamp: number
 ): Promise<void> {
   const timestampService = await LastQueriedTimestampService.create();
-  const assetService = await AssetService.create();
-  const asset = await assetService.findOne(assetSymbol);
-  
-  if (!asset) {
-    throw new Error(`Asset with symbol ${assetSymbol} not found`);
-  }
-
-  await timestampService.updateTimestamp(asset, TableType.CDP, timestamp);
+  await timestampService.updateTimestamp(wasmHash, TableType.CDP, timestamp);
 }
 
 async function getLiquidityPoolId(assetSymbol: string): Promise<string> {
@@ -106,81 +98,88 @@ async function getLiquidityPoolId(assetSymbol: string): Promise<string> {
   else throw new Error(`No liquidity pool for asset symbol ${assetSymbol}`);
 }
 
+async function getWasmHashToLiquidityPoolMapping(): Promise<Map<string, Map<string, string>>> {
+  const mapping = new Map<string, Map<string, string>>();
+  
+  for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
+    if (!mapping.has(assetDetails.wasm_hash)) {
+      mapping.set(assetDetails.wasm_hash, new Map());
+    }
+    mapping.get(assetDetails.wasm_hash)!.set(assetDetails.pool_address, assetSymbol);
+  }
+  
+  return mapping;
+}
+
 async function updateCDPs() {
   try {
     const cdpRepository = AppDataSource.getRepository(CDP);
-    for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
-      const lastTimestamp = await getLastQueriedTimestamp(assetSymbol);
+    const wasmHashMapping = await getWasmHashToLiquidityPoolMapping();
+
+    for (const [wasmHash, contractMapping] of wasmHashMapping) {
+      const lastTimestamp = await getLastQueriedTimestamp(wasmHash);
       console.log(`querying cdps from reflector with timestamp ${lastTimestamp}`);
-      const cdps = await fetchCDPs(assetDetails.retroshades_cdp, lastTimestamp);
-      const liquidityPoolId = await getLiquidityPoolId(assetSymbol);
-      await updateCDPsInDatabase(cdps, assetSymbol);
+      const cdps = await fetchCDPs(`cdp${wasmHash}`, lastTimestamp);
 
-      if (cdps.length > 0) {
-        const newLastTimestamp = Math.max(...cdps.map((cdp) => cdp.timestamp));
-        await updateLastQueriedTimestamp(assetSymbol, newLastTimestamp);
-        console.log(`Updated last queried timestamp for ${assetSymbol} with ${newLastTimestamp}`);
-      }
-
-      console.log(`Updated ${cdps.length} CDPs for ${assetSymbol}`);
-
-      // Process insolvent and frozen CDPs
-      // todo: also need to periodically check when prices change for newly insolvent CDPs
       for (const cdp of cdps) {
-        const lender = cdp.id;
-        const serverCDP = await cdpRepository.findOne({
-          where: { lender },
-        });
+        const assetSymbol = contractMapping.get(cdp.contract_id);
+        if (!assetSymbol) {
+          console.warn(`No asset found for contract ID ${cdp.contract_id}`);
+          continue;
+        }
 
-        if (cdp.status[0] === "Insolvent") {
-          console.log(
-            `Attempting to freeze insolvent CDP for lender: ${lender}`
-          );
-          try {
-            const result = await serverAuthenticatedContractCall(
-              "freeze_cdp",
-              { lender },
-              liquidityPoolId
-            );
-            serverCDP!.status = CDPStatus.Frozen;
-            await cdpRepository.save(serverCDP!);
-            console.log(
-              `Successfully frozen CDP for lender: ${lender}. Result: ${result}`
-            );
-          } catch (error) {
-            console.error(`Error freezing CDP for lender ${lender}:`, error);
-          }
-        } else if (cdp.status[0] === "Frozen") {
-          console.log(
-            `Attempting to liquidate frozen CDP for lender: ${lender}`
-          );
-          try {
-            const totalXLM = await getTotalXAsset(liquidityPoolId);
-            if(totalXLM.isGreaterThan(0)){
-              const {result, status} = await serverAuthenticatedContractCall(
-                "liquidate_cdp",
-                { lender },
-                liquidityPoolId
+        await updateCDPsInDatabase([cdp], assetSymbol);
+
+        if (cdp.status[0] === "Insolvent" || cdp.status[0] === "Frozen") {
+          const serverCDP = await cdpRepository.findOne({
+            where: { lender: cdp.id },
+          });
+
+          if (cdp.status[0] === "Insolvent") {
+            console.log(`Attempting to freeze insolvent CDP for lender: ${cdp.id}`);
+            try {
+              const result = await serverAuthenticatedContractCall(
+                "freeze_cdp",
+                { lender: cdp.id },
+                cdp.contract_id
               );
-              console.log(
-                `Successfully liquidated CDP for lender: ${lender}. Result: ${result}`
-              );
-              const cdpStatus = result.value[2];
-              console.log(`CDP status after liquidation: ${cdpStatus}`);
-              if(cdpStatus === CDPStatus.Closed){
-                serverCDP!.status = CDPStatus.Closed;
-                await cdpRepository.save(serverCDP!);
+              serverCDP!.status = CDPStatus.Frozen;
+              await cdpRepository.save(serverCDP!);
+              console.log(`Successfully frozen CDP for lender: ${cdp.id}. Result: ${result}`);
+            } catch (error) {
+              console.error(`Error freezing CDP for lender ${cdp.id}:`, error);
+            }
+          } else if (cdp.status[0] === "Frozen") {
+            console.log(`Attempting to liquidate frozen CDP for lender: ${cdp.id}`);
+            try {
+              const totalXLM = await getTotalXAsset(cdp.contract_id);
+              if(totalXLM.isGreaterThan(0)){
+                const {result, status} = await serverAuthenticatedContractCall(
+                  "liquidate_cdp",
+                  { lender: cdp.id },
+                  cdp.contract_id
+                );
+                if(result.value[2] === CDPStatus.Closed){
+                  serverCDP!.status = CDPStatus.Closed;
+                  await cdpRepository.save(serverCDP!);
+                }
+              } else {
+                console.log("No XLM in the pool for liquidation, skipping");
               }
+            } catch (error) {
+              console.error(`Error liquidating CDP for lender ${cdp.id}:`, error);
             }
-            else{
-              console.log("No XLM in the pool for liquidation, skipping");
-            }
-
-          } catch (error) {
-            console.error(`Error liquidating CDP for lender ${lender}:`, error);
           }
         }
       }
+
+      if (cdps.length > 0) {
+        const newLastTimestamp = Math.max(...cdps.map((cdp) => cdp.timestamp));
+        await updateLastQueriedTimestamp(wasmHash, newLastTimestamp);
+        console.log(`Updated last queried timestamp for wasm hash ${wasmHash} with ${newLastTimestamp}`);
+      }
+
+      console.log(`Updated ${cdps.length} CDPs for wasm hash ${wasmHash}`);
     }
   } catch (error) {
     console.error("Error updating CDPs:", error);

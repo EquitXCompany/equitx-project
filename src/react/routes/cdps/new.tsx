@@ -1,23 +1,40 @@
 import { useEffect, useState } from "react";
-import { Form, useLoaderData, redirect } from "react-router-dom";
-import type { ActionFunction } from "react-router-dom";
-import xasset from '../../../contracts/xasset';
+import { Form, useLoaderData, redirect, useParams } from "react-router-dom";
+import type { ActionFunction, LoaderFunction } from "react-router-dom";
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import BigNumber from 'bignumber.js';
 import { BASIS_POINTS } from "../../../constants";
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
+import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
+import ErrorMessage from "../../components/errorMessage";
+import { getContractBySymbol } from "../../../contracts/util";
 
-export const loader = async () => {
+export const loader: LoaderFunction = async ({ params }) => {
+  const assetSymbol = params.assetSymbol as XAssetSymbol;
+  
+  if (!assetSymbol || !contractMapping[assetSymbol]) {
+    throw new Error("Invalid asset symbol");
+  }
+
+  const contractClient = await getContractBySymbol(assetSymbol);
+  
   return {
-    minRatio: await xasset
+    minRatio: await contractClient
       .minimum_collateralization_ratio()
       .then((t) => new BigNumber(t.result)),
   };
 };
 
-export const action: ActionFunction = async ({ request }) => {
+export const action: ActionFunction = async ({ request, params }) => {
+  const assetSymbol = params.assetSymbol as XAssetSymbol;
+  
+  if (!assetSymbol || !contractMapping[assetSymbol]) {
+    throw new Error("Invalid asset symbol");
+  }
+
+  const contractClient = await getContractBySymbol(assetSymbol);
   const formData = Object.fromEntries(await request.formData());
   const decimalsXLM = 7;
   const decimalsAsset = 7;
@@ -26,14 +43,24 @@ export const action: ActionFunction = async ({ request }) => {
     collateral: new BigNumber(formData.collateral?.toString() || '0').times(new BigNumber(10).pow(decimalsXLM)).toFixed(0),
     asset_lent: new BigNumber(formData.asset_lent?.toString() || '0').times(new BigNumber(10).pow(decimalsAsset)).toFixed(0),
   };
-  await authenticatedContractCall(xasset.open_cdp, cdp);
-  return redirect(`/`);
+  await authenticatedContractCall(contractClient.open_cdp, cdp);
+  return redirect(`/cdps/${assetSymbol}`);
 };
 
 function New() {
+  const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
   const { account, isSignedIn } = useWallet();
   const { minRatio } = useLoaderData() as Awaited<ReturnType<typeof loader>>;
-  const { data: metadata, isLoading } = useStabilityPoolMetadata();
+  const { data: metadata, isLoading } = useStabilityPoolMetadata(assetSymbol);
+
+  if (!assetSymbol || !contractMapping[assetSymbol]) {
+    return (
+      <ErrorMessage
+        title="Error: Invalid Asset"
+        message={`The asset "${assetSymbol}" does not exist. Please select a valid asset from the home page.`}
+      />
+    );
+  }
 
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));

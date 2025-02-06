@@ -17,10 +17,10 @@ export class CDP {
   @Column({ type: "char", length: 56 })
   lender!: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: 30, scale: 0 }) 
   xlm_deposited!: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: 30, scale: 0 }) 
   asset_lent!: string;
 
   @Column({

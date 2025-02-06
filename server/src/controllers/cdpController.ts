@@ -22,6 +22,16 @@ export class CDPController {
     }
   }
 
+  async getAllCDPsByAssetSymbol(req: Request, res: Response): Promise<void> {
+    try {
+      const asset_symbol = req.params.asset_symbol;
+      const cdps = await this.cdpService.findAllByAssetSymbol(asset_symbol);
+      res.json(cdps);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching CDPs for asset symbol" });
+    }
+  }
+
   async getCDPByAssetSymbolAndAddr(req: Request, res: Response): Promise<void> {
     try {
       const cdp = await this.cdpService.findOne(req.params.asset_symbol, req.params.address);

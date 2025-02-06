@@ -1,8 +1,7 @@
 interface AssetDetails {
   feed_address: string;
   pool_address: string;
-  retroshades_cdp: string;
-  retroshades_stake: string;
+  wasm_hash: string;
 }
 
 export interface AssetConfig {
@@ -11,10 +10,29 @@ export interface AssetConfig {
 
 export const XLM_FEED_ADDRESS = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63";
 export const assetConfig: AssetConfig = {
-  'USDT': {
+  'xBTC': {
     feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
-    pool_address: "CD7F3DA5Q3PZ2MYN52XFVN2VWTN4I3VXLDR5BRKD67KVUURKJR6K6DOJ",
-    retroshades_cdp: 'cdp4d0b29a216e7c4c64f057e80ee39d69a',
-    retroshades_stake: 'stake_position4d0b29a216e7c4c64f057e80ee39d69a',
-  }
+    pool_address: "CDUE2LN7VSAIVHD3T72OSYPS77DEUOU5OBRXWRZVKAPALT2IKKOZKY7X",
+    wasm_hash: "4d0b29a216e7c4c64f057e80ee39d69a",
+  },
+  'xETH': {
+    feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
+    pool_address: "CCADQ6RUME6G4NVBTGGVPDQSMWV3ZQNAVI64ZP34MJBUYOT5SZFDJK3T",
+    wasm_hash: "4d0b29a216e7c4c64f057e80ee39d69a",
+  },
+  'xUSDT': {
+    feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
+    pool_address: "CAJ3TA3DSFCRI7USITE3PB5E2OQUXCND7IYGILW73IV663JORXS7IKQV",
+    wasm_hash: "4d0b29a216e7c4c64f057e80ee39d69a",
+  },
+  'xXRP': {
+    feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
+    pool_address: "CDIWDE5BGTI5TWACCZT2FCCOOQC3ND7ARJCHNZKSDZ2A2ZCLYYRJ2MF7",
+    wasm_hash: "4d0b29a216e7c4c64f057e80ee39d69a",
+  },
+  'xSOL': {
+    feed_address: "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63",
+    pool_address: "CDGJZ4PNXNE4EZ4LB4EPAQB55KNQI5QZC4M4POVAAMLLIVYUX5T56DHS",
+    wasm_hash: "4d0b29a216e7c4c64f057e80ee39d69a",
+  },
 }

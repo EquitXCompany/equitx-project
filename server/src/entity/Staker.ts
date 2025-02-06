@@ -19,16 +19,16 @@ export class Staker {
   @Column({ type: "varchar", length: 56 })
   address!: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: 30, scale: 0 }) 
   xasset_deposit!: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "bigint", unsigned: true })
   product_constant!: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "bigint", unsigned: true })
   compounded_constant!: string;
 
-  @Column({ type: "numeric", precision: 20, scale: 0 })
+  @Column({ type: "numeric", precision: 10, scale: 0 })
   epoch!: string;
 
   @ManyToOne(() => Asset, (asset) => asset.stakers)

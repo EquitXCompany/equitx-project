@@ -1,12 +1,34 @@
-import { useCdps, CalculateCollateralizationRatio } from '../../hooks/useCdps';
+import { useCdps, CalculateCollateralizationRatio, useCdpsByAssetSymbol } from '../../hooks/useCdps';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
 import { getStatusColor } from "../../../utils/contractHelpers";
 import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
+import { useParams } from 'react-router-dom';
+import ErrorMessage from '../../components/errorMessage';
+import { contractMapping, XAssetSymbol } from '../../../contracts/contractConfig';
 
 function List() {
-  const { data: cdps, isLoading: cdpsLoading, error: cdpsError } = useCdps();
-  const { data: stabilityData, isLoading: stabilityLoading, error: stabilityError } = useStabilityPoolMetadata();
+  const { assetSymbol } = useParams();
+  if (!assetSymbol) {
+    return (
+      <ErrorMessage
+        title="Error: No Asset Selected"
+        message="Please select an asset from the home page to view its stability pool."
+      />
+    );
+  }
+  
+  if (!contractMapping[assetSymbol as XAssetSymbol]) {
+    return (
+      <ErrorMessage
+        title="Error: Invalid Asset"
+        message={`The asset "${assetSymbol}" does not exist. Please select a valid asset from the home page.`}
+      />
+    );
+  }
+
+  const { data: cdps, isLoading: cdpsLoading, error: cdpsError } = useCdpsByAssetSymbol(assetSymbol);
+  const { data: stabilityData, isLoading: stabilityLoading, error: stabilityError } = useStabilityPoolMetadata(assetSymbol as XAssetSymbol);
   const { account } = useWallet();
 
   if (cdpsLoading || stabilityLoading) return <div>Loading...</div>;
@@ -37,7 +59,7 @@ function List() {
         {sortedCdps.map((cdp) => (
           <Card
             key={cdp.lender}
-            href={`/${cdp.lender}`}
+            href={`/cdps/${assetSymbol}/${cdp.lender}`}
             title={cdp.lender === account ? "yours" : cdp.lender}
           >
             <div
@@ -50,7 +72,7 @@ function List() {
           </Card>
         ))}
         {!yours && (
-          <Card title="New" href="/new">
+          <Card title="New" href={`/cdps/${assetSymbol}/new`}>
             Create a CDP
           </Card>
         )}

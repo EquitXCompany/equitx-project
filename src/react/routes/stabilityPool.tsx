@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Typography, Button, Paper, Grid, TextField, Snackbar, CircularProgress, type AlertProps, Link as MuiLink } from '@mui/material';
-import xasset from '../../contracts/xasset';
-import { Errors as ContractErrors } from "xasset";
+import { contractMapping, XAssetSymbol } from '../../contracts/contractConfig';
+import { Errors as ContractErrors } from "xUSDT"; // todo create dynamic import based on name
 import BigNumber from 'bignumber.js';
 import { useWallet } from '../../wallet';
 import { authenticatedContractCall, unwrapResult } from '../../utils/contractHelpers';
 import Alert from '@mui/material/Alert';
 import AddressDisplay from '../components/cdp/AddressDisplay';
+import { useXAssetContract } from '../hooks/useXAssetContract';
+import ErrorMessage from '../components/errorMessage';
 
 const PRODUCT_CONSTANT_DECIMALS = 9;
 const PRODUCT_CONSTANT = Math.pow(10, PRODUCT_CONSTANT_DECIMALS);
@@ -32,7 +34,7 @@ const parseErrorMessage = (error: any): string => {
 
 
 function StabilityPool() {
-  const { contractId } = useParams();
+  const { assetSymbol } = useParams();
   const { account, isSignedIn } = useWallet();
   const [totalXAsset, setTotalXAsset] = useState<BigNumber>(new BigNumber(0));
   const [totalCollateral, setTotalCollateral] = useState<BigNumber>(new BigNumber(0));
@@ -47,8 +49,11 @@ function StabilityPool() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const { contract: xasset } = useXAssetContract(assetSymbol as XAssetSymbol);
+
   const fetchData = async () => {
     setLoading(true);
+    if(!xasset) { return; }
     try {
       const total_xasset = await xasset.get_total_xasset().then(tx =>
         tx.result
@@ -93,12 +98,12 @@ function StabilityPool() {
 
   useEffect(() => {
     fetchData();
-  }, [account, isSignedIn]);
+  }, [xasset, account, isSignedIn]);
 
 
 
   const handleStake = async () => {
-    if (!account || !isSignedIn) return;
+    if (!account || !isSignedIn || !xasset) return;
     setLoading(true);
     try {
       await authenticatedContractCall(xasset.stake, {
@@ -118,7 +123,7 @@ function StabilityPool() {
   };
 
   const handleUnstake = async () => {
-    if (!account || !isSignedIn) return;
+    if (!account || !isSignedIn || !xasset) return;
     setLoading(true);
     try {
       await authenticatedContractCall(xasset.unstake, { staker: account });
@@ -135,7 +140,7 @@ function StabilityPool() {
   };
 
   const handleClaimRewards = async () => {
-    if (!account || !isSignedIn) return;
+    if (!account || !isSignedIn || !xasset) return;
     setLoading(true);
     try {
       await authenticatedContractCall(xasset.claim_rewards, { to: account });
@@ -153,7 +158,7 @@ function StabilityPool() {
 
 
   const handleDeposit = async () => {
-    if (!account || !isSignedIn) return;
+    if (!account || !isSignedIn || !xasset) return;
     setLoading(true);
     try {
       await authenticatedContractCall(xasset.deposit, {
@@ -173,7 +178,7 @@ function StabilityPool() {
   };
 
   const handleWithdraw = async () => {
-    if (!account || !isSignedIn) return;
+    if (!account || !isSignedIn || !xasset) return;
     setLoading(true);
     try {
       await authenticatedContractCall(xasset.withdraw, {
@@ -200,6 +205,25 @@ function StabilityPool() {
     setErrorMessage('');
   };
 
+  if (!assetSymbol) {
+    return (
+      <ErrorMessage
+        title="Error: No Asset Selected"
+        message="Please select an asset from the home page to view its stability pool."
+      />
+    );
+  }
+  
+  if (!contractMapping[assetSymbol as XAssetSymbol]) {
+    return (
+      <ErrorMessage
+        title="Error: Invalid Asset"
+        message={`The asset "${assetSymbol}" does not exist. Please select a valid asset from the home page.`}
+      />
+    );
+  }
+
+  const contractId = contractMapping[assetSymbol as XAssetSymbol];
   return (
     <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
       <MuiLink component={RouterLink} to={`/`} sx={{ display: 'block', mb: 2 }}>

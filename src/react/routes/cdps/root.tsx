@@ -1,15 +1,27 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { Box, Typography, Grid, Paper, Container, Button } from '@mui/material';
 import AddressDisplay from '../../components/cdp/AddressDisplay';
 import Connect from "../../components/connect";
 import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
 import BigNumber from "bignumber.js";
 import { BASIS_POINTS } from "../../../constants";
+import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
+import ErrorMessage from "../../components/errorMessage";
 
 function Root() {
-  const { data: stabilityData, error, isLoading } = useStabilityPoolMetadata();
+  const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
   const navigate = useNavigate();
 
+  if (!assetSymbol || !contractMapping[assetSymbol]) {
+    return (
+      <ErrorMessage
+        title="Error: Invalid Asset"
+        message={`The asset "${assetSymbol}" does not exist. Please select a valid asset from the home page.`}
+      />
+    );
+  }
+
+  const { data: stabilityData, error, isLoading } = useStabilityPoolMetadata(assetSymbol);
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>An error occurred: {error.message}</div>;
   if (!stabilityData) return <div>No data available</div>;
@@ -17,14 +29,14 @@ function Root() {
   const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = stabilityData;
 
   const handleStabilityPoolClick = () => {
-    navigate(`/stability-pool/${contractId}`);
+    navigate(`/stability-pool/${assetSymbol}`);
   };
 
   return (
     <Container maxWidth="md">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          XLM↔USD Pool
+          XLM↔{symbolAsset} Pool
         </Typography>
         <Typography variant="h5" component="h4" gutterBottom>
           <AddressDisplay address={contractId} />

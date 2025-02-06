@@ -77,50 +77,62 @@ async function updateStakesInDatabase(
   }
 }
 
-async function getLastQueriedTimestamp(assetSymbol: string): Promise<number> {
+async function getLastQueriedTimestamp(wasmHash: string): Promise<number> {
   const timestampService = await LastQueriedTimestampService.create();
-  return timestampService.getTimestamp(assetSymbol, TableType.STAKE);
+  return timestampService.getTimestamp(wasmHash, TableType.STAKE);
 }
 
 async function updateLastQueriedTimestamp(
-  assetSymbol: string,
+  wasmHash: string,
   timestamp: number
 ): Promise<void> {
   const timestampService = await LastQueriedTimestampService.create();
-  const assetService = await AssetService.create();
-  const asset = await assetService.findOne(assetSymbol);
+  await timestampService.updateTimestamp(wasmHash, TableType.STAKE, timestamp);
+}
 
-  if (!asset) {
-    throw new Error(`Asset with symbol ${assetSymbol} not found`);
+async function getWasmHashToLiquidityPoolMapping(): Promise<Map<string, Map<string, string>>> {
+  const mapping = new Map<string, Map<string, string>>();
+  
+  for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
+    if (!mapping.has(assetDetails.wasm_hash)) {
+      mapping.set(assetDetails.wasm_hash, new Map());
+    }
+    mapping.get(assetDetails.wasm_hash)!.set(assetDetails.pool_address, assetSymbol);
   }
-
-  await timestampService.updateTimestamp(asset, TableType.STAKE, timestamp);
+  
+  return mapping;
 }
 
 async function updateStakes() {
   try {
-    for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
-      const lastTimestamp = await getLastQueriedTimestamp(assetSymbol);
-      console.log(
-        `Querying stakes from reflector with timestamp ${lastTimestamp}`
-      );
+    const wasmHashMapping = await getWasmHashToLiquidityPoolMapping();
+
+    for (const [wasmHash, contractMapping] of wasmHashMapping) {
+      const lastTimestamp = await getLastQueriedTimestamp(wasmHash);
+      console.log(`Querying stakes from reflector with timestamp ${lastTimestamp}`);
+      
       const stakes = await fetchStakes(
-        assetDetails.retroshades_stake,
+        `stake_position${wasmHash}`,
         lastTimestamp
       );
-      await updateStakesInDatabase(stakes, assetSymbol);
 
-      if (stakes.length > 0) {
-        const newLastTimestamp = Math.max(
-          ...stakes.map((stake) => stake.timestamp)
-        );
-        await updateLastQueriedTimestamp(assetSymbol, newLastTimestamp);
-        console.log(
-          `Updated last queried timestamp for ${assetSymbol} with ${newLastTimestamp}`
-        );
+      for (const stake of stakes) {
+        const assetSymbol = contractMapping.get(stake.contract_id);
+        if (!assetSymbol) {
+          console.warn(`No asset found for contract ID ${stake.contract_id}`);
+          continue;
+        }
+
+        await updateStakesInDatabase([stake], assetSymbol);
       }
 
-      console.log(`Updated ${stakes.length} stakes for ${assetSymbol}`);
+      if (stakes.length > 0) {
+        const newLastTimestamp = Math.max(...stakes.map((stake) => stake.timestamp));
+        await updateLastQueriedTimestamp(wasmHash, newLastTimestamp);
+        console.log(`Updated last queried timestamp for wasm hash ${wasmHash} with ${newLastTimestamp}`);
+      }
+
+      console.log(`Updated ${stakes.length} stakes for wasm hash ${wasmHash}`);
     }
   } catch (error) {
     console.error("Error updating stakes:", error);

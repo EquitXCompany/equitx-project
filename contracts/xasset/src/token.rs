@@ -1119,6 +1119,7 @@ impl Token {
         self.total_xasset.get().expect("Total xasset should be initialized")
     }
 
+    // todo: many of these function shouldnt be exposed
     pub fn add_total_xasset(&mut self, amount: i128) {
         self.total_xasset.set(&(self.get_total_xasset() + amount));
     }

@@ -16,6 +16,10 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
 
       if (!asset) {
         const { price } = await getLatestPriceData(
+          symbol,
+          config.pool_address
+        );
+        const { price: xlmPrice } = await getLatestPriceData(
           "XLM",
           config.pool_address
         );
@@ -25,6 +29,7 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
         asset.symbol = symbol;
         asset.feed_address = config.feed_address;
         asset.price = price.toString();
+        asset.last_xlm_price= xlmPrice.toString();
         asset = await assetService.insert(asset);
         // Create LiquidityPool
         const liquidityPool = new LiquidityPool();

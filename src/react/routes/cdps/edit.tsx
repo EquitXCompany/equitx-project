@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link as RouterLink, Form, useNavigate, useActionData } from "react-router-dom";
 import type { ActionFunction } from "react-router-dom";
-import xasset from "../../../contracts/xasset";
 import BigNumber from "bignumber.js";
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
@@ -20,42 +19,52 @@ import {
   Link as MuiLink
 } from "@mui/material";
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
+import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
+import ErrorMessage from "../../components/errorMessage";
+import { getContractBySymbol } from "../../../contracts/util";
 
 interface ActionData {
   message: string;
   type: "success" | "error";
   lender: string;
-  action: string;
+  action: string
 }
 
-export const action: ActionFunction = async ({ request }) => {
+export const action: ActionFunction = async ({ request, params }) => {
   const formData = await request.formData();
   const action = formData.get("action");
   const lender = formData.get("lender") as string;
   const amount = new BigNumber(formData.get("amount") as string).times(10 ** 7).toFixed(0);
+  const assetSymbol = params.assetSymbol as XAssetSymbol;
+  
+  if (!assetSymbol || !contractMapping[assetSymbol]) {
+    throw new Error("Invalid asset symbol");
+  }
+
+  const contractClient = await getContractBySymbol(assetSymbol);
 
   let tx;
   switch (action) {
     case "addCollateral":
-      tx = await authenticatedContractCall(xasset.add_collateral, { lender, amount });
+      tx = await authenticatedContractCall(contractClient.add_collateral, { lender, amount });
       break;
     case "withdrawCollateral":
-      tx = await authenticatedContractCall(xasset.withdraw_collateral, { lender, amount });
+      tx = await authenticatedContractCall(contractClient.withdraw_collateral, { lender, amount });
       break;
     case "borrowXAsset":
-      tx = await authenticatedContractCall(xasset.borrow_xasset, { lender, amount });
+      tx = await authenticatedContractCall(contractClient.borrow_xasset, { lender, amount });
       break;
     case "repayDebt":
-      tx = await authenticatedContractCall(xasset.repay_debt, { lender, amount });
+      tx = await authenticatedContractCall(contractClient.repay_debt, { lender, amount });
       break;
     case "liquidate":
-      tx = await authenticatedContractCall(xasset.liquidate_cdp, { lender });
+      tx = await authenticatedContractCall(contractClient.liquidate_cdp, { lender });
       break;
     case "freeze":
-      tx = await authenticatedContractCall(xasset.freeze_cdp, { lender });
+      tx = await authenticatedContractCall(contractClient.freeze_cdp, { lender });
       break;
     case "close":
-      tx = await authenticatedContractCall(xasset.close_cdp, { lender });
+      tx = await authenticatedContractCall(contractClient.close_cdp, { lender });
       break;
     default:
       throw new Error("Invalid action");
@@ -70,9 +79,27 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 function Edit() {
-  const { lender } = useParams() as { lender: string };
-  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(lender);
-  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata();
+  const { assetSymbol, lender } = useParams() as { lender: string, assetSymbol: XAssetSymbol};
+
+  if (!assetSymbol) {
+    return (
+      <ErrorMessage
+        title="Error: No Asset Selected"
+        message="Please select an asset from the home page to view its stability pool."
+      />
+    );
+  }
+  
+  if (!contractMapping[assetSymbol as XAssetSymbol]) {
+    return (
+      <ErrorMessage
+        title="Error: Invalid Asset"
+        message={`The asset "${assetSymbol}" does not exist. Please select a valid asset from the home page.`}
+      />
+    );
+  }
+  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(assetSymbol, lender);
+  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata(assetSymbol);
   const { account, isSignedIn } = useWallet();
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -107,7 +134,7 @@ function Edit() {
   return (
     <Container maxWidth="md">
       <Box my={4}>
-        <MuiLink component={RouterLink} to={`/${lender}`} sx={{ display: 'block', mb: 2 }}>
+        <MuiLink component={RouterLink} to={`/cdps/${assetSymbol}/${lender}`} sx={{ display: 'block', mb: 2 }}>
           ← Back to CDP Details
         </MuiLink>
         <Typography variant="h4" gutterBottom>

@@ -1,7 +1,6 @@
 import { Repository, DataSource } from "typeorm";
 import { LastQueriedTimestamp, TableType } from "../entity/LastQueriedTimestamp";
 import { AppDataSource } from "../ormconfig";
-import { Asset } from "../entity/Asset";
 
 export class LastQueriedTimestampService {
   private repository: Repository<LastQueriedTimestamp>;
@@ -17,31 +16,30 @@ export class LastQueriedTimestampService {
     return new LastQueriedTimestampService(AppDataSource);
   }
 
-  async findOne(assetSymbol: string, tableType: TableType): Promise<LastQueriedTimestamp | null> {
+  async findOne(wasmHash: string, tableType: TableType): Promise<LastQueriedTimestamp | null> {
     return this.repository.findOne({
       where: {
-        asset: { symbol: assetSymbol },
+        wasm_hash: wasmHash,
         table_type: tableType,
       },
-      relations: ["asset"],
     });
   }
 
-  async getTimestamp(assetSymbol: string, tableType: TableType): Promise<number> {
-    const record = await this.findOne(assetSymbol, tableType);
+  async getTimestamp(wasmHash: string, tableType: TableType): Promise<number> {
+    const record = await this.findOne(wasmHash, tableType);
     return record?.timestamp || 0;
   }
 
   async updateTimestamp(
-    asset: Asset,
+    wasmHash: string,
     tableType: TableType,
     timestamp: number
   ): Promise<LastQueriedTimestamp> {
-    let record = await this.findOne(asset.symbol, tableType);
+    let record = await this.findOne(wasmHash, tableType);
 
     if (!record) {
       record = this.repository.create({
-        asset,
+        wasm_hash: wasmHash,
         table_type: tableType,
         timestamp,
       });

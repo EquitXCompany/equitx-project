@@ -1,5 +1,5 @@
 import { useRouteError, isRouteErrorResponse } from "react-router-dom";
-import { Errors as ContractErrors } from "xasset";
+import { Errors as ContractErrors } from "xUSDT";
 
 function ErrorPage() {
   const error = useRouteError();
