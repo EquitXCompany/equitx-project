@@ -1,4 +1,4 @@
-import { useCdps, CalculateCollateralizationRatio, useCdpsByAssetSymbol } from '../../hooks/useCdps';
+import { CalculateCollateralizationRatio, useCdpsByAssetSymbol } from '../../hooks/useCdps';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
 import { getStatusColor } from "../../../utils/contractHelpers";

@@ -1,6 +1,5 @@
 import React from 'react';
 import BigNumber from 'bignumber.js';
-import type { CDP } from 'xasset';
 import {
   Card,
   CardContent,
@@ -9,9 +8,10 @@ import {
   Grid,
 } from '@mui/material';
 import { getStatusColor } from '../../../utils/contractHelpers';
+import { ContractCDP } from '../../hooks/useCdps';
 
 interface CDPDisplayProps {
-  cdp: CDP;
+  cdp: ContractCDP;
   decimals: number;
   lastpriceXLM: BigNumber;
   lastpriceAsset: BigNumber;
