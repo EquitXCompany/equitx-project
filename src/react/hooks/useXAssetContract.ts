@@ -3,16 +3,10 @@ import { getContractBySymbol, XAssetContract } from '../../contracts/util';
 import type { XAssetSymbol } from '../../contracts/contractConfig';
 
 export function useXAssetContract(symbol: XAssetSymbol) {
-  const [contract, setContract] = useState<XAssetContract | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const [contract, setContract] = useState<XAssetContract>(() => getContractBySymbol(symbol));
   useEffect(() => {
-    getContractBySymbol(symbol)
-      .then((contractInstance: XAssetContract) => {
-        setContract(contractInstance);
-        setLoading(false);
-      });
+    setContract(getContractBySymbol(symbol));
   }, [symbol]);
 
-  return { contract, loading };
+  return { contract, loading: false };
 }

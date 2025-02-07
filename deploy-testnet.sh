@@ -63,31 +63,38 @@ export const networkPassphrase =
   "Standalone Network ; February 2017";
 
 import { contractMapping, XAssetSymbol } from './contractConfig';
-import { type Client, Errors } from './${SYMBOLS[0]}';
-export type XAssetContract = Client;
+import { Client, Errors } from './${SYMBOLS[0]}';
+export type XAssetContract = typeof Client;
 export const ContractErrors = Errors;
 
-// Dynamic imports for all xAsset clients
-const getClient = async (symbol: XAssetSymbol): Promise<XAssetContract> => {
-  const module = await import(/* @vite-ignore */ \`./\${symbol}\`);
-  return module.default;
-};
+const contractClientMap = {
+$(for symbol in "${SYMBOLS[@]}"; do
+  echo "  $symbol: new Client({"
+  echo "    networkPassphrase,"
+  echo "    contractId: contractMapping.$symbol,"
+  echo "    rpcUrl,"
+  echo "    publicKey: undefined,"
+  echo "  }),"
+done)
+} as const;
 
 // Get contract instance by symbol
-export const getContractBySymbol = async (symbol: XAssetSymbol): Promise<XAssetContract> => {
-  const clientModule = await getClient(symbol);
-  return clientModule;
+export const getContractBySymbol = (symbol: XAssetSymbol): XAssetContract => {
+  return contractClientMap[symbol];
 };
 
 // Preload all contracts
-export const preloadContracts = async () => {
-  const contracts: Record<XAssetSymbol, XAssetContract> = {} as Record<XAssetSymbol, XAssetContract>;
-  
+export const preloadContracts = () => {
+  const contracts: Record<XAssetSymbol, XAssetContract> = {} as Record<
+    XAssetSymbol,
+    XAssetContract
+  >;
+
   for (const [symbol, _contractId] of Object.entries(contractMapping)) {
-    const clientModule = await getClient(symbol as XAssetSymbol);
+    const clientModule = getContractBySymbol(symbol as XAssetSymbol);
     contracts[symbol as XAssetSymbol] = clientModule;
   }
-  
+
   return contracts;
 };
 EOL

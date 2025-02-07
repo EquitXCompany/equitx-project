@@ -41,7 +41,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     throw new Error("Invalid asset symbol");
   }
 
-  const contractClient = await getContractBySymbol(assetSymbol);
+  const contractClient = getContractBySymbol(assetSymbol);
 
   let tx;
   switch (action) {

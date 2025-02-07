@@ -22,7 +22,7 @@ export const loader: LoaderFunction = async ({ params }) => {
     throw new Error("Invalid asset symbol");
   }
 
-  const contractClient = await getContractBySymbol(assetSymbol);
+  const contractClient = getContractBySymbol(assetSymbol);
 
   return {
     minRatio: await contractClient

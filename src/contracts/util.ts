@@ -48,14 +48,14 @@ export const getContractBySymbol = (symbol: XAssetSymbol): XAssetContract => {
 };
 
 // Preload all contracts
-export const preloadContracts = async () => {
+export const preloadContracts = () => {
   const contracts: Record<XAssetSymbol, XAssetContract> = {} as Record<
     XAssetSymbol,
     XAssetContract
   >;
 
   for (const [symbol, _contractId] of Object.entries(contractMapping)) {
-    const clientModule = await getContractBySymbol(symbol as XAssetSymbol);
+    const clientModule = getContractBySymbol(symbol as XAssetSymbol);
     contracts[symbol as XAssetSymbol] = clientModule;
   }
 

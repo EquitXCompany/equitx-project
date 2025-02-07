@@ -22,7 +22,7 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const contract = await getContractBySymbol(assetSymbol);
+        const contract = getContractBySymbol(assetSymbol);
         
         const tx = await contract.minimum_collateralization_ratio();
         const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t: lastPriceResult) => {
