@@ -1,7 +1,9 @@
 import { Box, Paper, Typography } from '@mui/material';
-import { DataGrid, type GridRenderCellParams, type GridValueFormatterParams } from '@mui/x-data-grid';
+import { DataGrid, type GridRenderCellParams } from '@mui/x-data-grid';
 import { useStakers } from '../hooks/useStakers';
 import { Link } from 'react-router-dom';
+
+type GridValueFormatter = { value: { toString: () => any; }; };
 
 export default function StabilityPoolStats() {
   const { data: stakers, isLoading } = useStakers();
@@ -22,21 +24,21 @@ export default function StabilityPoolStats() {
       field: 'staked_amount',
       headerName: 'Staked Amount',
       width: 150,
-      valueFormatter: (params: GridValueFormatterParams) => 
+      valueFormatter: (params: GridValueFormatter) => 
         params.value?.toString() ?? '',
     },
     {
       field: 'rewards_earned',
       headerName: 'Rewards Earned',
       width: 150,
-      valueFormatter: (params: GridValueFormatterParams) => 
+      valueFormatter: (params: GridValueFormatter) => 
         params.value?.toString() ?? '',
     },
     {
       field: 'last_claim_timestamp',
       headerName: 'Last Claim',
       width: 200,
-      valueFormatter: (params: GridValueFormatterParams) => 
+      valueFormatter: (params: { value: string | number | Date; }) => 
         params.value ? new Date(params.value).toLocaleString() : '',
     },
   ];

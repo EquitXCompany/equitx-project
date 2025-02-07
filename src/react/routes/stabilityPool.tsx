@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Typography, Button, Paper, Grid, TextField, Snackbar, CircularProgress, type AlertProps, Link as MuiLink } from '@mui/material';
 import { contractMapping, XAssetSymbol } from '../../contracts/contractConfig';
-import { Errors as ContractErrors } from "xUSDT"; // todo create dynamic import based on name
 import BigNumber from 'bignumber.js';
 import { useWallet } from '../../wallet';
+import { ContractErrors } from '../../contracts/util';
 import { authenticatedContractCall, unwrapResult } from '../../utils/contractHelpers';
 import Alert from '@mui/material/Alert';
 import AddressDisplay from '../components/cdp/AddressDisplay';
@@ -55,26 +55,26 @@ function StabilityPool() {
     setLoading(true);
     if(!xasset) { return; }
     try {
-      const total_xasset = await xasset.get_total_xasset().then(tx =>
+      const total_xasset = await xasset.get_total_xasset().then((tx: { result: any; }) =>
         tx.result
       );
-      const total_collateral = await xasset.get_total_collateral().then(tx =>
+      const total_collateral = await xasset.get_total_collateral().then((tx: { result: any; }) =>
         tx.result
       );
       setTotalXAsset(new BigNumber(total_xasset.toString()));
       setTotalCollateral(new BigNumber(total_collateral.toString()));
-      const constants = await xasset.get_constants().then(tx =>
+      const constants = await xasset.get_constants().then((tx: { result: any; }) =>
         tx.result
       );
       setPoolConstants(constants);
 
       if (account && isSignedIn) {
         try {
-          const availableAssets = await xasset.get_available_assets({ staker: account }).then(tx =>
+          const availableAssets = await xasset.get_available_assets({ staker: account }).then((tx) =>
             unwrapResult(tx.result, "Failed to retrieve available assets")
           );
           // Fetch staker position
-          const position = await xasset.get_position({ staker: account }).then(tx =>
+          const position = await xasset.get_position({ staker: account }).then((tx) =>
             unwrapResult(tx.result, "Failed to retrieve staker position")
           );
           console.log(position)

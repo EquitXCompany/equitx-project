@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getContractBySymbol } from '../../contracts/util';
+import { getContractBySymbol, XAssetContract } from '../../contracts/util';
 import type { XAssetSymbol } from '../../contracts/contractConfig';
 
 export function useXAssetContract(symbol: XAssetSymbol) {
-  const [contract, setContract] = useState(null);
+  const [contract, setContract] = useState<XAssetContract | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getContractBySymbol(symbol)
-      .then(contractInstance => {
+      .then((contractInstance: XAssetContract) => {
         setContract(contractInstance);
         setLoading(false);
       });

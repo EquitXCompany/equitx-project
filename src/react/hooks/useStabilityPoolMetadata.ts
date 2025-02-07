@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import BigNumber from 'bignumber.js';
 import { getContractBySymbol } from '../../contracts/util';
 import type { XAssetSymbol } from '../../contracts/contractConfig';
+import { ErrorMessage, i128, Result } from '@stellar/stellar-sdk/contract';
+
+type lastPriceResult = {result: Result<{price: i128}, ErrorMessage>};
 
 interface StabilityPoolMetadata {
   lastpriceXLM: BigNumber;
@@ -22,7 +25,7 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
         const contract = await getContractBySymbol(assetSymbol);
         
         const tx = await contract.minimum_collateralization_ratio();
-        const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t) => {
+        const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t: lastPriceResult) => {
           if (t.result.isOk()) {
             return t.result.unwrap().price.toString();
           } else {
@@ -30,7 +33,7 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
           }
         })).div(10 ** 14);
 
-        const lastpriceAsset = new BigNumber(await contract.lastprice_asset().then((t) => {
+        const lastpriceAsset = new BigNumber(await contract.lastprice_asset().then((t: lastPriceResult) => {
           if (t.result.isOk()) {
             return t.result.unwrap().price.toString();
           } else {

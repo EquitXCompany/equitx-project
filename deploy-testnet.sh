@@ -63,36 +63,29 @@ export const networkPassphrase =
   "Standalone Network ; February 2017";
 
 import { contractMapping, XAssetSymbol } from './contractConfig';
+import { type Client, Errors } from './${SYMBOLS[0]}';
+export type XAssetContract = Client;
+export const ContractErrors = Errors;
 
 // Dynamic imports for all xAsset clients
-const getClient = async (symbol: XAssetSymbol) => {
-  const module = await import(/* @vite-ignore */ symbol);
-  return module;
+const getClient = async (symbol: XAssetSymbol): Promise<XAssetContract> => {
+  const module = await import(/* @vite-ignore */ \`./\${symbol}\`);
+  return module.default;
 };
 
-// Create contract instance
-const createContract = (contractId: string) => ({
-  networkPassphrase,
-  contractId,
-  rpcUrl,
-  publicKey: undefined,
-});
-
 // Get contract instance by symbol
-export const getContractBySymbol = async (symbol: XAssetSymbol) => {
+export const getContractBySymbol = async (symbol: XAssetSymbol): Promise<XAssetContract> => {
   const clientModule = await getClient(symbol);
-  return new clientModule.Client(createContract(contractMapping[symbol]));
+  return clientModule;
 };
 
 // Preload all contracts
 export const preloadContracts = async () => {
-  const contracts: Record<XAssetSymbol, any> = {} as Record<XAssetSymbol, any>;
+  const contracts: Record<XAssetSymbol, XAssetContract> = {} as Record<XAssetSymbol, XAssetContract>;
   
-  for (const [symbol, contractId] of Object.entries(contractMapping)) {
+  for (const [symbol, _contractId] of Object.entries(contractMapping)) {
     const clientModule = await getClient(symbol as XAssetSymbol);
-    contracts[symbol as XAssetSymbol] = new clientModule.Client(
-      createContract(contractId)
-    );
+    contracts[symbol as XAssetSymbol] = clientModule;
   }
   
   return contracts;

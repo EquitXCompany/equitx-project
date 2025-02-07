@@ -11,25 +11,29 @@ import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig
 import ErrorMessage from "../../components/errorMessage";
 import { getContractBySymbol } from "../../../contracts/util";
 
+type LoaderData = {
+  minRatio: BigNumber;
+};
+
 export const loader: LoaderFunction = async ({ params }) => {
   const assetSymbol = params.assetSymbol as XAssetSymbol;
-  
+
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     throw new Error("Invalid asset symbol");
   }
 
   const contractClient = await getContractBySymbol(assetSymbol);
-  
+
   return {
     minRatio: await contractClient
       .minimum_collateralization_ratio()
-      .then((t) => new BigNumber(t.result)),
+      .then((t: { result: number }) => new BigNumber(t.result)),
   };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
   const assetSymbol = params.assetSymbol as XAssetSymbol;
-  
+
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     throw new Error("Invalid asset symbol");
   }
@@ -50,7 +54,7 @@ export const action: ActionFunction = async ({ request, params }) => {
 function New() {
   const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
   const { account, isSignedIn } = useWallet();
-  const { minRatio } = useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const { minRatio } = useLoaderData() as Awaited<LoaderData>;
   const { data: metadata, isLoading } = useStabilityPoolMetadata(assetSymbol);
 
   if (!assetSymbol || !contractMapping[assetSymbol]) {
