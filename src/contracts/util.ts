@@ -12,31 +12,31 @@ export const ContractErrors = Errors;
 const contractClientMap = {
   xBTC: new Client({
     networkPassphrase,
-    contractId: "CDUE2LN7VSAIVHD3T72OSYPS77DEUOU5OBRXWRZVKAPALT2IKKOZKY7X",
+    contractId: contractMapping.xBTC,
     rpcUrl,
     publicKey: undefined,
   }),
   xETH: new Client({
     networkPassphrase,
-    contractId: "CCADQ6RUME6G4NVBTGGVPDQSMWV3ZQNAVI64ZP34MJBUYOT5SZFDJK3T",
+    contractId: contractMapping.xETH,
     rpcUrl,
     publicKey: undefined,
   }),
   xUSDT: new Client({
     networkPassphrase,
-    contractId: "CAJ3TA3DSFCRI7USITE3PB5E2OQUXCND7IYGILW73IV663JORXS7IKQV",
+    contractId: contractMapping.xUSDT,
     rpcUrl,
     publicKey: undefined,
   }),
   xXRP: new Client({
     networkPassphrase,
-    contractId: "CDIWDE5BGTI5TWACCZT2FCCOOQC3ND7ARJCHNZKSDZ2A2ZCLYYRJ2MF7",
+    contractId: contractMapping.xXRP,
     rpcUrl,
     publicKey: undefined,
   }),
   xSOL: new Client({
     networkPassphrase,
-    contractId: "CDGJZ4PNXNE4EZ4LB4EPAQB55KNQI5QZC4M4POVAAMLLIVYUX5T56DHS",
+    contractId: contractMapping.xSOL,
     rpcUrl,
     publicKey: undefined,
   }),

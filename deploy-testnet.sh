@@ -62,8 +62,8 @@ export const networkPassphrase =
   import.meta.env.PUBLIC_NETWORK_PASSPHRASE ??
   "Standalone Network ; February 2017";
 
-import { contractMapping, XAssetSymbol } from './contractConfig';
-import { Client, Errors } from './${SYMBOLS[0]}';
+import { contractMapping, XAssetSymbol } from "./contractConfig";
+import { Client, Errors } from "${SYMBOLS[0]}";
 export type XAssetContract = typeof Client;
 export const ContractErrors = Errors;
 
