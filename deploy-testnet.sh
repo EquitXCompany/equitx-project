@@ -64,7 +64,7 @@ export const networkPassphrase =
 
 import { contractMapping, XAssetSymbol } from "./contractConfig";
 import { Client, Errors } from "${SYMBOLS[0]}";
-export type XAssetContract = typeof Client;
+export type XAssetContract = Client;
 export const ContractErrors = Errors;
 
 const contractClientMap = {
