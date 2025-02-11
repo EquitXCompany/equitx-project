@@ -3,6 +3,7 @@ import express from "express";
 import dotenv from "dotenv";
 import path from "path";
 import cors from "cors";
+import cron from "node-cron";
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { AppDataSource } from "./ormconfig";
 import assetRoutes from "./routes/assetRoutes";
@@ -11,11 +12,19 @@ import cdpRoutes from "./routes/cdpRoutes";
 import stakerRoutes from "./routes/stakerRoutes";
 import liquidityPoolRoutes from "./routes/liquidityPoolRoutes";
 import singletonRoutes from "./routes/singletonRoutes";
+import tvlMetricsRoutes from "./routes/tvlMetricsRoutes";
+import utilizationMetricsRoutes from "./routes/utilizationMetricsRoutes";
+import cdpMetricsRoutes from "./routes/cdpMetricsRoutes";
+import liquidationRoutes from "./routes/liquidationRoutes";
+import protocolStatsRoutes from "./routes/protocolStatsRoutes";
+import userMetricsRoutes from "./routes/userMetricsRoutes";
+
 import { startCDPUpdateJob } from "./scripts/updateCDPs";
 import { startPriceUpdateJob } from "./scripts/updatePrices";
 import { createAssetsIfNotExist } from "./scripts/createAssets";
 import { assetConfig } from "./config/AssetConfig";
 import { startStakeUpdateJob } from "./scripts/updateStakes";
+import { calculateCDPMetrics, runDailyMetrics } from "./scripts/dailyMetrics";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +46,12 @@ async function initializeRoutes() {
   const stakerRouter = await stakerRoutes();
   const liquidityPoolRouter = await liquidityPoolRoutes();
   const singletonRouter = await singletonRoutes();
+  const tvlMetricsRouter = await tvlMetricsRoutes();
+  const utilizationMetricsRouter = await utilizationMetricsRoutes();
+  const cdpMetricsRouter = await cdpMetricsRoutes();
+  const liquidationRouter = await liquidationRoutes();
+  const protocolStatsRouter = await protocolStatsRoutes();
+  const userMetricsRouter = await userMetricsRoutes();
 
   app.use("/api/assets", assetRouter);
   app.use("/api/pricehistories", priceHistoryRouter);
@@ -44,6 +59,12 @@ async function initializeRoutes() {
   app.use("/api/stakers", stakerRouter);
   app.use("/api/liquiditypools", liquidityPoolRouter);
   app.use("/api/singletons", singletonRouter);
+  app.use("/api/tvl", tvlMetricsRouter);
+  app.use("/api/utilization", utilizationMetricsRouter);
+  app.use("/api/cdp-metrics", cdpMetricsRouter);
+  app.use("/api/liquidations", liquidationRouter);
+  app.use("/api/protocol-stats", protocolStatsRouter);
+  app.use("/api/user-metrics", userMetricsRouter);
 }
 
 AppDataSource.initialize()
@@ -52,20 +73,31 @@ AppDataSource.initialize()
 
     app.use(express.json());
 
-    // Initialize routes
     await initializeRoutes();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
 
-    // add any new assets if needed
     await createAssetsIfNotExist(assetConfig);
+
+    cron.schedule('*/15 * * * *', async () => {
+      console.log('Running CDP metrics update...');
+      await calculateCDPMetrics();
+    });
+
+    cron.schedule('0 0 * * *', async () => {
+      console.log('Running daily metrics calculation...');
+      await runDailyMetrics();
+    });
 
     startPriceUpdateJob();
 
     startCDPUpdateJob();
 
     startStakeUpdateJob();
+    setTimeout(() => {
+      runDailyMetrics();
+    }, 20000); // 20000 milliseconds = 20 seconds
   })
   .catch((error) => console.log("TypeORM connection error: ", error));

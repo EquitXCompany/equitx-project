@@ -12,6 +12,8 @@ import {
 import { PriceHistory } from "../entity/PriceHistory";
 import { CDP, CDPStatus } from "../entity/CDP";
 import { Asset } from "entity/Asset";
+import { CDPHistoryService } from "../services/cdpHistoryService";
+import { CDPHistoryAction } from "../entity/CDPHistory";
 
 async function checkAndFreezeCDPs(
   asset: Asset,
@@ -21,6 +23,7 @@ async function checkAndFreezeCDPs(
 ) {
   const cdpRepository = AppDataSource.getRepository(CDP);
   const liquidityPoolService = await LiquidityPoolService.create();
+  const cdpHistoryService = await CDPHistoryService.create();
   const liquidityPool = await liquidityPoolService.findOne(asset.symbol);
   minimumCollateralizationRatio = minimumCollateralizationRatio / 1e4;
 
@@ -38,10 +41,10 @@ async function checkAndFreezeCDPs(
     );
     const debtValue = new BigNumber(cdp.asset_lent).multipliedBy(assetPrice);
     const currentRatio = collateralValue.dividedBy(debtValue);
-    console.log(`info for cdp: ${cdp.lender}`);
+    /*console.log(`info for cdp: ${cdp.lender}`);
     console.log(`debt value is ${debtValue}, collateral value is ${collateralValue}`);
     console.log(`current ratio is ${currentRatio}`);
-    console.log(`minimum collateralization ratio is ${minimumCollateralizationRatio}`);
+    console.log(`minimum collateralization ratio is ${minimumCollateralizationRatio}`);*/
 
     if (currentRatio.isLessThan(minimumCollateralizationRatio)) {
       console.log(
@@ -60,9 +63,14 @@ async function checkAndFreezeCDPs(
           `Successfully frozen CDP for lender: ${cdp.lender}. Result: ${result}`
         );
 
-        // Update CDP status in database
         cdp.status = CDPStatus.Frozen;
         await cdpRepository.save(cdp);
+
+        await cdpHistoryService.createHistoryEntry(
+          cdp.id,
+          cdp,
+          CDPHistoryAction.FREEZE
+        );
       } catch (error) {
         console.error(`Error freezing CDP for lender ${cdp.lender}:`, error);
       }
@@ -83,7 +91,6 @@ async function updatePrices() {
       }
 
       try {
-        // Query price from data feed contract
         const { price: xlmPrice } = await getLatestPriceData(
           "XLM",
           assetDetails.pool_address,
@@ -98,7 +105,6 @@ async function updatePrices() {
         }
         priceHistoryService.insert(assetSymbol, priceValue, timestamp);
 
-        // Update asset current price
         const asset = await assetService.findOne(assetSymbol);
         if (asset) {
           const oldAssetPrice = new BigNumber(asset.price);
@@ -109,12 +115,10 @@ async function updatePrices() {
           asset.last_xlm_price = xlmPrice.toString();
           await assetService.update(asset.id, asset);
 
-          // Check if price ratio has increased
-          console.log(`XLM price is ${xlmPrice}, price is ${priceValue}`);
+          //console.log(`XLM price is ${xlmPrice}, price is ${priceValue}`);
           if (xlmPrice) {
             if (newPriceRatio.isGreaterThan(oldPriceRatio)) {
-              console.log(`New price ratio is ${newPriceRatio} which is greater than ${oldPriceRatio} so checking for CDPs that need to be liquidated.`);
-              // freeze CDPs that have become insolvent
+              //console.log(`New price ratio is ${newPriceRatio} which is greater than ${oldPriceRatio} so checking for CDPs that need to be liquidated.`);
               await checkAndFreezeCDPs(
                 asset,
                 xlmPrice,
@@ -138,10 +142,6 @@ async function updatePrices() {
 
 export async function startPriceUpdateJob() {
   console.log("Starting price update job");
-
-  // Run the job every 5 minutes
   cron.schedule("*/5 * * * *", updatePrices);
-
-  // Run immediately on startup
   updatePrices();
 }

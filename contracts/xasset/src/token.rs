@@ -46,6 +46,23 @@ fn bankers_round(value: i128, precision: i128) -> i128 {
     }
 }
 
+fn calculate_collateralization_ratio(asset_lent: i128, xasset_price: i128, xlm_deposited: i128, xlm_price: i128, xlm_decimals: u32, xasset_decimals: u32) -> u32 {
+    let (numer_decimals, denom_decimals) = if xlm_decimals == xasset_decimals {
+        (0, 0)
+    } else if xlm_decimals > xasset_decimals {
+        (0, xlm_decimals - xasset_decimals)
+    } else {
+        (xasset_decimals - xlm_decimals, 0)
+    };
+    let collateralization_ratio = if asset_lent == 0 || xasset_price == 0 {
+        u32::MAX
+    } else {
+        (BASIS_POINTS * xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
+            / (asset_lent * 10i128.pow(denom_decimals) * xasset_price)) as u32
+    };
+    collateralization_ratio
+}
+
 #[loamstorage]
 #[derive(Default)]
 pub struct Token {
@@ -708,7 +725,7 @@ impl IsStabilityPool for Token {
         position.product_constant = self.get_product_constant();
         // transfer xasset from address to pool
         self.transfer_internal(from.clone(), env().current_contract_address(), amount);
-        self.set_deposit(from.clone(), position.clone());
+        self.set_deposit(from.clone(), position.clone(), 0);
         self.add_total_xasset(amount);
         Ok(())
     }
@@ -756,6 +773,22 @@ impl IsStabilityPool for Token {
         cdp.xlm_deposited -= liquidated_collateral;
         cdp.asset_lent -= liquidated_debt;
 
+        #[cfg(feature = "mercury")]
+        crate::index_types::Liquidation {
+            cdp_id: cdp_owner.clone(),
+            xlm_liquidated: liquidated_collateral,
+            debt_covered: liquidated_debt,
+            collateralization_ratio: calculate_collateralization_ratio(
+                liquidated_debt,
+                self.lastprice_asset()?.price, 
+                liquidated_collateral,
+                self.lastprice_xlm()?.price,
+                self.decimals_xlm_feed()?,
+                self.decimals_asset_feed()?,
+            ),
+            ledger: env().ledger().sequence(),
+            timestamp: env().ledger().timestamp(),
+        }.emit(env());
         // If all debt is repaid, close the CDP
         if cdp.asset_lent == 0 {
             #[cfg(feature = "mercury")]
@@ -794,7 +827,7 @@ impl IsStabilityPool for Token {
         position.xasset_deposit = self.get_staker_deposit_amount(to.clone())?;
         position.compounded_constant = self.get_compounded_constant();
         position.product_constant = self.get_product_constant();
-        self.set_deposit(to, position);
+        self.set_deposit(to, position, xlm_reward);
         Ok(xlm_reward)
     }
 
@@ -848,7 +881,7 @@ impl IsStabilityPool for Token {
         self.transfer_internal(from.clone(), env().current_contract_address(), amount);
 
         // Set the new position in the stability pool
-        self.set_deposit(from.clone(), position.clone());
+        self.set_deposit(from.clone(), position.clone(), 0);
         self.add_total_xasset(amount);
         Ok(())
     }
@@ -916,19 +949,7 @@ impl Token {
         //           / (xAsset minted * XLM's multiplier * xAsset's multiplied USD price)
         //
         // Need to prevent exceeding i128 limit. Multiply the numerator OR denom by min multiplier.
-        let (numer_decimals, denom_decimals) = if xlm_decimals == xasset_decimals {
-            (0, 0)
-        } else if xlm_decimals > xasset_decimals {
-            (0, xlm_decimals - xasset_decimals)
-        } else {
-            (xasset_decimals - xlm_decimals, 0)
-        };
-        let collateralization_ratio = if cdp.asset_lent == 0 || xasset_price == 0 {
-            u32::MAX
-        } else {
-            (BASIS_POINTS * cdp.xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
-                / (cdp.asset_lent * 10i128.pow(denom_decimals) * xasset_price)) as u32
-        };
+        let collateralization_ratio = calculate_collateralization_ratio(cdp.asset_lent, xasset_price, cdp.xlm_deposited, xlm_price, xlm_decimals, xasset_decimals);
         CDP {
             lender,
             xlm_deposited: cdp.xlm_deposited,
@@ -946,7 +967,6 @@ impl Token {
             },
         }
     }
-
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDP) {
         #[cfg(feature = "mercury")]
         crate::index_types::CDP {
@@ -1019,6 +1039,18 @@ impl Token {
 
             // transfer xasset to address from pool
             self.transfer_internal(env().current_contract_address(), to.clone(), amount_to_withdraw);
+            #[cfg(feature = "mercury")]
+            crate::index_types::StakePosition {
+                id: to.clone(),
+                xasset_deposit: 0,
+                product_constant: self.get_product_constant(),
+                compounded_constant: self.get_compounded_constant(),
+                rewards_claimed: 0,
+                epoch: self.get_epoch(),
+                ledger: env().ledger().sequence(),
+                timestamp: env().ledger().timestamp(),
+            }
+            .emit(env());
             self.remove_deposit(to);
             self.add_total_xasset(-amount_to_withdraw);
             return Ok(());
@@ -1033,7 +1065,7 @@ impl Token {
         position.product_constant = self.get_product_constant();
         // transfer xasset from pool to address
         self.transfer_internal(env().current_contract_address(), to.clone(), amount_to_withdraw);
-        self.set_deposit(to, position);
+        self.set_deposit(to, position, 0);
         self.add_total_xasset(-amount_to_withdraw);
         Ok(())
     }
@@ -1100,13 +1132,14 @@ impl Token {
         self.deposits.get(address)
     }
 
-    pub fn set_deposit(&mut self, address: Address, position: StakerPosition) {
+    pub fn set_deposit(&mut self, address: Address, position: StakerPosition, _rewards: i128) {
         #[cfg(feature = "mercury")]
         crate::index_types::StakePosition {
             id: address.clone(),
             xasset_deposit: position.xasset_deposit,
             product_constant: position.product_constant,
             compounded_constant: position.compounded_constant,
+            rewards_claimed: _rewards,
             epoch: position.epoch,
             ledger: env().ledger().sequence(),
             timestamp: env().ledger().timestamp(),
@@ -1202,3 +1235,4 @@ impl Token {
 
 
 }
+

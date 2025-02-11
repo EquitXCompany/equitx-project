@@ -20,8 +20,21 @@ pub struct StakePosition {
     pub xasset_deposit: i128,
     pub product_constant: i128,
     pub compounded_constant: i128,
+    pub rewards_claimed: i128,
     pub epoch: u64,
     pub ledger: u32,
     pub timestamp: u64,
 }
+
+#[derive(Retroshade)]
+#[contracttype]
+pub struct Liquidation{
+    pub cdp_id: Address,
+    pub xlm_liquidated: i128,
+    pub debt_covered: i128,
+    pub collateralization_ratio: u32,
+    pub ledger: u32,
+    pub timestamp: u64,
+}
+
 

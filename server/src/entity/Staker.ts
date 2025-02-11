@@ -31,6 +31,9 @@ export class Staker {
   @Column({ type: "numeric", precision: 10, scale: 0 })
   epoch!: string;
 
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  total_rewards_claimed!: string;
+
   @ManyToOne(() => Asset, (asset) => asset.stakers)
   @JoinColumn({ name: "asset_id" })
   asset!: Asset;

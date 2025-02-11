@@ -40,19 +40,24 @@ export class StakerService {
     return this.stakerRepository.save(existingStaker);
   }
 
+
   async upsert(
-    asset_symbol: string, 
-    address: string, 
+    assetSymbol: string,
+    address: string,
     stakerData: Partial<Staker>
   ): Promise<Staker> {
-    const existingStaker = await this.findOne(asset_symbol, address);
+    const existingStaker = await this.findOne(assetSymbol, address);
 
     if (existingStaker) {
       Object.assign(existingStaker, stakerData);
       return this.stakerRepository.save(existingStaker);
     }
-
     return this.stakerRepository.save(stakerData);
+  }
+
+  async getTotalRewardsClaimed(assetSymbol: string, address: string): Promise<string> {
+    const staker = await this.findOne(assetSymbol, address);
+    return staker ? staker.total_rewards_claimed : "0";
   }
 
   async delete(asset_symbol: string, address: string): Promise<void> {
@@ -60,5 +65,15 @@ export class StakerService {
     if (existingStaker) {
       await this.stakerRepository.remove(existingStaker);
     }
+  }
+
+  async findByAddress(address: string): Promise<Staker[]> {
+    return this.stakerRepository.find({
+      where: { 
+        address,
+        is_deleted: false
+      },
+      relations: ['asset']
+    });
   }
 }

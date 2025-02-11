@@ -24,6 +24,7 @@ interface RetroShadeStake {
   xasset_deposit: string;
   product_constant: string;
   compounded_constant: string;
+  rewards_claimed: string;
   epoch: string;
   timestamp: number;
 }
@@ -52,12 +53,46 @@ async function fetchStakes(
     throw error;
   }
 }
+import { StakerHistoryService } from "../services/stakerHistoryService";
+import { StakerHistoryAction } from "../entity/StakerHistory";
+import BigNumber from "bignumber.js";
+
+async function determineStakeAction(
+  oldStaker: Staker | null,
+  newStaker: Staker,
+  rewardsClaimed: string
+): Promise<StakerHistoryAction> {
+  if (!oldStaker) return StakerHistoryAction.STAKE;
+
+  // Check if rewards were claimed in this transaction
+  if (new BigNumber(rewardsClaimed).isGreaterThan(0)) {
+    return StakerHistoryAction.CLAIM_REWARDS;
+  }
+
+  // If xasset_deposit is 0, it's an unstake (complete withdrawal)
+  if (new BigNumber(newStaker.xasset_deposit).isZero()) {
+    return StakerHistoryAction.UNSTAKE;
+  }
+
+  const oldDeposit = new BigNumber(oldStaker.xasset_deposit);
+  const newDeposit = new BigNumber(newStaker.xasset_deposit);
+
+  // Compare deposits to determine if it's a deposit or withdrawal
+  if (newDeposit.isGreaterThan(oldDeposit)) {
+    return StakerHistoryAction.DEPOSIT;
+  } else if (newDeposit.isLessThan(oldDeposit)) {
+    return StakerHistoryAction.WITHDRAW;
+  }
+
+  return StakerHistoryAction.STAKE; // fallback
+}
 
 async function updateStakesInDatabase(
   stakes: RetroShadeStake[],
   assetSymbol: string
 ): Promise<void> {
   const stakerService = await StakerService.create();
+  const stakerHistoryService = await StakerHistoryService.create();
   const assetService = await AssetService.create();
   const asset = await assetService.findOne(assetSymbol);
 
@@ -66,14 +101,26 @@ async function updateStakesInDatabase(
   }
 
   for (const stake of stakes) {
-    await stakerService.upsert(assetSymbol, stake.id, {
+    const oldStaker = await stakerService.findOne(assetSymbol, stake.id);
+    const newStaker = await stakerService.upsert(assetSymbol, stake.id, {
       address: stake.id,
       xasset_deposit: stake.xasset_deposit,
       product_constant: stake.product_constant,
       compounded_constant: stake.compounded_constant,
+      total_rewards_claimed:
+        (oldStaker?.total_rewards_claimed ?? 0) + stake.rewards_claimed,
       epoch: stake.epoch,
       asset,
     });
+
+    const action = await determineStakeAction(oldStaker, newStaker, stake.rewards_claimed);
+    await stakerHistoryService.createHistoryEntry(
+      newStaker.id,
+      newStaker,
+      action,
+      oldStaker,
+      stake.rewards_claimed
+    );
   }
 }
 
@@ -90,16 +137,20 @@ async function updateLastQueriedTimestamp(
   await timestampService.updateTimestamp(wasmHash, TableType.STAKE, timestamp);
 }
 
-async function getWasmHashToLiquidityPoolMapping(): Promise<Map<string, Map<string, string>>> {
+async function getWasmHashToLiquidityPoolMapping(): Promise<
+  Map<string, Map<string, string>>
+> {
   const mapping = new Map<string, Map<string, string>>();
-  
+
   for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
     if (!mapping.has(assetDetails.wasm_hash)) {
       mapping.set(assetDetails.wasm_hash, new Map());
     }
-    mapping.get(assetDetails.wasm_hash)!.set(assetDetails.pool_address, assetSymbol);
+    mapping
+      .get(assetDetails.wasm_hash)!
+      .set(assetDetails.pool_address, assetSymbol);
   }
-  
+
   return mapping;
 }
 
@@ -109,8 +160,10 @@ async function updateStakes() {
 
     for (const [wasmHash, contractMapping] of wasmHashMapping) {
       const lastTimestamp = await getLastQueriedTimestamp(wasmHash);
-      console.log(`Querying stakes from reflector with timestamp ${lastTimestamp}`);
-      
+      console.log(
+        `Querying stakes from reflector with timestamp ${lastTimestamp}`
+      );
+
       const stakes = await fetchStakes(
         `stake_position${wasmHash}`,
         lastTimestamp
@@ -127,9 +180,13 @@ async function updateStakes() {
       }
 
       if (stakes.length > 0) {
-        const newLastTimestamp = Math.max(...stakes.map((stake) => stake.timestamp));
+        const newLastTimestamp = Math.max(
+          ...stakes.map((stake) => stake.timestamp)
+        );
         await updateLastQueriedTimestamp(wasmHash, newLastTimestamp);
-        console.log(`Updated last queried timestamp for wasm hash ${wasmHash} with ${newLastTimestamp}`);
+        console.log(
+          `Updated last queried timestamp for wasm hash ${wasmHash} with ${newLastTimestamp}`
+        );
       }
 
       console.log(`Updated ${stakes.length} stakes for wasm hash ${wasmHash}`);

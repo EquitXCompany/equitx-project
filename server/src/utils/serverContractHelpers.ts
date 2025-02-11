@@ -49,7 +49,6 @@ async function getClientByPoolAddress(poolAddress: string): Promise<XAssetClient
   if (!symbol) {
     throw new Error(`No symbol found for pool address: ${poolAddress}`);
   }
-  console.log(`symbol ${symbol} for contract ${poolAddress}`);
 
   const module = await import(/* @vite-ignore */ symbol);
   return new module.Client(

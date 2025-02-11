@@ -1,5 +1,5 @@
 import { Repository, DataSource } from "typeorm";
-import { CDP } from "../entity/CDP";
+import { CDP, CDPStatus } from "../entity/CDP";
 import { AppDataSource } from "../ormconfig";
 import { CDPDTO, toCDPDTO } from "../dto/cdpDTO";
 
@@ -23,14 +23,17 @@ export class CDPService {
   }
 
   async findOne(asset_symbol: string, lender: string): Promise<CDPDTO | null> {
-    const cdp = await this.cdpRepository
+    const cdp = await this.findOneRaw(asset_symbol, lender);
+    return cdp ? toCDPDTO(cdp) : null;
+  }
+
+  async findOneRaw(asset_symbol: string, lender: string): Promise<CDP | null> {
+    return await this.cdpRepository
       .createQueryBuilder("cdp")
       .innerJoinAndSelect("cdp.asset", "asset")
       .where("asset.symbol = :asset_symbol", { asset_symbol })
       .andWhere("cdp.lender = :lender", { lender })
       .getOne();
-
-    return cdp ? toCDPDTO(cdp) : null;
   }
 
   async insert(cdp: Partial<CDP>): Promise<CDP> {
@@ -100,5 +103,30 @@ export class CDPService {
       .getMany();
 
     return cdps.map(toCDPDTO);
+  }
+
+  async getActiveAddresses(daysBack: number = 30): Promise<string[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+    // Get addresses with open CDPs
+    const activeCDPs = await this.cdpRepository
+      .createQueryBuilder("cdp")
+      .select("DISTINCT cdp.lender")
+      .where("cdp.status = :status", { status: CDPStatus.Open })
+      .orWhere("cdp.updated_at >= :cutoffDate", { cutoffDate })
+      .getRawMany();
+
+    return activeCDPs.map(cdp => cdp.lender);
+  }
+
+  async findByLender(lender: string): Promise<CDP[]> {
+    return this.cdpRepository.find({
+      where: { 
+        lender,
+        is_deleted: false
+      },
+      relations: ['asset']
+    });
   }
 }
