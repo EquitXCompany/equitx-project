@@ -72,7 +72,7 @@ export default function CDPStats() {
           ]}
           series={[
             {
-              data: chartData.map(item => {console.log(item); return item.cr}),
+              data: chartData.map(item => item.cr.toNumber()),
               label: 'CR Difference',
               backgroundColor: 'rgba(75, 192, 192, 0.6)',
             },
