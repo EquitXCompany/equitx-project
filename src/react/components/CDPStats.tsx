@@ -1,10 +1,19 @@
 import { Box, Paper, Typography } from '@mui/material';
 import { DataGrid, GridRenderCellParams } from '@mui/x-data-grid';
+import { BarChart } from '@mui/x-charts/BarChart';
 import { useCdps } from '../hooks/useCdps';
 import { Link } from 'react-router-dom';
 
 export default function CDPStats() {
   const { data: cdps, isLoading } = useCdps();
+
+  // Chart not yet working, just putting chart infra in place
+  const LR = 1.1 // Assuming LR as 1.1 as a constant for now
+  const chartData = cdps?.map(cdp => ({
+    contractId: cdp.contract_id,
+    cr: cdp.xlm_deposited.dividedBy(cdp.asset_lent),
+    lr: LR,
+  })) || [];
 
   const columns = [
     {
@@ -22,14 +31,14 @@ export default function CDPStats() {
       field: 'xlm_deposited',
       headerName: 'XLM Deposited',
       width: 150,
-      valueFormatter: (params: { value: number }) => 
+      valueFormatter: (params: { value: number }) =>
         params.value?.toString() || '0',
     },
     {
       field: 'asset_lent',
       headerName: 'Asset Lent',
       width: 150,
-      valueFormatter: (params: { value: number }) => 
+      valueFormatter: (params: { value: number }) =>
         params.value?.toString() || '0',
     },
     { field: 'status', headerName: 'Status', width: 120 },
@@ -37,7 +46,7 @@ export default function CDPStats() {
       field: 'createdAt',
       headerName: 'Created',
       width: 200,
-      valueFormatter: (params: { value: string }) => 
+      valueFormatter: (params: { value: string }) =>
         params.value ? new Date(params.value).toLocaleString() : '',
     },
   ];
@@ -47,7 +56,33 @@ export default function CDPStats() {
       <Typography variant="h4" gutterBottom>
         CDP Statistics
       </Typography>
-      
+
+      <Typography variant="h5" gutterBottom>
+        Collateralization Ratio (CR) vs Liquidation Ratio (LR)
+      </Typography>
+
+      <Paper style={{ height: 400, width: '100%' }}>
+        <BarChart
+          xAxis={[
+            {
+              data: chartData.map(item => item.contractId),
+              scaleType: 'band',
+              label: 'Contract ID',
+            },
+          ]}
+          series={[
+            {
+              data: chartData.map(item => {console.log(item); return item.cr}),
+              label: 'CR Difference',
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            },
+          ]}
+          width={800}
+          height={400}
+        />
+      </Paper>
+
+
       <Paper sx={{ height: 600, width: '100%' }}>
         <DataGrid
           rows={cdps || []}
