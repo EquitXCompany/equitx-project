@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Box,
   Grid,
@@ -17,10 +17,9 @@ import {
 import { useLatestProtocolStats, useProtocolStatsHistory } from "../hooks/useProtocolStats";
 import { useLatestCdpMetrics } from "../hooks/useCdpMetrics";
 import { useLatestTVLMetrics } from "../hooks/useTvlMetrics";
-import { useLatestUtilizationMetrics } from "../hooks/useUtilizationMetrics";
 import { MetricCard } from "./common/MetricCard";
 import { TVLChart } from "./charts/TVLChart";
-import { formatCurrency, formatPercentage } from "../../utils/formatters";
+import { formatCurrency } from "../../utils/formatters";
 import { contractMapping, type XAssetSymbol } from "../../contracts/contractConfig";
 
 const assetSymbols = Object.keys(contractMapping) as XAssetSymbol[];
@@ -72,9 +71,8 @@ export default function Dashboard() {
   const cdpRows = assetSymbols.map(symbol => {
     const { data: cdpMetrics, error: cdpError } = useLatestCdpMetrics(symbol);
     const { data: tvlMetrics, error: tvlError } = useLatestTVLMetrics(symbol);
-    const { data: utilizationMetrics, error: utilizationError } = useLatestUtilizationMetrics(symbol);
 
-    if (cdpError || tvlError || utilizationError) {
+    if (cdpError || tvlError ) {
       return {
         asset: symbol,
         error: true,

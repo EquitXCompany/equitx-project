@@ -74,7 +74,6 @@ export default function CDPStats() {
             {
               data: chartData.map(item => item.cr.toNumber()),
               label: 'CR Difference',
-              backgroundColor: 'rgba(75, 192, 192, 0.6)',
             },
           ]}
           width={800}
