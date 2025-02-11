@@ -5,7 +5,7 @@ export const networkPassphrase =
   "Standalone Network ; February 2017";
 
 import { contractMapping, XAssetSymbol } from "./contractConfig";
-import { Client, Errors } from "xasset";
+import { Client, Errors } from "xBTC";
 export type XAssetContract = Client;
 export const ContractErrors = Errors;
 
