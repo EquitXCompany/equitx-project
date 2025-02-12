@@ -2,10 +2,13 @@ import {
   useQuery,
   type UseQueryResult,
   type UseQueryOptions,
+  useQueries,
+  QueriesResults,
 } from "react-query";
 import { apiClient } from "../../utils/apiClient";
 import { TVLMetricsData, TimestampRange } from "./types";
 import BigNumber from "bignumber.js";
+import { contractMapping } from "../../contracts/contractConfig";
 
 function transformTVLMetrics(data: any): TVLMetricsData {
   return {
@@ -50,6 +53,19 @@ export function useLatestTVLMetrics(
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       ...options,
     }
+  );
+}
+
+export function useLatestTVLMetricsForAllAssets(): QueriesResults<TVLMetricsData[], Error[]> {
+  return useQueries<TVLMetricsData[]>(
+    Object.keys(contractMapping).map((assetSymbol) => ({
+      queryKey: ['tvl-metrics', assetSymbol, "latest"],
+      queryFn: () => fetchLatestTVLByAsset(assetSymbol),
+      /*refetchInterval: 300000,
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      ...options,*/
+    })),
   );
 }
 
