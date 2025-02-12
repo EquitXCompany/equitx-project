@@ -9,7 +9,8 @@ export class ProtocolStatsResource extends BaseEntityResource {
                 totalValueLocked: entity.total_value_locked,
                 totalDebt: entity.total_debt,
                 uniqueUsers: entity.unique_users,
-                activeCDPs: entity.active_cdps
+                activeCDPs: entity.active_cdps,
+                totalStaked: entity.total_staked
             },
             riskMetrics: {
                 systemCollateralization: entity.system_collateralization,
@@ -18,8 +19,6 @@ export class ProtocolStatsResource extends BaseEntityResource {
             },
             volumeMetrics: {
                 dailyVolume: entity.daily_volume,
-                cumulativeVolume: entity.cumulative_volume,
-                fees24h: entity.fees_24h
             },
             growthMetrics: {
                 userGrowth24h: entity.user_growth_24h,
@@ -37,7 +36,8 @@ export class ProtocolStatsResource extends BaseEntityResource {
                 tvl: entity.total_value_locked,
                 td: entity.total_debt,
                 uu: entity.unique_users,
-                ac: entity.active_cdps
+                ac: entity.active_cdps,
+                ts: entity.total_staked
             },
             rm: {
                 sc: entity.system_collateralization,
@@ -46,8 +46,6 @@ export class ProtocolStatsResource extends BaseEntityResource {
             },
             vm: {
                 dv: entity.daily_volume,
-                cv: entity.cumulative_volume,
-                f: entity.fees_24h
             },
             gr: {
                 ug: entity.user_growth_24h,

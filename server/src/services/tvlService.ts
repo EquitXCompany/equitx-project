@@ -1,9 +1,11 @@
-import { Repository, DataSource, Between } from "typeorm";
+import { Repository, DataSource, Between, Not } from "typeorm";
 import { TVLMetrics } from "../entity/TVLMetrics";
 import { Asset } from "../entity/Asset";
 import { CDP, CDPStatus } from "../entity/CDP";
 import { AppDataSource } from "../ormconfig";
 import BigNumber from "bignumber.js";
+import { DECIMALS_XLM } from "../config/constants";
+import { StakerService } from "./stakerService";
 
 export class TVLService {
   private tvlMetricsRepository: Repository<TVLMetrics>;
@@ -24,23 +26,27 @@ export class TVLService {
   }
 
   private calculateUSDValue(amount: string, price: string): string {
+    // amount is 7 decimals in integer form, so need to divide by 7
+    // price in USD is always in 14 decimals so stored usd values are in 14 decimals
     const amountBN = new BigNumber(amount);
     const priceBN = new BigNumber(price);
-    // Price is in 14 decimal places, so divide by 10^14
-    return amountBN.multipliedBy(priceBN).dividedBy(new BigNumber(10).pow(14)).toString();
+    return amountBN.multipliedBy(priceBN).dividedBy(new BigNumber(10).pow(DECIMALS_XLM)).toString();
   }
 
-  async calculateTVLMetrics(asset: Asset): Promise<TVLMetrics> {
+    async calculateTVLMetrics(asset: Asset): Promise<TVLMetrics> {
     const activeCDPs = await this.cdpRepository.find({
       where: {
         asset: { id: asset.id },
-        status: CDPStatus.Open,
+        status: Not(CDPStatus.Closed),
         is_deleted: false
       }
     });
 
+    const stakerService = await StakerService.create();
+    const activeStakes = await stakerService.findByAsset(asset);
+
     const totalXlmLocked = activeCDPs.reduce(
-      (sum, cdp) => sum.plus(cdp.xlm_deposited), 
+      (sum, cdp) => sum.plus(cdp.status === CDPStatus.Open ? cdp.xlm_deposited : 0),
       new BigNumber(0)
     ).toString();
 
@@ -49,10 +55,20 @@ export class TVLService {
       new BigNumber(0)
     ).toString();
 
+    const totalXassetsMintedUsd = this.calculateUSDValue(totalXassetsMinted, asset.price);
+
+    const totalXassetsStaked = activeStakes.reduce(
+      (sum, stake) => sum.plus(stake.xasset_deposit),
+      new BigNumber(0)
+    ).toString();
+
     const tvlMetrics = this.tvlMetricsRepository.create({
       asset: asset,
       total_xlm_locked: totalXlmLocked,
       total_xassets_minted: totalXassetsMinted,
+      total_xassets_minted_usd: totalXassetsMintedUsd,
+      total_xassets_staked: totalXassetsStaked,
+      total_xassets_staked_usd: this.calculateUSDValue(totalXassetsStaked, asset.price || "0"),
       active_cdps_count: activeCDPs.length,
       tvl_usd: this.calculateUSDValue(totalXlmLocked, asset.last_xlm_price || "0")
     });

@@ -18,6 +18,10 @@ export class ProtocolStats {
   @Column({ type: "numeric", precision: 30, scale: 0 })
   total_debt!: string;
 
+  // total xassets staked converted to usd
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  total_staked!: string;
+
   @Column({ type: "integer" })
   unique_users!: number;
 
@@ -25,7 +29,7 @@ export class ProtocolStats {
   active_cdps!: number;
 
   // Risk Metrics
-  @Column({ type: "numeric", precision: 10, scale: 5 })
+  @Column({ type: "numeric", precision: 12, scale: 5 })
   system_collateralization!: string;
 
   @Column({ type: "integer" })
@@ -37,12 +41,6 @@ export class ProtocolStats {
   // Volume Metrics
   @Column({ type: "numeric", precision: 30, scale: 0 })
   daily_volume!: string;
-
-  @Column({ type: "numeric", precision: 30, scale: 0 })
-  cumulative_volume!: string;
-
-  @Column({ type: "numeric", precision: 30, scale: 0 })
-  fees_24h!: string;
 
   // Growth Metrics
   @Column({ type: "numeric", precision: 10, scale: 5 }) // percentage

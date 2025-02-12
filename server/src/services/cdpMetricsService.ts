@@ -9,7 +9,6 @@ import { RISK_THRESHOLDS } from "../config/thresholds";
 import { LiquidityPool } from "../entity/LiquidityPool";
 import { HealthScoreService } from './healthScoreService';
 
-
 export class CDPMetricsService {
   private healthScoreService: HealthScoreService;
   private cdpMetricsRepository: Repository<CDPMetrics>;
@@ -103,6 +102,35 @@ export class CDPMetricsService {
       .toFixed(5);
   }
 
+  private calculateCollateralRatioHistogram(cdps: CDP[], asset: Asset): CDPMetrics['collateral_ratio_histogram'] {
+    const BUCKET_SIZE = 5;
+    const MAX_BUCKET = 1000;
+    const buckets: Array<BigNumber> = [];
+    for(let i = 0; i < Math.floor(MAX_BUCKET/BUCKET_SIZE) + 2; i++){
+      buckets.push(new BigNumber(0));
+    }
+
+    cdps.forEach(cdp => {
+      const healthFactor = this.healthScoreService.calculateCDPHealthFactor(cdp);
+      const percentageAboveMin = (healthFactor - 1) * 100;
+      let bucketIndex = 0;
+      if(percentageAboveMin > 0) {
+        bucketIndex = Math.min(
+          Math.floor(percentageAboveMin / BUCKET_SIZE) + 1,
+          buckets.length - 1,
+        );
+      }
+      if (bucketIndex >= 0) buckets[bucketIndex] = buckets[bucketIndex].plus(cdp.xlm_deposited);
+    });
+
+    return {
+      bucket_size: BUCKET_SIZE,
+      min: 0,
+      max: MAX_BUCKET,
+      buckets: buckets.map((n) => n.toString())
+    };
+}
+
   private async calculateMetrics(asset: Asset): Promise<Partial<CDPMetrics>> {
     const activeCDPs = await this.getActiveCDPs(asset);
     const liquidityPool = await this.dataSource
@@ -152,7 +180,8 @@ export class CDPMetricsService {
       health_score: healthScore,
       daily_volume: oneDayVolume,
       weekly_volume: oneWeekVolume,
-      monthly_volume: oneMonthVolume
+      monthly_volume: oneMonthVolume,
+      collateral_ratio_histogram: this.calculateCollateralRatioHistogram(activeCDPs, asset)
     };
   }
 
@@ -169,7 +198,7 @@ export class CDPMetricsService {
     });
 
     return history
-      .reduce((sum, record) => sum.plus(record.asset_lent), new BigNumber(0))
+      .reduce((sum, record) => sum.plus(new BigNumber(record.asset_delta).absoluteValue()), new BigNumber(0))
       .toString();
   }
 }

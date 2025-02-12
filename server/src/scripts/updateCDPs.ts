@@ -13,6 +13,7 @@ import { AssetService } from "../services/assetService";
 import { CDPHistoryAction } from "../entity/CDPHistory";
 import { CDPHistoryService } from "../services/cdpHistoryService";
 import { LiquidationService } from "../services/liquidationService";
+import { DECIMALS_XLM } from "../config/constants";
 
 dotenv.config();
 
@@ -119,6 +120,7 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
         xlmDiff.toString(),
         assetDiff.toString(),
         collateralizationRatio.toString(),
+        xlmDiff.multipliedBy(xlmPrice).dividedBy(new BigNumber(10).pow(DECIMALS_XLM)).toString(),
       );
     }
     await cdpHistoryService.createHistoryEntry(newCDP.id, newCDP, action, oldCDP);

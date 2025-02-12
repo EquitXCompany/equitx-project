@@ -15,11 +15,15 @@ function transformTVLMetrics(data: any): TVLMetricsData {
     asset: data.asset,
     totalXlmLocked: new BigNumber(data.totalXlmLocked),
     totalXassetsMinted: new BigNumber(data.totalXassetsMinted),
+    totalXassetsStaked: new BigNumber(data.totalXassetsStaked),
     activeCDPsCount: Number(data.activeCDPsCount),
     tvlUSD: new BigNumber(data.tvlUSD),
+    totalXassetsMintedUSD: new BigNumber(data.totalXassetsMintedUSD),
+    totalXassetsStakedUSD: new BigNumber(data.totalXassetsStakedUSD),
     timestamp: new Date(data.timestamp),
   };
 }
+
 async function fetchLatestTVLByAsset(assetSymbol: string): Promise<TVLMetricsData> {
   const { data } = await apiClient.get(`/api/tvl/${assetSymbol}/latest`);
   return transformTVLMetrics(data);

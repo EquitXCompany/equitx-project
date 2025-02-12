@@ -12,6 +12,7 @@ function transformLiquidation(data: any): LiquidationData {
     cdpId: data.cdpId,
     asset: data.asset,
     liquidatedAmount: new BigNumber(data.liquidatedAmount),
+    liquidatedAmountUsd: new BigNumber(data.liquidatedAmountUsd),
     debtCovered: new BigNumber(data.debtCovered),
     timestamp: new Date(data.timestamp),
     collateralizationRatioAtLiquidation: new BigNumber(data.collateralizationRatioAtLiquidation),

@@ -49,6 +49,7 @@ export class LiquidationService {
     xlmLiquidated: string,
     debtCovered: string,
     collateralizationRatio: string,
+    xlmLiquidatedUsd: string,
   ): Promise<Liquidation> {
     const liquidation = this.liquidationRepository.create({
       cdp,
@@ -56,6 +57,7 @@ export class LiquidationService {
       xlm_liquidated: xlmLiquidated,
       debt_covered: debtCovered,
       collateralization_ratio: collateralizationRatio,
+      xlm_liquidated_usd: xlmLiquidatedUsd,
     });
 
     return await this.liquidationRepository.save(liquidation);

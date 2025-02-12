@@ -85,7 +85,6 @@ export class ProtocolStatsService {
     const utilizationService = await UtilizationMetricsService.create();
 
     const assets = await this.dataSource.getRepository(Asset).find();
-
     const tvlMetrics = await tvlService.calculateTVLMetricsForAllAssets();
 
     const totalValueLocked = tvlMetrics.reduce(
@@ -94,7 +93,12 @@ export class ProtocolStatsService {
     ).toString();
 
     const totalDebt = tvlMetrics.reduce(
-      (sum, metric) => sum.plus(metric.total_xassets_minted),
+      (sum, metric) => sum.plus(metric.total_xassets_minted_usd),
+      new BigNumber(0)
+    ).toString();
+
+    const totalStaked = tvlMetrics.reduce(
+      (sum, metric) => sum.plus(metric.total_xassets_staked_usd),
       new BigNumber(0)
     ).toString();
 
@@ -175,14 +179,13 @@ export class ProtocolStatsService {
     return {
       total_value_locked: totalValueLocked,
       total_debt: totalDebt,
+      total_staked: totalStaked,
       unique_users: uniqueUsers,
       active_cdps: activeCdps,
       system_collateralization: systemCollateralization,
       liquidation_events_24h: liquidationEvents24h,
       average_health_factor: averageHealthFactor,
       daily_volume: dailyVolume,
-      cumulative_volume: "0",
-      fees_24h: new BigNumber(dailyVolume).multipliedBy("0.001").toString(),
       user_growth_24h: userGrowth24h,
       tvl_growth_24h: tvlGrowth24h,
       volume_growth_24h: volumeGrowth24h,

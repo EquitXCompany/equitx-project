@@ -15,6 +15,7 @@ function transformProtocolStats(data: any): ProtocolStatsData {
       totalDebt: new BigNumber(data.globalMetrics.totalDebt),
       uniqueUsers: Number(data.globalMetrics.uniqueUsers),
       activeCDPs: Number(data.globalMetrics.activeCDPs),
+      totalStaked: new BigNumber(data.globalMetrics.totalStaked),
     },
     riskMetrics: {
       systemCollateralization: new BigNumber(data.riskMetrics.systemCollateralization),
@@ -23,16 +24,15 @@ function transformProtocolStats(data: any): ProtocolStatsData {
     },
     volumeMetrics: {
       dailyVolume: new BigNumber(data.volumeMetrics.dailyVolume),
-      cumulativeVolume: new BigNumber(data.volumeMetrics.cumulativeVolume),
-      fees24h: new BigNumber(data.volumeMetrics.fees24h),
     },
     growthMetrics: {
       userGrowth24h: Number(data.growthMetrics.userGrowth24h),
       tvlGrowth24h: Number(data.growthMetrics.tvlGrowth24h),
       volumeGrowth24h: Number(data.growthMetrics.volumeGrowth24h),
-    },
+    }
   };
 }
+
 async function fetchLatestStats(): Promise<ProtocolStatsData> {
   const { data } = await apiClient.get("/api/protocol-stats/latest");
   return transformProtocolStats(data);

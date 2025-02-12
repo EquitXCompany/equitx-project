@@ -23,6 +23,12 @@ function transformCDPMetrics(data: any): CDPMetricsData {
       weeklyVolume: new BigNumber(data.volumeMetrics.weeklyVolume),
       monthlyVolume: new BigNumber(data.volumeMetrics.monthlyVolume),
     },
+    collateralRatioHistogram: {
+      bucketSize: Number(data.collateralRatioHistogram.bucketSize),
+      min: Number(data.collateralRatioHistogram.min),
+      max: Number(data.collateralRatioHistogram.max),
+      buckets: data.collateralRatioHistogram.buckets.map((b: string) => new BigNumber(b))
+    },
     timestamp: new Date(data.timestamp),
   };
 }

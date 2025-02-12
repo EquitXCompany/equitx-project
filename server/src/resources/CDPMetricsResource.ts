@@ -18,6 +18,12 @@ export class CDPMetricsResource extends BaseEntityResource {
                 weeklyVolume: entity.weekly_volume,
                 monthlyVolume: entity.monthly_volume
             },
+            collateralRatioHistogram: {
+                bucketSize: entity.collateral_ratio_histogram.bucket_size,
+                min: entity.collateral_ratio_histogram.min,
+                max: entity.collateral_ratio_histogram.max,
+                buckets: entity.collateral_ratio_histogram.buckets
+            },
             timestamp: entity.timestamp
         };
     }
@@ -38,6 +44,12 @@ export class CDPMetricsResource extends BaseEntityResource {
                 dv: entity.daily_volume,
                 wv: entity.weekly_volume,
                 mv: entity.monthly_volume
+            },
+            crh: {
+                bs: entity.collateral_ratio_histogram.bucket_size,
+                mn: entity.collateral_ratio_histogram.min,
+                mx: entity.collateral_ratio_histogram.max,
+                b: entity.collateral_ratio_histogram.buckets
             },
             ts: entity.timestamp
         };

@@ -24,9 +24,9 @@ export class UtilizationMetricsService {
     return new UtilizationMetricsService(AppDataSource);
   }
 
-  private sumBigNumbers(numbers: string[]): string {
+  private sumBigNumbersAbs(numbers: string[]): string {
     return numbers.reduce(
-      (sum, current) => sum.plus(current),
+      (sum, current) => sum.plus(new BigNumber(current).abs()),
       new BigNumber(0)
     ).toString();
   }
@@ -55,12 +55,12 @@ export class UtilizationMetricsService {
     ]);
 
     // Calculate volumes
-    const xlmVolume = this.sumBigNumbers(
-      cdpHistory.map(h => h.xlm_deposited)
+    const xlmVolume = this.sumBigNumbersAbs(
+      cdpHistory.map(h => h.xlm_delta)
     );
 
-    const xassetVolume = this.sumBigNumbers([
-      ...cdpHistory.map(h => h.asset_lent),
+    const xassetVolume = this.sumBigNumbersAbs([
+      ...cdpHistory.map(h => h.asset_delta),
       ...stakerHistory.map(h => h.xasset_delta)
     ]);
 

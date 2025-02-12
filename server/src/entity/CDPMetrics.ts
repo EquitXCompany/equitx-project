@@ -9,6 +9,8 @@ import {
 } from "typeorm";
 import { Asset } from "./Asset";
 
+// todo add collateral above LR histogram per asset
+
 @Entity("cdp_metrics")
 export class CDPMetrics {
   @PrimaryGeneratedColumn("uuid")
@@ -37,6 +39,14 @@ export class CDPMetrics {
 
   @Column({ type: "integer" })
   health_score!: number;
+
+  @Column("jsonb", { nullable: true })
+  collateral_ratio_histogram!: {
+    bucket_size: number;  // percentage points per bucket
+    min: number; // lower boundary for first bucket (percentage above LR)
+    max: number; // upper boundary for last bucket (percentage above LR)
+    buckets: Array<string>; // xlm per bucket, first is number is number below min, last is number above max
+  };
 
   // Volume Metrics
   @Column({ type: "numeric", precision: 30, scale: 0 })

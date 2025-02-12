@@ -1,13 +1,10 @@
-// First, let's create a shared types file to avoid repetition
 import BigNumber from "bignumber.js";
 
-// Common timestamp interface
 export interface TimestampRange {
   start_time?: string;
   end_time?: string;
 }
 
-// Using the resource types directly
 export interface CDPMetricsData {
   asset: string;
   totalCDPs: number;
@@ -23,6 +20,12 @@ export interface CDPMetricsData {
     weeklyVolume: BigNumber;
     monthlyVolume: BigNumber;
   };
+  collateralRatioHistogram: {
+    bucketSize: number;
+    min: number;
+    max: number;
+    buckets: BigNumber[];
+  };
   timestamp: Date;
 }
 
@@ -30,6 +33,7 @@ export interface LiquidationData {
   cdpId: string;
   asset: string;
   liquidatedAmount: BigNumber;
+  liquidatedAmountUsd: BigNumber;
   debtCovered: BigNumber;
   timestamp: Date;
   collateralizationRatioAtLiquidation: BigNumber;
@@ -42,6 +46,7 @@ export interface ProtocolStatsData {
     totalDebt: BigNumber;
     uniqueUsers: number;
     activeCDPs: number;
+    totalStaked: BigNumber;
   };
   riskMetrics: {
     systemCollateralization: BigNumber;
@@ -50,8 +55,6 @@ export interface ProtocolStatsData {
   };
   volumeMetrics: {
     dailyVolume: BigNumber;
-    cumulativeVolume: BigNumber;
-    fees24h: BigNumber;
   };
   growthMetrics: {
     userGrowth24h: number;
@@ -64,8 +67,11 @@ export interface TVLMetricsData {
   asset: string;
   totalXlmLocked: BigNumber;
   totalXassetsMinted: BigNumber;
+  totalXassetsStaked: BigNumber;
   activeCDPsCount: number;
   tvlUSD: BigNumber;
+  totalXassetsMintedUSD: BigNumber;
+  totalXassetsStakedUSD: BigNumber;
   timestamp: Date;
 }
 

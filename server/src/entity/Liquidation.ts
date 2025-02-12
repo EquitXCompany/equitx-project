@@ -26,6 +26,9 @@ export class Liquidation {
   xlm_liquidated!: string;
 
   @Column({ type: "numeric", precision: 30, scale: 0 })
+  xlm_liquidated_usd!: string;
+
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   debt_covered!: string;
 
   @Column({ type: "numeric", precision: 30, scale: 0 })

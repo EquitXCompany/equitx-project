@@ -10,6 +10,7 @@ import { CDPHistoryAction } from "../entity/CDPHistory";
 import { StakerHistoryAction } from "../entity/StakerHistory";
 import { UserRiskScoreService } from './userRiskScoreService';
 import { AssetService } from "./assetService";
+import { DECIMALS_XASSET, DECIMALS_XLM } from "../config/constants";
 
 export class UserMetricsService {
   private userMetricsRepository: Repository<UserMetrics>;
@@ -92,7 +93,7 @@ export class UserMetricsService {
 
       return new BigNumber(cdp.xlm_deposited)
         .multipliedBy(asset.last_xlm_price)
-        .dividedBy(new BigNumber(10).pow(14));
+        .dividedBy(new BigNumber(10).pow(7));
     }));
 
     const stakingValueInUSD = await Promise.all(activeStakes.map(async (stake) => {
@@ -101,7 +102,7 @@ export class UserMetricsService {
 
       return new BigNumber(stake.xasset_deposit)
         .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(14));
+        .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
     }));
 
     const totalValueLocked = [...cdpValueInUSD, ...stakingValueInUSD]
@@ -114,11 +115,9 @@ export class UserMetricsService {
 
       const collateralValueUSD = new BigNumber(cdp.xlm_deposited)
         .multipliedBy(asset.last_xlm_price)
-        .dividedBy(new BigNumber(10).pow(14));
 
       const debtValueUSD = new BigNumber(cdp.asset_lent)
         .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(14));
 
       return debtValueUSD.isZero() ? null : collateralValueUSD
         .dividedBy(debtValueUSD)
@@ -142,7 +141,7 @@ export class UserMetricsService {
 
       return new BigNumber(cdp.asset_lent)
         .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(14));
+        .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
     }));
 
     const totalDebt = totalDebtInUSD
@@ -156,7 +155,7 @@ export class UserMetricsService {
       return new BigNumber(history.xlm_delta)
         .abs()
         .multipliedBy(asset.last_xlm_price)
-        .dividedBy(new BigNumber(10).pow(14));
+        .dividedBy(new BigNumber(10).pow(DECIMALS_XLM));
     }));
 
     const stakingVolumeInUSD = await Promise.all(stakingHistory.map(async (history) => {
@@ -166,7 +165,7 @@ export class UserMetricsService {
       return new BigNumber(history.xasset_delta)
         .abs()
         .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(14));
+        .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
     }));
 
     const totalVolume = [...cdpVolumeInUSD, ...stakingVolumeInUSD]

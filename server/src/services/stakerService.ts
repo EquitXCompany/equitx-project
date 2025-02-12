@@ -1,6 +1,7 @@
 import { Repository, DataSource } from "typeorm";
 import { Staker } from "../entity/Staker";
 import { AppDataSource } from "../ormconfig";
+import { Asset } from "entity/Asset";
 
 
 export class StakerService {
@@ -65,6 +66,16 @@ export class StakerService {
     if (existingStaker) {
       await this.stakerRepository.remove(existingStaker);
     }
+  }
+
+  async findByAsset(asset: Asset): Promise<Staker[]> {
+    return this.stakerRepository.find({
+      where: { 
+        asset,
+        is_deleted: false
+      },
+      relations: ['asset']
+    });
   }
 
   async findByAddress(address: string): Promise<Staker[]> {

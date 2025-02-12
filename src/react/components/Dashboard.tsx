@@ -67,7 +67,6 @@ export default function Dashboard() {
     },
   ];
 
-  // CDP Table data preparation with error handling
   const cdpRows = assetSymbols.map(symbol => {
     const { data: cdpMetrics, error: cdpError } = useLatestCdpMetrics(symbol);
     const { data: tvlMetrics, error: tvlError } = useLatestTVLMetrics(symbol);
