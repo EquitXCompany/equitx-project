@@ -47,23 +47,23 @@ export default function Dashboard() {
     {
       title: "Total Value Locked",
       value: protocolStats?.globalMetrics.totalValueLocked,
-      format: (val: any) => formatCurrency(val, 2, "XLM"),
+      format: (val: any) => formatCurrency(val, 7, 2, "XLM"),
       change: protocolStats?.growthMetrics.tvlGrowth24h,
     },
     {
       title: "Total Market Cap",
       value: protocolStats?.globalMetrics.totalValueLocked,
-      format: (val: any) => formatCurrency(val, 2, "USD"),
+      format: (val: any) => formatCurrency(val, 7, 2, "USD"),
     },
     {
       title: "Total Staked",
       value: protocolStats?.globalMetrics.totalValueLocked,
-      format: (val: any) => formatCurrency(val, 2, "XLM"),
+      format: (val: any) => formatCurrency(val, 7, 2, "XLM"),
     },
     {
       title: "Circulating Supply",
       value: protocolStats?.volumeMetrics.dailyVolume,
-      format: (val: any) => formatCurrency(val, 2, "XLM"),
+      format: (val: any) => formatCurrency(val, 7, 2, "XLM"),
     },
   ];
 
@@ -153,10 +153,10 @@ export default function Dashboard() {
                 ) : (
                   <>
                     <TableCell>Stellar</TableCell>
-                    <TableCell>{formatCurrency(row.deposits!, 2, "XLM")}</TableCell>
-                    <TableCell>{formatCurrency(row.deposits!, 2, "XLM")}</TableCell>
-                    <TableCell>{formatCurrency(row.tvl!, 2, "USD")}</TableCell>
-                    <TableCell>{formatCurrency(row.tvl!, 2, "XLM")}</TableCell>
+                    <TableCell>{formatCurrency(row.deposits!, 7, 2, "XLM")}</TableCell>
+                    <TableCell>{formatCurrency(row.deposits!, 7, 2, "XLM")}</TableCell>
+                    <TableCell>{formatCurrency(row.tvl!, 14, 2, "USD")}</TableCell>
+                    <TableCell>{formatCurrency(row.tvl!, 14, 2, "XLM")}</TableCell> 
                     <TableCell>
                       <Typography
                         variant="button"

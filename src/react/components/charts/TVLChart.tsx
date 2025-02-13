@@ -92,7 +92,7 @@ export const TVLChart = ({
         callbacks: {
           label: (context: any) => {
             const value = context.raw;
-            return `TVL: ${formatCurrency(value, 2, 'USD')}`;
+            return `TVL: ${formatCurrency(value, 14, 2, 'USD')}`;
           },
           title: (items: any) => {
             return items[0].label;
@@ -107,7 +107,7 @@ export const TVLChart = ({
           color: 'rgba(255, 255, 255, 0.1)'
         },
         ticks: {
-          callback: (value: any) => formatCurrency(value, 0, 'USD'),
+          callback: (value: any) => formatCurrency(value, 14, 0, 'USD'),
           color: 'rgba(255, 255, 255, 0.7)'
         }
       },

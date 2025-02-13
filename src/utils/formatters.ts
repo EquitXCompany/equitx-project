@@ -2,10 +2,11 @@ import BigNumber from 'bignumber.js';
 
 export const formatCurrency = (
   value: BigNumber | number | string,
+  magnitude: number,
   decimals = 2,
   currency = ''
 ): string => {
-  const bn = new BigNumber(value);
+  const bn = new BigNumber(value).dividedBy(new BigNumber(10).pow(magnitude));
   if (bn.isNaN()) return 'N/A';
   
   // Format large numbers with K, M, B suffixes
@@ -39,3 +40,23 @@ export const formatDate = (date: Date): string => {
     minute: '2-digit'
   }).format(date);
 };
+
+const colorPalette = [
+  '#2E86AB', // Blue
+  '#A23B72', // Purple
+  '#F18F01', // Orange
+  '#C73E1D', // Red
+  '#3B7A57', // Green
+  '#7768AE', // Light Purple
+  '#1B998B', // Teal
+  '#ED217C', // Pink
+  '#2F4858', // Dark Blue
+  '#D4B483', // Tan
+] as const;
+
+export function generateAssetColors(assets: string[]): Record<string, string> {
+  return assets.reduce((acc, asset, index) => ({
+    ...acc,
+    [asset]: colorPalette[index % colorPalette.length]
+  }), {});
+}

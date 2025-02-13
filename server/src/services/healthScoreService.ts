@@ -25,6 +25,17 @@ export class HealthScoreService {
       .toNumber();
   }
 
+  calculateCDPCRAboveMinimum(cdp: CDP): number {
+    // Health factor = (Collateral Value * 100) / (Debt Value * Minimum Collateral Ratio)
+    const collateralValue = new BigNumber(cdp.xlm_deposited)
+      .times(cdp.asset.last_xlm_price);
+    const debtValue = new BigNumber(cdp.asset_lent)
+      .times(cdp.asset.price);
+    const minCollateralRatio = cdp.asset.liquidityPool.minimum_collateralization_ratio / 100;
+    const CR = collateralValue.times(100).div(debtValue);
+    return CR.minus(minCollateralRatio).toNumber();
+  }
+
   async calculateAssetHealthScore(
     asset: Asset,
     activeCDPs: CDP[],

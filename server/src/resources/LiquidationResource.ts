@@ -5,7 +5,7 @@ export class LiquidationResource extends BaseEntityResource {
     toJson(entity: Liquidation): Object {
         return {
             cdpId: entity.cdp.id,
-            asset: entity.asset,
+            asset: entity.asset.symbol,
             liquidatedAmount: entity.xlm_liquidated,
             liquidatedAmountUsd: entity.xlm_liquidated_usd,
             debtCovered: entity.debt_covered,
@@ -18,7 +18,7 @@ export class LiquidationResource extends BaseEntityResource {
         return {
             t: 'Liquidation',
             cid: entity.cdp.id,
-            a: entity.asset,
+            a: entity.asset.symbol,
             la: entity.xlm_liquidated,
             lau: entity.xlm_liquidated_usd,
             dc: entity.debt_covered,

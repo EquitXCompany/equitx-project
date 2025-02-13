@@ -4,7 +4,7 @@ import { CDPMetrics } from '../entity/CDPMetrics';
 export class CDPMetricsResource extends BaseEntityResource {
     toJson(entity: CDPMetrics): Object {
         return {
-            asset: entity.asset,
+            asset: entity.asset.symbol,
             totalCDPs: Number(entity.active_cdps_count),
             totalXLMLocked: entity.total_xlm_locked,
             averageCollateralizationRatio: entity.average_collateralization_ratio,
@@ -31,7 +31,7 @@ export class CDPMetricsResource extends BaseEntityResource {
     toCompressed(entity: CDPMetrics): Object {
         return {
             t: 'CDPMetrics',
-            a: entity.asset,
+            a: entity.asset.symbol,
             tc: Number(entity.active_cdps_count),
             tl: entity.total_xlm_locked,
             cr: entity.average_collateralization_ratio,

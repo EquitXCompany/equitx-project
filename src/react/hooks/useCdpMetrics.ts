@@ -2,10 +2,12 @@ import {
   useQuery,
   type UseQueryResult,
   type UseQueryOptions,
+  useQueries,
 } from "react-query";
 import { apiClient } from "../../utils/apiClient";
 import { CDPMetricsData, TimestampRange } from "./types";
 import BigNumber from "bignumber.js";
+import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 
 function transformCDPMetrics(data: any): CDPMetricsData {
   return {
@@ -66,6 +68,21 @@ export function useLatestCdpMetrics(
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       ...options,
     }
+  );
+}
+
+export function useLatestCdpMetricsForAllAssets(): UseQueryResult<CDPMetricsData, Error>[] {
+  const assets = Object.keys(contractMapping) as XAssetSymbol[];
+  
+  return useQueries<UseQueryOptions<CDPMetricsData, Error>[]>(
+    assets.map((asset) => ({
+      queryKey: ["cdp-metrics", asset, "latest"],
+      queryFn: () => fetchLatestMetricsByAsset(asset),
+      enabled: true,
+      refetchInterval: 300000,
+      retry: 3,
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    }))
   );
 }
 

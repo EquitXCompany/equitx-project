@@ -111,8 +111,7 @@ export class CDPMetricsService {
     }
 
     cdps.forEach(cdp => {
-      const healthFactor = this.healthScoreService.calculateCDPHealthFactor(cdp);
-      const percentageAboveMin = (healthFactor - 1) * 100;
+      const percentageAboveMin = this.healthScoreService.calculateCDPCRAboveMinimum(cdp);
       let bucketIndex = 0;
       if(percentageAboveMin > 0) {
         bucketIndex = Math.min(
