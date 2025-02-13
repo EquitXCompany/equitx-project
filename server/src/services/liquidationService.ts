@@ -1,4 +1,4 @@
-import { Repository, DataSource } from "typeorm";
+import { Repository, DataSource, MoreThanOrEqual } from "typeorm";
 import { Liquidation } from "../entity/Liquidation";
 import { CDP } from "../entity/CDP";
 import { Asset } from "../entity/Asset";
@@ -61,5 +61,15 @@ export class LiquidationService {
     });
 
     return await this.liquidationRepository.save(liquidation);
+  }
+
+  async findByTimeRange(startTime: Date): Promise<Liquidation[]> {
+    return await this.liquidationRepository.find({
+      where: {
+        timestamp: MoreThanOrEqual(startTime)
+      },
+      relations: ['cdp', 'asset'],
+      order: { timestamp: 'DESC' }
+    });
   }
 }

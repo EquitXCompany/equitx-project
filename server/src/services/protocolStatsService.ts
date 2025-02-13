@@ -2,11 +2,11 @@ import { Repository, DataSource } from "typeorm";
 import { ProtocolStats } from "../entity/ProtocolStats";
 import { AppDataSource } from "../ormconfig";
 import { TVLService } from "./tvlService";
-import { UserMetricsService } from "./userMetricsService";
 import { UtilizationMetricsService } from "./utilizationMetricsService";
 import { Asset } from "../entity/Asset";
 import BigNumber from "bignumber.js";
 import { UserMetrics } from "../entity/UserMetrics";
+import { LiquidationService } from "./liquidationService";
 
 export class ProtocolStatsService {
   private protocolStatsRepository: Repository<ProtocolStats>;
@@ -81,8 +81,9 @@ export class ProtocolStatsService {
 
   private async calculateStats(): Promise<Partial<ProtocolStats>> {
     const tvlService = await TVLService.create();
-    const userMetricsService = await UserMetricsService.create();
     const utilizationService = await UtilizationMetricsService.create();
+    const liquidationService = await LiquidationService.create();
+
 
     const assets = await this.dataSource.getRepository(Asset).find();
     const tvlMetrics = await tvlService.calculateTVLMetricsForAllAssets();
@@ -136,6 +137,7 @@ export class ProtocolStatsService {
       .orderBy("stats.timestamp", "DESC")
       .getOne();
 
+
     const userMetrics = await this.dataSource
       .getRepository(UserMetrics)
       .find();
@@ -151,15 +153,7 @@ export class ProtocolStatsService {
         .toFixed(5)
       : "0";
 
-    const liquidationEvents24h = userMetrics.reduce(
-      (sum, metric) => {
-        if (metric.timestamp >= oneDayAgo) {
-          return sum + metric.liquidations_received;
-        }
-        return sum;
-      },
-      0
-    );
+    const liquidationEvents24h = (await liquidationService.findByTimeRange(oneDayAgo)).length;
 
     const userGrowth24h = this.calculateGrowthRate(
       previousStats?.unique_users.toString(),

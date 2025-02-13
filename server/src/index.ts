@@ -54,7 +54,7 @@ async function initializeRoutes() {
   const userMetricsRouter = await userMetricsRoutes();
 
   app.use("/api/assets", assetRouter);
-  app.use("/api/pricehistories", priceHistoryRouter);
+  app.use("/api/price-history", priceHistoryRouter);
   app.use("/api/cdps", cdpRouter);
   app.use("/api/stakers", stakerRouter);
   app.use("/api/liquiditypools", liquidityPoolRouter);

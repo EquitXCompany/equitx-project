@@ -7,6 +7,7 @@ import BigNumber from "bignumber.js";
 import { BASIS_POINTS } from "../../../constants";
 import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
 import ErrorMessage from "../../components/errorMessage";
+import PriceHistoryChart from '../../components/charts/PriceHistoryChart';
 
 function Root() {
   const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
@@ -41,9 +42,9 @@ function Root() {
         <Typography variant="h5" component="h4" gutterBottom>
           <AddressDisplay address={contractId} />
         </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
+        <Button
+          variant="contained"
+          color="primary"
           onClick={handleStabilityPoolClick}
           sx={{ mt: 2, mb: 3 }}
         >
@@ -81,6 +82,7 @@ function Root() {
             </Paper>
           </Grid>
         </Grid>
+        <PriceHistoryChart assetSymbol={assetSymbol} />
       </Box>
       <Connect />
       <Outlet />

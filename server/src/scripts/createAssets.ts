@@ -1,7 +1,7 @@
 import { AppDataSource } from "../ormconfig";
 import { AssetService } from "../services/assetService";
 import { LiquidityPoolService } from "../services/liquidityPoolService";
-import { AssetConfig } from "../config/AssetConfig";
+import { AssetConfig, XLM_FEED_ADDRESS } from "../config/AssetConfig";
 import { Asset } from "../entity/Asset";
 import { LiquidityPool } from "../entity/LiquidityPool";
 import { getLatestPriceData, getMinimumCollateralizationRatio } from "../utils/serverContractHelpers";
@@ -42,6 +42,20 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
       } else {
         console.log(`Asset ${symbol} already exists, skipping`);
       }
+    }
+    //create special XLM asset for tracking XLM price
+    let asset = await assetService.findOne("XLM");
+    if(!asset){
+      asset = new Asset();
+      const { price: xlmPrice } = await getLatestPriceData(
+        "XLM",
+        assetConfig.xBTC.pool_address
+      );
+      asset.symbol = "XLM";
+      asset.feed_address = XLM_FEED_ADDRESS;
+      asset.price = xlmPrice.toString();
+      asset.last_xlm_price= xlmPrice.toString();
+      asset = await assetService.insert(asset);
     }
   } catch (error) {
     console.error("Error creating assets:", error);

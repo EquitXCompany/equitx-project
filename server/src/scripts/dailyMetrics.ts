@@ -5,6 +5,7 @@ import { CDPService } from "../services/cdpService";
 import { CDPMetricsService } from "../services/cdpMetricsService";
 import { AssetService } from "../services/assetService";
 import { ProtocolStatsService } from "../services/protocolStatsService";
+import { assetConfig } from "../config/AssetConfig";
 
 async function calculateTVLMetrics() {
   const tvlService = await TVLService.create();
@@ -13,7 +14,7 @@ async function calculateTVLMetrics() {
 
 async function calculateUtilizationMetrics() {
   const utilizationMetricsService = await UtilizationMetricsService.create();
-  const yesterday = new Date(Date.now() - 24*60*60*1000);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   await utilizationMetricsService.calculateMetricsForAllAssets(yesterday);
 }
 
@@ -36,15 +37,18 @@ export async function calculateCDPMetrics() {
   const cdpMetricsService = await CDPMetricsService.create();
   const assetService = await AssetService.create();
 
-  const assets = await assetService.findAll();
-
-  for (const asset of assets) {
+  for (const [assetSymbol, _assetDetails] of Object.entries(assetConfig)) {
+    const asset = await assetService.findOne(assetSymbol);
+    if(!asset) continue;
     try {
       await cdpMetricsService.updateForAsset(asset);
-  } catch (error) {
-      console.error(`Error updating CDP metrics for asset ${asset.symbol}:`, error);
+    } catch (error) {
+      console.error(
+        `Error updating CDP metrics for asset ${asset.symbol}:`,
+        error
+      );
+    }
   }
-}
 }
 
 async function calculateProtocolStats() {

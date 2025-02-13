@@ -83,6 +83,7 @@ async function updatePrices() {
     const assetService = await AssetService.create();
     const priceHistoryService = await PriceHistoryService.create();
     const liquidityPoolService = await LiquidityPoolService.create();
+    let i = 0;
     for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
       const liquidityPool = await liquidityPoolService.findOne(assetSymbol);
       if (!liquidityPool) {
@@ -104,6 +105,11 @@ async function updatePrices() {
           continue;
         }
         priceHistoryService.insert(assetSymbol, priceValue, timestamp);
+        if(i === 0){
+          console.log(`inserting price ${xlmPrice.toString()} for XLM at ${timestamp}`);
+          priceHistoryService.insert("XLM", xlmPrice, timestamp);
+          i++;
+        }
 
         const asset = await assetService.findOne(assetSymbol);
         if (asset) {

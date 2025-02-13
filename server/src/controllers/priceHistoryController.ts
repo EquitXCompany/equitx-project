@@ -16,10 +16,21 @@ export class PriceHistoryController {
   async getPriceHistoryForAsset(req: Request, res: Response): Promise<void> {
     try {
       const { asset_symbol, start_timestamp, end_timestamp } = req.params;
+      
+      // Convert millisecond timestamps to Date objects
+      const startDate = new Date(parseInt(start_timestamp));
+      const endDate = new Date(parseInt(end_timestamp));
+
+      // Validate dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        res.status(400).json({ message: "Invalid timestamp format" });
+        return;
+      }
+
       const priceHistory = await this.priceHistoryService.findPriceHistoryForAsset(
         asset_symbol,
-        new Date(start_timestamp),
-        new Date(end_timestamp)
+        startDate,
+        endDate
       );
       res.json(priceHistory);
     } catch (error) {
