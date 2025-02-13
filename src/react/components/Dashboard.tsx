@@ -21,6 +21,7 @@ import { MetricCard } from "./common/MetricCard";
 import { TVLChart } from "./charts/TVLChart";
 import { formatCurrency } from "../../utils/formatters";
 import { contractMapping, type XAssetSymbol } from "../../contracts/contractConfig";
+import { Link } from "react-router-dom";
 
 const assetSymbols = Object.keys(contractMapping) as XAssetSymbol[];
 
@@ -35,7 +36,7 @@ export default function Dashboard() {
     isLoading: statsLoading, 
     error: statsError 
   } = useLatestProtocolStats();
-  
+
   const { 
     data: statsHistory, 
     isLoading: historyLoading,
@@ -47,24 +48,24 @@ export default function Dashboard() {
     {
       title: "Total Value Locked",
       value: protocolStats?.globalMetrics.totalValueLocked,
-      format: (val: any) => formatCurrency(val, 7, 2, "XLM"),
+      format: (val: any) => formatCurrency(val, 14, 2, "USD"),
       change: protocolStats?.growthMetrics.tvlGrowth24h,
     },
     {
       title: "Total Market Cap",
-      value: protocolStats?.globalMetrics.totalValueLocked,
-      format: (val: any) => formatCurrency(val, 7, 2, "USD"),
+      value: protocolStats?.globalMetrics.totalDebt,
+      format: (val: any) => formatCurrency(val, 14, 2, "USD"),
     },
     {
       title: "Total Staked",
-      value: protocolStats?.globalMetrics.totalValueLocked,
-      format: (val: any) => formatCurrency(val, 7, 2, "XLM"),
+      value: protocolStats?.globalMetrics.totalStaked,
+      format: (val: any) => formatCurrency(val, 14, 2, "USD"),
     },
     {
-      title: "Circulating Supply",
-      value: protocolStats?.volumeMetrics.dailyVolume,
-      format: (val: any) => formatCurrency(val, 7, 2, "XLM"),
-    },
+      title: "System Collateral Ratio",
+      value: protocolStats?.riskMetrics.systemCollateralization,
+      format: (value: any) => formatCurrency(value, 0, 2, "%"),
+    }
   ];
 
   const cdpRows = assetSymbols.map(symbol => {
@@ -83,6 +84,8 @@ export default function Dashboard() {
       collateralRatio: cdpMetrics?.averageCollateralizationRatio,
       rewardFrequency: "Daily",
       deposits: tvlMetrics?.totalXlmLocked,
+      minted: tvlMetrics?.totalXassetsMinted,
+      marketCap: tvlMetrics?.totalXassetsMintedUSD,
       tvl: tvlMetrics?.tvlUSD,
     };
   });
@@ -132,10 +135,9 @@ export default function Dashboard() {
           <TableHead>
             <TableRow>
               <TableCell>Asset</TableCell>
-              <TableCell>Oracle Provider</TableCell>
               <TableCell>Total Minted</TableCell>
               <TableCell>SP Deposits</TableCell>
-              <TableCell>Market Cap</TableCell>
+              <TableCell>SP Deposits USD</TableCell>
               <TableCell>Market Cap</TableCell>
               <TableCell>CDP</TableCell>
             </TableRow>
@@ -152,20 +154,23 @@ export default function Dashboard() {
                   </TableCell>
                 ) : (
                   <>
-                    <TableCell>Stellar</TableCell>
-                    <TableCell>{formatCurrency(row.deposits!, 7, 2, "XLM")}</TableCell>
+                    <TableCell>{formatCurrency(row.minted!, 7, 2, row.asset)}</TableCell>
                     <TableCell>{formatCurrency(row.deposits!, 7, 2, "XLM")}</TableCell>
                     <TableCell>{formatCurrency(row.tvl!, 14, 2, "USD")}</TableCell>
-                    <TableCell>{formatCurrency(row.tvl!, 14, 2, "XLM")}</TableCell> 
+                    <TableCell>{formatCurrency(row.marketCap!, 14, 2, "USD")}</TableCell> 
                     <TableCell>
                       <Typography
                         variant="button"
+                        component={Link}
+                        to={`/cdps/${row.asset}`}
                         sx={{
                           bgcolor: "#6b2cf5",
                           px: 2,
                           py: 0.5,
                           borderRadius: 1,
                           cursor: "pointer",
+                          textDecoration: "none",
+                          color: "white"
                         }}
                       >
                         View

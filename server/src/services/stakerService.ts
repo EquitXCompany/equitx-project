@@ -69,13 +69,12 @@ export class StakerService {
   }
 
   async findByAsset(asset: Asset): Promise<Staker[]> {
-    return this.stakerRepository.find({
-      where: { 
-        asset,
-        is_deleted: false
-      },
-      relations: ['asset']
-    });
+    return await this.stakerRepository
+      .createQueryBuilder('staker')
+      .innerJoinAndSelect('staker.asset', 'asset')
+      .where('asset.id = :assetId', { assetId: asset.id })
+      .andWhere('staker.is_deleted = :isDeleted', { isDeleted: false })
+      .getMany();
   }
 
   async findByAddress(address: string): Promise<Staker[]> {

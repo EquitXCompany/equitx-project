@@ -3,13 +3,12 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import { Box, Paper, Typography } from '@mui/material';
 import { formatCurrency } from '../../../utils/formatters';
 import { ProtocolStatsData, TVLMetricsData } from '../../hooks/types';
@@ -17,8 +16,7 @@ import { ProtocolStatsData, TVLMetricsData } from '../../hooks/types';
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
@@ -42,15 +40,16 @@ export const TVLChart = ({
   showTitle = true 
 }: TVLChartProps) => {
   const chartData = useMemo(() => {
-    console.log(data[0]?.timestamp);
     const processedData = data.map(item => ({
       timestamp: new Date(item.timestamp),
-      value: type === 'protocol' 
+      tvl: type === 'protocol' 
         ? (item as ProtocolStatsData).globalMetrics.totalValueLocked.toNumber()
-        : (item as TVLMetricsData).tvlUSD.toNumber()
+        : (item as TVLMetricsData).tvlUSD.toNumber(),
+      staked: type === 'protocol'
+        ? (item as ProtocolStatsData).globalMetrics.totalStaked.toNumber()
+        : (item as TVLMetricsData).totalXassetsStakedUSD.toNumber()
     }));
 
-    // Sort by timestamp
     processedData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     return {
@@ -63,27 +62,31 @@ export const TVLChart = ({
       }),
       datasets: [
         {
-          label: type === 'protocol' 
-            ? 'Total Value Locked' 
-            : `${assetSymbol} TVL`,
-          data: processedData.map(d => d.value),
-          borderColor: '#6b2cf5', // Purple color matching the theme
-          backgroundColor: 'rgba(107, 44, 245, 0.1)',
-          fill: true,
-          tension: 0.4, // Smooth curves
-          pointRadius: 0, // Hide points
-          pointHoverRadius: 4, // Show points on hover
+          label: 'Total Staked',
+          data: processedData.map(d => d.staked),
+          backgroundColor: '#9b4dff',
+          stack: 'stack0',
+        },
+        {
+          label: 'TVL',
+          data: processedData.map(d => d.tvl),
+          backgroundColor: '#6b2cf5',
+          stack: 'stack0',
         }
       ]
     };
-  }, [data, type, assetSymbol]);
+  }, [data, type]);
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false,
+        display: true,
+        position: 'top' as const,
+        labels: {
+          color: 'rgba(255, 255, 255, 0.7)'
+        }
       },
       tooltip: {
         mode: 'index' as const,
@@ -92,7 +95,7 @@ export const TVLChart = ({
         callbacks: {
           label: (context: any) => {
             const value = context.raw;
-            return `TVL: ${formatCurrency(value, 14, 2, 'USD')}`;
+            return `${context.dataset.label}: ${formatCurrency(value, 14, 2, 'USD')}`;
           },
           title: (items: any) => {
             return items[0].label;
@@ -102,6 +105,7 @@ export const TVLChart = ({
     },
     scales: {
       y: {
+        stacked: true,
         beginAtZero: true,
         grid: {
           color: 'rgba(255, 255, 255, 0.1)'
@@ -112,6 +116,7 @@ export const TVLChart = ({
         }
       },
       x: {
+        stacked: true,
         grid: {
           display: false
         },
@@ -136,8 +141,8 @@ export const TVLChart = ({
       {showTitle && (
         <Typography variant="h6" gutterBottom sx={{ color: 'rgba(255, 255, 255, 0.87)' }}>
           {type === 'protocol' 
-            ? 'Protocol TVL' 
-            : `${assetSymbol} TVL`}
+            ? 'Protocol TVL & Staked' 
+            : `${assetSymbol} TVL & Staked`}
         </Typography>
       )}
       {isLoading ? (
@@ -148,7 +153,7 @@ export const TVLChart = ({
         </Box>
       ) : (
         <Box height={height}>
-          <Line data={chartData} options={options} />
+          <Bar data={chartData} options={options} />
         </Box>
       )}
     </Paper>
