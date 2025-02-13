@@ -57,7 +57,7 @@ export default function CDPStats() {
 
           // Rebin the data according to new parameters
           const newBuckets = Array(groups + 2).fill(0);
-          const { buckets, min, max, bucketSize } =
+          const { buckets, min, bucketSize } =
             result.data.collateralRatioHistogram;
 
           buckets.forEach((value, idx) => {
