@@ -3,7 +3,6 @@ import {
   type UseQueryResult,
   type UseQueryOptions,
   useQueries,
-  QueriesResults,
 } from "react-query";
 import { apiClient } from "../../utils/apiClient";
 import { TVLMetricsData, TimestampRange } from "./types";
