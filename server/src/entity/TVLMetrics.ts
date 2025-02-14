@@ -39,6 +39,18 @@ export class TVLMetrics {
   @Column({ type: "numeric", precision: 30, scale: 0 })
   total_xassets_staked_usd!: string;
 
+  // Number of open accounts
+  @Column({ type: "integer" })
+  open_accounts!: number;
+
+  @Column("jsonb", { nullable: true })
+  staked_share_histogram!: {
+    bucket_size: number;  // percentage points per bucket (0.5)
+    min: number; // lower boundary for first bucket (0)
+    max: number; // upper boundary for last bucket (50)
+    buckets: Array<string>; // staked amount per bucket, first is below min, last is above max
+  };
+
   @Index()
   @CreateDateColumn()
   timestamp!: Date;

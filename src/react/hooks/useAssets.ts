@@ -4,10 +4,9 @@ import BigNumber from 'bignumber.js';
 
 export type Asset = {
   symbol: string;
-  name: string;
-  total_supply: BigNumber;
+  feed_address: string;
   price: BigNumber;
-  contract_id: string;
+  last_xlm_price: BigNumber;
 };
 
 async function fetchAssets(): Promise<Asset[]> {

@@ -106,7 +106,6 @@ async function updatePrices() {
         }
         priceHistoryService.insert(assetSymbol, priceValue, timestamp);
         if(i === 0){
-          console.log(`inserting price ${xlmPrice.toString()} for XLM at ${timestamp}`);
           priceHistoryService.insert("XLM", xlmPrice, timestamp);
           i++;
         }

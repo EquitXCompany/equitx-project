@@ -34,4 +34,17 @@ export class StakerController {
       res.status(500).json({ message: "Error fetching staker" });
     }
   }
+
+  async getStakersByAddress(req: Request, res: Response): Promise<void> {
+    try {
+      const stakers = await this.stakerService.findByAddress(req.params.address);
+      if (stakers.length > 0) {
+        res.json(stakers);
+      } else {
+        res.json([])
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching stakers by address" });
+    }
+  }
 }

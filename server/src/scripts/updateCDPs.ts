@@ -35,7 +35,7 @@ function CalculateCollateralizationRatio(
     return new BigNumber(Infinity);
   }
   return xlm_deposited
-    .times(xlm_price)
+    .times(xlm_price).times(100)
     .div(asset_lent.times(xasset_price));
 }
 
@@ -113,14 +113,15 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
       const assetDiff = oldAssetLent.minus(newAssetLent);
       const xlmPrice = (await getLatestPriceData("XLM", cdp.contract_id)).price;
       const assetPrice = (await getLatestPriceData(assetSymbol, cdp.contract_id)).price;
-      const collateralizationRatio = CalculateCollateralizationRatio(assetDiff, xlmDiff, xlmPrice, assetPrice);
+      const collateralizationRatio = assetDiff.isEqualTo(0) ? 0 : CalculateCollateralizationRatio(assetDiff, xlmDiff, xlmPrice, assetPrice);
+      console.log(`Ratio is ${collateralizationRatio}`);
       await liquidationService.createLiquidation(
         newCDP,
         newCDP.asset,
         xlmDiff.toString(),
         assetDiff.toString(),
         collateralizationRatio.toString(),
-        xlmDiff.multipliedBy(xlmPrice).dividedBy(new BigNumber(10).pow(DECIMALS_XLM)).toString(),
+        xlmDiff.multipliedBy(xlmPrice).dividedBy((new BigNumber(10)).pow(DECIMALS_XLM)).toString(),
       );
     }
     await cdpHistoryService.createHistoryEntry(newCDP.id, newCDP, action, oldCDP);

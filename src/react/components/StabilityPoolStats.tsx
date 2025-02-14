@@ -1,63 +1,320 @@
-import { Box, Paper, Typography } from '@mui/material';
-import { DataGrid, type GridRenderCellParams } from '@mui/x-data-grid';
-import { useStakers } from '../hooks/useStakers';
-import { Link } from 'react-router-dom';
+import {
+  Box,
+  Grid,
+  Paper,
+  Typography,
+  Skeleton,
+  Alert,
+  CircularProgress,
+  Button,
+} from "@mui/material";
+import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
+import { useLatestTVLMetricsForAllAssets } from "../hooks/useTvlMetrics";
+import { useWallet } from "../../wallet";
+import { useStakersByAddress } from "../hooks/useStakers";
+import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
+import BigNumber from "bignumber.js";
+import { Doughnut } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { StackedHistogram } from "./charts/StackedHistogram";
+import { TVLMetricsData } from "../hooks/types";
+import { formatCurrency } from "../../utils/formatters";
+import { Link } from "react-router-dom";
 
-type GridValueFormatter = { value: { toString: () => any; }; };
+ChartJS.register(ArcElement, Tooltip, Legend);
+
+const LoadingSkeleton = () => (
+  <Box sx={{ p: 2 }}>
+    <Skeleton variant="text" width="60%" height={32} />
+    <Skeleton variant="text" width="40%" />
+    <Skeleton variant="text" width="40%" />
+  </Box>
+);
+
+const ErrorDisplay = ({ message }: { message: string }) => (
+  <Alert severity="error" sx={{ mb: 2 }}>
+    {message}
+  </Alert>
+);
 
 export default function StabilityPoolStats() {
-  const { data: stakers, isLoading } = useStakers();
+  const {
+    data: stabilityPoolData,
+    isLoading: isStabilityLoading,
+    error: stabilityError,
+  } = useAllStabilityPoolMetadata();
 
-  const columns = [
-    {
-      field: 'asset_symbol',
-      headerName: 'Asset',
-      width: 120,
-      renderCell: (params: GridRenderCellParams) => (
-        <Link to={`/stability-pool/${params.row.asset_symbol}`}>
-          {params.row.asset_symbol}
-        </Link>
-      ),
-    },
-    { field: 'address', headerName: 'Staker Address', width: 200 },
-    {
-      field: 'staked_amount',
-      headerName: 'Staked Amount',
-      width: 150,
-      valueFormatter: (params: GridValueFormatter) => 
-        params.value?.toString() ?? '',
-    },
-    {
-      field: 'rewards_earned',
-      headerName: 'Rewards Earned',
-      width: 150,
-      valueFormatter: (params: GridValueFormatter) => 
-        params.value?.toString() ?? '',
-    },
-    {
-      field: 'last_claim_timestamp',
-      headerName: 'Last Claim',
-      width: 200,
-      valueFormatter: (params: { value: string | number | Date; }) => 
-        params.value ? new Date(params.value).toLocaleString() : '',
-    },
-  ];
+  const tvlMetricsResults = useLatestTVLMetricsForAllAssets();
+  const isLoading =
+    tvlMetricsResults.some((result) => result.isLoading) || isStabilityLoading;
+  const hasError =
+    tvlMetricsResults.some((result) => result.error) || stabilityError;
+
+  const { account, isSignedIn } = useWallet();
+
+  const {
+    data: userStakes,
+    isLoading: isUserStakesLoading,
+    error: userStakesError,
+  } = useStakersByAddress(account ?? "");
+
+  if (hasError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <ErrorDisplay message="Failed to load stability pool data. Please try again later." />
+      </Box>
+    );
+  }
+
+  const totalValueXLM = !isLoading
+    ? tvlMetricsResults.reduce((total, result) => {
+        if (!result.data) return total;
+        const asset = result.data.asset;
+        const assetStabilityData = stabilityPoolData?.[asset];
+        if (!assetStabilityData) return total;
+
+        return total.plus(
+          result.data.totalXassetsStakedUSD.div(assetStabilityData.lastpriceXLM)
+        );
+      }, new BigNumber(0))
+    : new BigNumber(0);
+
+  const distributionData = {
+    labels: Object.keys(contractMapping),
+    datasets: [
+      {
+        data: tvlMetricsResults.map((result) => {
+          if (!result.data || isLoading) return 0;
+          const asset = result.data.asset;
+          const assetStabilityData = stabilityPoolData?.[asset];
+          if (!assetStabilityData) return 0;
+
+          return result.data.totalXassetsStakedUSD
+            .div(assetStabilityData.lastpriceXLM)
+            .toNumber();
+        }),
+        backgroundColor: [
+          "#8247E5",
+          "#3C3C3D",
+          "#26A17B",
+          "#23292F",
+          "#00FFA3",
+        ],
+      },
+    ],
+  };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Stability Pool Statistics
+        Stability Pools
       </Typography>
-      
-      <Paper sx={{ height: 600, width: '100%' }}>
-        <DataGrid
-          rows={stakers || []}
-          columns={columns}
-          loading={isLoading}
-          getRowId={(row) => `${row.asset_symbol}-${row.address}`}
-          pageSizeOptions={[10, 25, 50]}
-        />
-      </Paper>
+
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : (
+              <>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Total
+                </Typography>
+                <Typography variant="body2">
+                  Open Accounts:{" "}
+                  {tvlMetricsResults.reduce(
+                    (sum, result) => sum + (result.data?.openAccounts || 0),
+                    0
+                  )}
+                </Typography>
+                <Typography variant="body2">
+                  XLM Value: {formatCurrency(totalValueXLM, 14, 2, "XLM")}
+                </Typography>
+              </>
+            )}
+          </Paper>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" color="textSecondary">
+              Value Distribution
+            </Typography>
+            <Box
+              sx={{
+                height: 200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isLoading ? (
+                <CircularProgress />
+              ) : (
+                <Doughnut
+                  data={distributionData}
+                  options={{
+                    cutout: "70%",
+                    plugins: {
+                      legend: { display: false },
+                    },
+                  }}
+                />
+              )}
+            </Box>
+          </Box>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: "100%" }}>
+            <Typography variant="subtitle2" color="textSecondary">
+              Staked Share Value
+            </Typography>
+            <Box
+              sx={{
+                height: 200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isLoading ? (
+                <CircularProgress />
+              ) : (
+                !tvlMetricsResults.some((result) => result.isLoading) && (
+                  <StackedHistogram
+                    data={Object.keys(contractMapping).reduce(
+                      (acc, asset) => {
+                        const result = tvlMetricsResults.find(
+                          (r) => r.data?.asset === asset
+                        );
+                        const assetStabilityData =
+                          stabilityPoolData?.[asset as XAssetSymbol];
+                        if (result?.data && assetStabilityData) {
+                          const histogram = result.data.stakedShareHistogram;
+                          const convertedHistogram = {
+                            ...histogram,
+                            buckets: histogram.buckets.map((bucket) =>
+                              bucket
+                                .multipliedBy(assetStabilityData.lastpriceAsset)
+                                .div(assetStabilityData.lastpriceXLM)
+                            ),
+                          };
+                          acc[asset as XAssetSymbol] = convertedHistogram;
+                        }
+                        return acc;
+                      },
+                      {} as Record<
+                        XAssetSymbol,
+                        TVLMetricsData["stakedShareHistogram"]
+                      >
+                    )}
+                    isLoading={tvlMetricsResults.some(
+                      (result) => result.isLoading
+                    )}
+                    normalize={1e7}
+                  />
+                )
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        {Object.entries(contractMapping).map(([symbol]) => {
+          const tvlMetrics = tvlMetricsResults.find(
+            (result) => result.data?.asset === symbol
+          )?.data;
+          const stabilityMetadata = stabilityPoolData?.[symbol as XAssetSymbol];
+          const userStake = userStakes?.find(
+            (stake) => stake.asset.symbol === symbol
+          );
+
+          return (
+            <Grid item xs={12} md={6} key={symbol}>
+              <Paper sx={{ p: 2 }}>
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="h6">{symbol}</Typography>
+                    </Box>
+
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2">
+                        Staked:{" "}
+                        {formatCurrency(
+                          tvlMetrics?.totalXassetsStaked || "0",
+                          7,
+                          3,
+                          symbol
+                        )}
+                      </Typography>
+                      <Typography variant="body2">
+                        Staked Value:{" "}
+                        {formatCurrency(
+                          tvlMetrics?.totalXassetsStakedUSD.div(
+                            stabilityMetadata?.lastpriceXLM || BigNumber(1)
+                          ) || BigNumber(0),
+                          14,
+                          2,
+                          "XLM"
+                        )}
+                      </Typography>
+                      <Typography variant="body2">
+                        Open Accounts: {tvlMetrics?.openAccounts || 0}
+                      </Typography>
+                    </Box>
+
+                    {isSignedIn && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2">My Account</Typography>
+                        {isUserStakesLoading ? (
+                          <LoadingSkeleton />
+                        ) : userStakesError ? (
+                          <ErrorDisplay message="Failed to load user stakes" />
+                        ) : (
+                          <>
+                            <Typography variant="body2">
+                              Staked:{" "}
+                              {formatCurrency(userStake?.xasset_deposit || new BigNumber(0), 7, 2, symbol)}
+                            </Typography>
+                            <Typography variant="body2">
+                              Staked Share:{" "}
+                              {userStake?.xasset_deposit
+                                .div(tvlMetrics?.totalXassetsStaked || 1)
+                                .multipliedBy(100)
+                                .toFormat(2) || "0.00"}
+                              %
+                            </Typography>
+                          </>
+                        )}
+                      </Box>
+                    )}
+
+                    <Box
+                      sx={{ mt: 2, display: "flex", justifyContent: "center" }}
+                    >
+                      <Button
+                        component={Link}
+                        to={`/stability-pool/${symbol}`}
+                        variant="outlined"
+                        size="small"
+                      >
+                        Go to Stability Pool
+                      </Button>
+                    </Box>
+                  </>
+                )}
+              </Paper>
+            </Grid>
+          );
+        })}
+      </Grid>
     </Box>
   );
 }

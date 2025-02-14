@@ -1,13 +1,12 @@
 import { useQuery, type UseQueryResult, type UseQueryOptions } from 'react-query';
 import { apiClient } from '../../utils/apiClient';
 import BigNumber from 'bignumber.js';
+import { Asset } from './useAssets';
 
 export type Staker = {
   address: string;
-  asset_symbol: string;
-  staked_amount: BigNumber;
-  rewards_earned: BigNumber;
-  last_claim_timestamp: Date;
+  asset: Asset;
+  xasset_deposit: BigNumber;
   updatedAt: Date;
 };
 
@@ -15,20 +14,16 @@ async function fetchStakers(): Promise<Staker[]> {
   const { data } = await apiClient.get('/api/stakers');
   return data.map((staker: any) => ({
     ...staker,
-    staked_amount: new BigNumber(staker.staked_amount),
-    rewards_earned: new BigNumber(staker.rewards_earned),
-    last_claim_timestamp: new Date(staker.last_claim_timestamp),
+    xasset_deposit: new BigNumber(staker.xasset_deposit),
     updatedAt: new Date(staker.updatedAt),
   }));
 }
 
 async function fetchStakerByAssetAndAddress(assetSymbol: string, address: string): Promise<Staker> {
-  const { data } = await apiClient.get(`/api/stakers/${assetSymbol}/${address}`);
+  const { data } = await apiClient.get(`/api/stakers/asset/${assetSymbol}/address/${address}`);
   return {
     ...data,
-    staked_amount: new BigNumber(data.staked_amount),
-    rewards_earned: new BigNumber(data.rewards_earned),
-    last_claim_timestamp: new Date(data.last_claim_timestamp),
+    xasset_deposit: new BigNumber(data.xasset_deposit),
     updatedAt: new Date(data.updatedAt),
   };
 }
@@ -52,6 +47,29 @@ export function useStakerByAssetAndAddress(
   return useQuery<Staker, Error>(
     ['staker', assetSymbol, address],
     () => fetchStakerByAssetAndAddress(assetSymbol, address),
+    {
+      refetchInterval: 300000,
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      ...options
+    }
+  );
+}
+
+export function useStakersByAddress(
+  address: string,
+  options?: Omit<UseQueryOptions<Staker[], Error>, 'queryKey' | 'queryFn'>
+): UseQueryResult<Staker[], Error> {
+  return useQuery<Staker[], Error>(
+    ['stakers', 'address', address],
+    async () => {
+      const { data } = await apiClient.get(`/api/stakers/address/${address}`);
+      return data.map((staker: any) => ({
+        ...staker,
+        xasset_deposit: new BigNumber(staker.xasset_deposit),
+        updatedAt: new Date(staker.updatedAt),
+      }));
+    },
     {
       refetchInterval: 300000,
       retry: 3,

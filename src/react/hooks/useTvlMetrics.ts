@@ -20,11 +20,22 @@ function transformTVLMetrics(data: any): TVLMetricsData {
     tvlUSD: new BigNumber(data.tvlUSD),
     totalXassetsMintedUSD: new BigNumber(data.totalXassetsMintedUSD),
     totalXassetsStakedUSD: new BigNumber(data.totalXassetsStakedUSD),
+    openAccounts: Number(data.openAccounts),
+    stakedShareHistogram: {
+      bucketSize: Number(data.stakedShareHistogram.bucketSize),
+      min: Number(data.stakedShareHistogram.min),
+      max: Number(data.stakedShareHistogram.max),
+      buckets: data.stakedShareHistogram.buckets.map(
+        (b: string) => new BigNumber(b)
+      ),
+    },
     timestamp: new Date(data.timestamp),
   };
 }
 
-async function fetchLatestTVLByAsset(assetSymbol: string): Promise<TVLMetricsData> {
+async function fetchLatestTVLByAsset(
+  assetSymbol: string
+): Promise<TVLMetricsData> {
   const { data } = await apiClient.get(`/api/tvl/${assetSymbol}/latest`);
   return transformTVLMetrics(data);
 }
@@ -34,8 +45,8 @@ async function fetchTVLHistoryByAsset(
   timeRange?: TimestampRange
 ): Promise<TVLMetricsData[]> {
   const params = new URLSearchParams();
-  if (timeRange?.start_time) params.append('start_time', timeRange.start_time);
-  if (timeRange?.end_time) params.append('end_time', timeRange.end_time);
+  if (timeRange?.start_time) params.append("start_time", timeRange.start_time);
+  if (timeRange?.end_time) params.append("end_time", timeRange.end_time);
 
   const { data } = await apiClient.get(
     `/api/tvl-metrics/${assetSymbol}/history?${params.toString()}`
@@ -60,23 +71,25 @@ export function useLatestTVLMetrics(
   );
 }
 
-export function useLatestTVLMetricsForAllAssets(): QueriesResults<TVLMetricsData[], Error[]> {
-  return useQueries<TVLMetricsData[]>(
+export function useLatestTVLMetricsForAllAssets() {
+  return useQueries(
     Object.keys(contractMapping).map((assetSymbol) => ({
-      queryKey: ['tvl-metrics', assetSymbol, "latest"],
-      queryFn: () => fetchLatestTVLByAsset(assetSymbol),
-      /*refetchInterval: 300000,
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      ...options,*/
-    })),
+      queryKey: ["tvl-metrics", assetSymbol, "latest"],
+      queryFn: async () => {
+        const result = await fetchLatestTVLByAsset(assetSymbol);
+        return result as TVLMetricsData;
+      },
+    }))
   );
 }
 
 export function useTVLMetricsHistory(
   assetSymbol: string,
   timeRange?: TimestampRange,
-  options?: Omit<UseQueryOptions<TVLMetricsData[], Error>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<TVLMetricsData[], Error>,
+    "queryKey" | "queryFn"
+  >
 ): UseQueryResult<TVLMetricsData[], Error> {
   return useQuery<TVLMetricsData[], Error>(
     ["tvl-metrics", assetSymbol, "history", timeRange],

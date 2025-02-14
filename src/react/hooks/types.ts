@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { XAssetSymbol } from "../../contracts/contractConfig";
 
 export interface TimestampRange {
   start_time?: string;
@@ -6,7 +7,7 @@ export interface TimestampRange {
 }
 
 export interface CDPMetricsData {
-  asset: string;
+  asset: XAssetSymbol;
   totalCDPs: number;
   totalXLMLocked: BigNumber;
   averageCollateralizationRatio: BigNumber;
@@ -31,7 +32,7 @@ export interface CDPMetricsData {
 
 export interface LiquidationData {
   cdpId: string;
-  asset: string;
+  asset: XAssetSymbol;
   liquidatedAmount: BigNumber;
   liquidatedAmountUsd: BigNumber;
   debtCovered: BigNumber;
@@ -64,7 +65,7 @@ export interface ProtocolStatsData {
 }
 
 export interface TVLMetricsData {
-  asset: string;
+  asset: XAssetSymbol;
   totalXlmLocked: BigNumber;
   totalXassetsMinted: BigNumber;
   totalXassetsStaked: BigNumber;
@@ -72,6 +73,13 @@ export interface TVLMetricsData {
   tvlUSD: BigNumber;
   totalXassetsMintedUSD: BigNumber;
   totalXassetsStakedUSD: BigNumber;
+  openAccounts: number;
+  stakedShareHistogram: {
+    bucketSize: number;
+    min: number;
+    max: number; 
+    buckets: BigNumber[];
+  };
   timestamp: Date;
 }
 
@@ -96,7 +104,7 @@ export interface UserMetricsData {
 }
 
 export interface UtilizationMetricsData {
-  asset: string;
+  asset: XAssetSymbol;
   dailyActiveUsers: number;
   dailyTransactions: number;
   dailyXlmVolume: BigNumber;
