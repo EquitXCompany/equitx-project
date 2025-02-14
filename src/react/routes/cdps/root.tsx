@@ -8,6 +8,8 @@ import { BASIS_POINTS } from "../../../constants";
 import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
 import ErrorMessage from "../../components/errorMessage";
 import PriceHistoryChart from '../../components/charts/PriceHistoryChart';
+import { useLatestCdpMetrics } from "../../hooks/useCdpMetrics";
+import { formatCurrency } from "../../../utils/formatters";
 
 function Root() {
   const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
@@ -21,11 +23,14 @@ function Root() {
       />
     );
   }
+  const { data: assetMetrics, error: assetMetricsError, isLoading: assetMetricsLoading } = useLatestCdpMetrics(assetSymbol);
 
   const { data: stabilityData, error, isLoading } = useStabilityPoolMetadata(assetSymbol);
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>An error occurred: {error.message}</div>;
   if (!stabilityData) return <div>No data available</div>;
+
 
   const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = stabilityData;
 
@@ -34,7 +39,7 @@ function Root() {
   };
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           XLM↔{symbolAsset} Pool
@@ -51,6 +56,46 @@ function Root() {
           View Stability Pool
         </Button>
         <Grid container spacing={3}>
+          <Grid item xs={true} sm={4}>
+            <Paper elevation={3} sx={{ p: 1 }}>
+              <Typography variant="h6" gutterBottom>
+                Average Collateral Ratio
+              </Typography>
+              <Typography variant="h4">
+                {assetMetricsLoading ? "Loading..." : assetMetricsError ? "Error" : `${assetMetrics?.averageCollateralizationRatio.toFixed(4)}%`}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Paper elevation={3}>
+              <Typography variant="h6" gutterBottom>
+                Market Cap USD
+              </Typography>
+              <Typography variant="h4">
+                TBD
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Paper elevation={3} >
+              <Typography variant="h6" gutterBottom>
+                Market Cap XLM
+              </Typography>
+              <Typography variant="h4">
+                {assetMetricsLoading ? "Loading..." : assetMetricsError ? "Error" : `${formatCurrency(assetMetrics?.totalXLMLocked || '', 1, 2, "XLM")}`}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Paper elevation={3} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Total Minted
+              </Typography>
+              <Typography variant="h4">
+                {assetMetricsLoading ? "Loading..." : assetMetricsError ? "Error" : `${formatCurrency(assetMetrics?.totalXLMLocked || '', 1, 2, assetSymbol)}`}
+              </Typography>
+            </Paper>
+          </Grid>
           <Grid item xs={12} sm={4}>
             <Paper elevation={3} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
