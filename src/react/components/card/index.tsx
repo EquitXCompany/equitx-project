@@ -20,7 +20,7 @@ export default function Card({ title, children, href }: Props) {
           )}
           <span>&rarr;</span>
         </h2>
-        <p>{children}</p>
+        <div>{children}</div>
       </Link>
     </li>
   );
