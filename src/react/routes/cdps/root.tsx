@@ -57,7 +57,7 @@ function Root() {
         </Button>
         <Grid container spacing={3}>
           <Grid item xs={true} sm={4}>
-            <Paper elevation={3} sx={{ p: 1 }}>
+            <Paper elevation={3} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Average Collateral Ratio
               </Typography>
@@ -67,7 +67,7 @@ function Root() {
             </Paper>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Paper elevation={3}>
+            <Paper elevation={3} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Market Cap USD
               </Typography>
@@ -77,7 +77,7 @@ function Root() {
             </Paper>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Paper elevation={3} >
+            <Paper elevation={3} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Market Cap XLM
               </Typography>
