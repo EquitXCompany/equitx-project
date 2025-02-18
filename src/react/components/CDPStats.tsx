@@ -9,6 +9,7 @@ import { UseQueryResult } from "react-query";
 import { useLatestCdpMetricsForAllAssets } from "../hooks/useCdpMetrics";
 import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import { StackedHistogram } from "./charts/StackedHistogram";
+import { LiquidationsHistory } from "./LiquidationsHistory";
 
 export default function CDPStats() {
   const { data: cdps, isLoading } = useCdps();
@@ -107,6 +108,7 @@ export default function CDPStats() {
         />
       )}
 
+      <LiquidationsHistory />
       <Paper sx={{ height: 600, width: "100%" }}>
         <DataGrid
           rows={cdps || []}

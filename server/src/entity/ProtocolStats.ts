@@ -43,13 +43,13 @@ export class ProtocolStats {
   daily_volume!: string;
 
   // Growth Metrics
-  @Column({ type: "numeric", precision: 10, scale: 5 }) // percentage
+  @Column({ type: "numeric", precision: 15, scale: 5 }) // percentage
   user_growth_24h!: string;
 
-  @Column({ type: "numeric", precision: 10, scale: 5 }) // percentage
+  @Column({ type: "numeric", precision: 15, scale: 5 }) // percentage
   tvl_growth_24h!: string;
 
-  @Column({ type: "numeric", precision: 10, scale: 5 }) // percentage
+  @Column({ type: "numeric", precision: 20, scale: 5 }) // percentage
   volume_growth_24h!: string;
 
   @Index()
