@@ -38,6 +38,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.set('trust proxy', 1 /* number of proxies between user and server */)
+app.get('/ip', (req, res) => { res.send(req.ip) }); // Testing route to figure out rate limiter limits
 app.options('*', cors(corsOptions)); // Enable preflight requests for all routes
 
 async function initializeRoutes() {
@@ -73,7 +75,6 @@ AppDataSource.initialize()
     console.log("Database connection established");
 
     app.use(express.json());
-    app.set('trust proxy', 1 /* number of proxies between user and server */)
 
     await initializeRoutes();
 
