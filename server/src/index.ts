@@ -38,7 +38,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.set('trust proxy', 1 /* number of proxies between user and server */)
+app.set('trust proxy', 2 /* number of proxies between user and server */)
+app.get('/', (_, res) => { res.json({ status: 'OK' }) });
 app.get('/ip', (req, res) => { res.send(req.ip) }); // Testing route to figure out rate limiter limits
 app.options('*', cors(corsOptions)); // Enable preflight requests for all routes
 
