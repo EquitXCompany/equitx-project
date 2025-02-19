@@ -19,6 +19,9 @@ async function initializeRoutes() {
     userMetricsController.getUserMetricsHistory.bind(userMetricsController)
   );
 
+  // Testing route to figure out rate limiter limits
+  router.get('/ip', (req, res) => { res.send(req.ip) });
+
   return router;
 }
 
