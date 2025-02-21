@@ -173,7 +173,7 @@ export class CDPMetricsService {
       asset,
       active_cdps_count: activeCDPsCount,
       total_xlm_locked: totalXLMLocked,
-      average_collateralization_ratio: avgCollRatio,
+      collateral_ratio: avgCollRatio,
       cdps_near_liquidation: this.countCDPsNearLiquidation(activeCDPs),
       recent_liquidations: await this.healthScoreService.getRecentLiquidations(asset),
       health_score: healthScore,

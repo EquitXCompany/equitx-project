@@ -18,7 +18,11 @@ export class CDPService {
   }
 
   async findAll(): Promise<CDPDTO[]> {
-    const cdps = await this.cdpRepository.find();
+    const cdps = await this.cdpRepository.find({
+      relations: {
+        asset: true
+      }
+    });
     return cdps.map(toCDPDTO);
   }
 

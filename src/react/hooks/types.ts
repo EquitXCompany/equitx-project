@@ -10,7 +10,7 @@ export interface CDPMetricsData {
   asset: XAssetSymbol;
   totalCDPs: number;
   totalXLMLocked: BigNumber;
-  averageCollateralizationRatio: BigNumber;
+  collateralRatio: BigNumber;
   riskMetrics: {
     nearLiquidation: number;
     recentLiquidations: number;

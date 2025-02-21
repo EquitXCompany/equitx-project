@@ -7,7 +7,7 @@ export class CDPMetricsResource extends BaseEntityResource {
             asset: entity.asset.symbol,
             totalCDPs: Number(entity.active_cdps_count),
             totalXLMLocked: entity.total_xlm_locked,
-            averageCollateralizationRatio: entity.average_collateralization_ratio,
+            collateralRatio: entity.collateral_ratio,
             riskMetrics: {
                 nearLiquidation: entity.cdps_near_liquidation,
                 recentLiquidations: entity.recent_liquidations,
@@ -34,7 +34,7 @@ export class CDPMetricsResource extends BaseEntityResource {
             a: entity.asset.symbol,
             tc: Number(entity.active_cdps_count),
             tl: entity.total_xlm_locked,
-            cr: entity.average_collateralization_ratio,
+            cr: entity.collateral_ratio,
             rm: {
                 nl: entity.cdps_near_liquidation,
                 rl: entity.recent_liquidations,

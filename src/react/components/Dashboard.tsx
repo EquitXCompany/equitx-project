@@ -81,7 +81,7 @@ export default function Dashboard() {
 
     return {
       asset: symbol,
-      collateralRatio: cdpMetrics?.averageCollateralizationRatio,
+      collateralRatio: cdpMetrics?.collateralRatio,
       rewardFrequency: "Daily",
       deposits: tvlMetrics?.totalXlmLocked,
       minted: tvlMetrics?.totalXassetsMinted,

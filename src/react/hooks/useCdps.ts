@@ -9,6 +9,7 @@ import { unwrapResult } from "../../utils/contractHelpers";
 import { i128, u32 } from "@stellar/stellar-sdk/contract";
 import { useXAssetContract } from "./useXAssetContract";
 import { XAssetSymbol } from "../../contracts/contractConfig";
+import { Asset } from "./useAssets";
 
 export type ContractCDPStatus =
   | { tag: "Open"; values: void }
@@ -25,6 +26,7 @@ export interface ContractCDP {
 }
 
 export type CDP = {
+  asset: Asset;
   lender: string;
   contract_id: string;
   xlm_deposited: BigNumber;

@@ -28,7 +28,7 @@ export class CDPMetrics {
   total_xlm_locked!: string;
 
   @Column({ type: "numeric", precision: 15, scale: 5 })
-  average_collateralization_ratio!: string;
+  collateral_ratio!: string;
 
   // Risk Metrics
   @Column({ type: "integer" })

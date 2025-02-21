@@ -19,6 +19,9 @@ export const formatCurrency = (
   if (bn.isGreaterThanOrEqualTo(1e6)) {
     return `${bn.div(1e6).toFormat(decimals)}M ${currency}`;
   }
+  if (bn.isGreaterThanOrEqualTo(1e3)) {
+    return `${bn.div(1e3).toFormat(decimals)}K ${currency}`;
+  }
 
   // For values >= 1, use 2 decimals
   if (bn.isGreaterThanOrEqualTo(1)) {

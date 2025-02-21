@@ -14,7 +14,7 @@ function transformCDPMetrics(data: any): CDPMetricsData {
     asset: data.asset,
     totalCDPs: Number(data.totalCDPs),
     totalXLMLocked: new BigNumber(data.totalXLMLocked),
-    averageCollateralizationRatio: new BigNumber(data.averageCollateralizationRatio),
+    collateralRatio: new BigNumber(data.collateralRatio),
     riskMetrics: {
       nearLiquidation: Number(data.riskMetrics.nearLiquidation),
       recentLiquidations: Number(data.riskMetrics.recentLiquidations),

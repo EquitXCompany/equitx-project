@@ -60,10 +60,10 @@ function Root() {
           <Grid item xs={true} sm={4}>
             <Paper elevation={3} sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
-                Average Collateral Ratio
+                Collateral Ratio
               </Typography>
               <Typography variant="h4">
-                {assetMetricsLoading ? "Loading..." : assetMetricsError ? "Error" : `${assetMetrics?.averageCollateralizationRatio.toFixed(4)}%`}
+                {assetMetricsLoading ? "Loading..." : assetMetricsError ? "Error" : `${assetMetrics?.collateralRatio.toFixed(4)}%`}
               </Typography>
             </Paper>
           </Grid>
@@ -73,7 +73,7 @@ function Root() {
                 Market Cap USD
               </Typography>
               <Typography variant="h4">
-                {tvlMetricsLoading ? "Loading..." : tvlMetricsError ? "Error" : `${formatCurrency(tvlMetrics?.totalXassetsMintedUSD || '', 1, 2, "$")}`}
+                {tvlMetricsLoading ? "Loading..." : tvlMetricsError ? "Error" : `${formatCurrency(tvlMetrics?.totalXassetsMinted.multipliedBy(lastpriceAsset) || '', 7, 2, "$")}`}
               </Typography>
             </Paper>
           </Grid>
@@ -83,7 +83,7 @@ function Root() {
                 Market Cap XLM
               </Typography>
               <Typography variant="h4">
-                {tvlMetricsLoading ? "Loading..." : tvlMetricsError ? "Error" : `${formatCurrency(tvlMetrics?.totalXlmLocked || '', 1, 2, "XLM")}`}
+                {tvlMetricsLoading ? "Loading..." : tvlMetricsError ? "Error" : `${formatCurrency(tvlMetrics?.totalXassetsMinted.multipliedBy(lastpriceAsset).dividedBy(lastpriceXLM) || '', 7, 2, "XLM")}`}
               </Typography>
             </Paper>
           </Grid>
@@ -93,7 +93,7 @@ function Root() {
                 Total Minted
               </Typography>
               <Typography variant="h4">
-                {tvlMetricsLoading ? "Loading..." : tvlMetricsError ? "Error" : `${formatCurrency(tvlMetrics?.totalXlmLocked || '', 1, 2, assetSymbol)}`}
+                {tvlMetricsLoading ? "Loading..." : tvlMetricsError ? "Error" : `${formatCurrency(tvlMetrics?.totalXassetsMinted || '', 7, 2, assetSymbol)}`}
               </Typography>
             </Paper>
           </Grid>
