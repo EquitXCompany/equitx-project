@@ -81,24 +81,24 @@ export class CDPMetricsService {
     }).length;
   }
 
-  private calculateAverageCollateralRatio(cdps: CDP[]): string {
+  private calculateCollateralRatio(cdps: CDP[]): string {
     if (cdps.length === 0) return "0";
 
-    return cdps
-      .reduce((sum, cdp) => {
-        const xlmValueInUsd = new BigNumber(cdp.xlm_deposited)
-          .multipliedBy(cdp.asset.last_xlm_price);
+    const totalXlmValueInUsd = cdps.reduce((sum, cdp) => {
+      return sum.plus(
+        new BigNumber(cdp.xlm_deposited).multipliedBy(cdp.asset.last_xlm_price)
+      );
+    }, new BigNumber(0));
 
-        const assetValueInUsd = new BigNumber(cdp.asset_lent)
-          .multipliedBy(cdp.asset.price);
+    const totalAssetValueInUsd = cdps.reduce((sum, cdp) => {
+      return sum.plus(
+        new BigNumber(cdp.asset_lent).multipliedBy(cdp.asset.price)
+      );
+    }, new BigNumber(0));
 
-        return sum.plus(
-          xlmValueInUsd
-            .dividedBy(assetValueInUsd)
-            .multipliedBy(100)
-        );
-      }, new BigNumber(0))
-      .dividedBy(cdps.length)
+    return totalXlmValueInUsd
+      .dividedBy(totalAssetValueInUsd)
+      .multipliedBy(100)
       .toFixed(5);
   }
 
@@ -144,7 +144,7 @@ export class CDPMetricsService {
       .reduce((sum, cdp) => sum.plus(cdp.xlm_deposited), new BigNumber(0))
       .toString();
 
-    const avgCollRatio = this.calculateAverageCollateralRatio(activeCDPs);
+    const avgCollRatio = this.calculateCollateralRatio(activeCDPs);
 
     const healthScore = await this.healthScoreService.calculateAssetHealthScore(
       asset,
