@@ -27,6 +27,12 @@ export class CDPMetrics {
   @Column({ type: "numeric", precision: 30, scale: 0 })
   total_xlm_locked!: string;
 
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  total_outstanding_interest!: string;
+  
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  total_paid_interest!: string;
+
   @Column({ type: "numeric", precision: 15, scale: 5 })
   collateral_ratio!: string;
 

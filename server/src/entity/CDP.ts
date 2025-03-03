@@ -23,6 +23,15 @@ export class CDP {
   @Column({ type: "numeric", precision: 30, scale: 0 }) 
   asset_lent!: string;
 
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" }) 
+  accrued_interest!: string;
+  
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" }) 
+  interest_paid!: string;
+  
+  @Column({ type: "bigint", default: "0" }) 
+  last_interest_time!: string;
+
   @Column({
     type: "enum",
     enum: CDPStatus,

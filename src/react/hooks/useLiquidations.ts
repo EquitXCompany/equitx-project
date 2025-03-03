@@ -11,11 +11,15 @@ function transformLiquidation(data: any): LiquidationData {
   return {
     cdpId: data.cdpId,
     asset: data.asset,
-    liquidatedAmount: new BigNumber(data.liquidatedAmount),
-    liquidatedAmountUsd: new BigNumber(data.liquidatedAmountUsd),
-    debtCovered: new BigNumber(data.debtCovered),
+    collateralLiquidated: new BigNumber(data.collateralLiquidated),
+    collateralLiquidatedUsd: new BigNumber(data.collateralLiquidatedUsd),
+    principalRepaid: new BigNumber(data.principalRepaid),
+    accruedInterestRepaid: new BigNumber(data.accruedInterestRepaid),
+    collateralAppliedToInterest: new BigNumber(data.collateralAppliedToInterest),
     timestamp: new Date(data.timestamp),
-    collateralizationRatioAtLiquidation: new BigNumber(data.collateralizationRatioAtLiquidation),
+    collateralizationRatio: Number(data.collateralizationRatio),
+    xlmPrice: new BigNumber(data.xlmPrice),
+    xassetPrice: new BigNumber(data.xassetPrice),
   };
 }
 

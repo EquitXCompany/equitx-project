@@ -69,4 +69,16 @@ pub enum Error {
 
     // "Insufficient amount of xAsset staked
     InsufficientStake = 22,
+
+    // "Insufficient interest"
+    InsufficientInterest = 23,
+
+    // Payment exceeds interest due
+    PaymentExceedsInterestDue = 24,
+    
+    // "Interest must be paid before debt can be repaid"
+    InterestMustBePaidFirst = 25,
+
+    // "Insufficient XLM to pay interest"
+    InsufficientXLMForInterest = 26,
 }

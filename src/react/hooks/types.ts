@@ -10,6 +10,10 @@ export interface CDPMetricsData {
   asset: XAssetSymbol;
   totalCDPs: number;
   totalXLMLocked: BigNumber;
+  interestMetrics: {
+    totalOutstandingInterest: BigNumber;
+    totalPaidInterest: BigNumber;
+  };
   collateralRatio: BigNumber;
   riskMetrics: {
     nearLiquidation: number;
@@ -33,11 +37,15 @@ export interface CDPMetricsData {
 export interface LiquidationData {
   cdpId: string;
   asset: XAssetSymbol;
-  liquidatedAmount: BigNumber;
-  liquidatedAmountUsd: BigNumber;
-  debtCovered: BigNumber;
+  collateralLiquidated: BigNumber;
+  collateralLiquidatedUsd: BigNumber;
+  principalRepaid: BigNumber;
+  accruedInterestRepaid: BigNumber;
+  collateralAppliedToInterest: BigNumber;
   timestamp: Date;
-  collateralizationRatioAtLiquidation: BigNumber;
+  collateralizationRatio: number;
+  xlmPrice: BigNumber;
+  xassetPrice: BigNumber;
 }
 
 export interface ProtocolStatsData {
@@ -45,6 +53,8 @@ export interface ProtocolStatsData {
   globalMetrics: {
     totalValueLocked: BigNumber;
     totalDebt: BigNumber;
+    totalOutstandingInterest: BigNumber;
+    totalPaidInterest: BigNumber;
     uniqueUsers: number;
     activeCDPs: number;
     totalStaked: BigNumber;
@@ -89,6 +99,8 @@ export interface UserMetricsData {
   activePositions: {
     totalValueLocked: BigNumber;
     totalDebt: BigNumber;
+    totalAccruedInterest: BigNumber;
+    totalInterestPaid: BigNumber;
     averageCollateralizationRatio: BigNumber;
   };
   historicalMetrics: {
@@ -109,5 +121,21 @@ export interface UtilizationMetricsData {
   dailyTransactions: number;
   dailyXlmVolume: BigNumber;
   dailyXassetVolume: BigNumber;
+  timestamp: Date;
+}
+
+export interface CDPHistoryData {
+  id: string;
+  lender: string;
+  xlmDeposited: BigNumber;
+  assetLent: BigNumber;
+  xlmDelta: BigNumber;
+  assetDelta: BigNumber;
+  interestDelta: BigNumber;
+  accruedInterest: BigNumber;
+  interestPaid: BigNumber;
+  action: string; // Enum as string
+  asset: XAssetSymbol;
+  originalCdpId: string;
   timestamp: Date;
 }

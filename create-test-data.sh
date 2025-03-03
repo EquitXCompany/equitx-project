@@ -128,4 +128,46 @@ for contract_name in "${!CONTRACT_IDS[@]}"; do
     done
 done
 
+# Add CDPs close to liquidation
+echo "Creating CDPs close to liquidation"
+echo "------------------------"
+
+# Number of near-liquidation CDPs per contract
+RISKY_CDPS_PER_CONTRACT=3
+
+for contract_name in "${!CONTRACT_IDS[@]}"; do
+    contract_id="${CONTRACT_IDS[$contract_name]}"
+    
+    echo "Processing risky CDPs for contract: $contract_name ($contract_id)"
+    
+    # Get minimum CR and prices
+    min_cr=$(get_contract_value "$contract_id" "minimum_collateralization_ratio")
+    min_cr=${min_cr:-11000}  # Default to 11000 if empty
+    
+    xlm_price=$(get_asset_price "$contract_id" "lastprice_xlm")
+    xlm_price=${xlm_price:-10000000}  # Default if empty
+    
+    asset_price=$(get_asset_price "$contract_id" "lastprice_asset")
+    asset_price=${asset_price:-100000000}  # Default if empty
+    
+    # Generate risky CDPs
+    for ((i=1; i<=RISKY_CDPS_PER_CONTRACT; i++)); do
+        user=$(generate_random_user)
+        
+        # Random XLM amount between 500 and 5000 XLM (in stroops)
+        xlm_amount=$((RANDOM % 4500 + 500))0000000
+        
+        # Random CR between 110.1% and 120% (11010-12000)
+        desired_cr=$((11010 + RANDOM % 990))
+        
+        # Calculate asset_lent based on desired CR
+        asset_lent=$(calculate_asset_lent "$xlm_amount" "$xlm_price" "$asset_price" "$desired_cr")
+        
+        echo "Creating risky CDP with CR: $desired_cr"
+        open_cdp_and_maybe_stake "$user" "$contract_id" "$xlm_amount" "$asset_lent"
+    done
+done
+
+echo "Risky CDPs creation completed."
+
 echo "Test data creation completed."

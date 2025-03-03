@@ -34,8 +34,8 @@ export const LiquidationsHistory = () => {
       const stabilityData = stabilityPoolData[liquidation.asset];
       if (!stabilityData) return;
 
-      const xlmAmount = liquidation.liquidatedAmount;
-      const usdAmount = liquidation.liquidatedAmountUsd;
+      const xlmAmount = liquidation.collateralLiquidated;
+      const usdAmount = liquidation.collateralLiquidatedUsd;
 
       // Update asset totals
       if (!assetTotals[liquidation.asset]) {
@@ -83,7 +83,7 @@ export const LiquidationsHistory = () => {
         }
 
         const assetKey = `i${liquidation.asset}`;
-        acc[date][assetKey] += liquidation.liquidatedAmount.div(1e7).toNumber();
+        acc[date][assetKey] += liquidation.collateralLiquidated.div(1e7).toNumber();
         acc[date].count += 1;
         return acc;
       },

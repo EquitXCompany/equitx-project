@@ -15,6 +15,8 @@ function transformUserMetrics(data: any): UserMetricsData {
       totalValueLocked: new BigNumber(data.activePositions.totalValueLocked),
       totalDebt: new BigNumber(data.activePositions.totalDebt),
       averageCollateralizationRatio: new BigNumber(data.activePositions.averageCollateralizationRatio),
+      totalAccruedInterest: new BigNumber(data.activePositions.totalAccruedInterest),
+      totalInterestPaid: new BigNumber(data.activePositions.totalPaidInterest),
     },
     historicalMetrics: {
       totalVolume: new BigNumber(data.historicalMetrics.totalVolume),

@@ -4,6 +4,12 @@ import BigNumber from "bignumber.js";
 import { CDP } from "../entity/CDP";
 import { AppDataSource } from "../ormconfig";
 
+interface InterestMetadata {
+  interestDelta?: string;
+  accruedInterest?: string;
+  interestPaid?: string;
+}
+
 export class CDPHistoryService {
   private cdpHistoryRepository: Repository<CDPHistory>;
 
@@ -59,10 +65,14 @@ export class CDPHistoryService {
     cdpId: string,
     newCDP: CDP,
     action: CDPHistoryAction,
-    oldCDP?: CDP | null
+    oldCDP?: CDP | null,
+    interestData?: InterestMetadata
   ): Promise<CDPHistory> {
     let xlm_delta = "0";
     let asset_delta = "0";
+    let interest_delta = "0";
+    let accrued_interest = "0";
+    let interest_paid = "0";
 
     if (oldCDP) {
       // Calculate deltas
@@ -73,10 +83,28 @@ export class CDPHistoryService {
       asset_delta = new BigNumber(newCDP.asset_lent)
         .minus(oldCDP.asset_lent)
         .toString();
+        
+      // Set interest data if provided
+      if (interestData) {
+        interest_delta = interestData.interestDelta || "0";
+        accrued_interest = interestData.accruedInterest || newCDP.accrued_interest || "0";
+        interest_paid = interestData.interestPaid || newCDP.interest_paid || "0";
+      } else {
+        // Calculate interest delta if not provided
+        interest_delta = new BigNumber(newCDP.interest_paid || "0")
+          .minus(oldCDP.interest_paid || "0")
+          .toString();
+        accrued_interest = newCDP.accrued_interest || "0";
+        interest_paid = newCDP.interest_paid || "0";
+      }
     } else {
       // For new CDPs, the delta is the same as the total
       xlm_delta = newCDP.xlm_deposited;
       asset_delta = newCDP.asset_lent;
+      
+      // Set initial interest values
+      accrued_interest = newCDP.accrued_interest || "0";
+      interest_paid = newCDP.interest_paid || "0";
     }
 
     const historyEntry = this.cdpHistoryRepository.create({
@@ -86,6 +114,9 @@ export class CDPHistoryService {
       asset_lent: newCDP.asset_lent,
       xlm_delta,
       asset_delta,
+      interest_delta,
+      accrued_interest,
+      interest_paid,
       action,
       asset: newCDP.asset,
       timestamp: new Date()
@@ -94,7 +125,7 @@ export class CDPHistoryService {
     return this.cdpHistoryRepository.save(historyEntry);
   }
 
-  async calculateDailyVolume(date: Date): Promise<{ xlm_volume: string, asset_volume: string }> {
+  async calculateDailyVolume(date: Date): Promise<{ xlm_volume: string, asset_volume: string, interest_volume: string }> {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     
@@ -112,10 +143,14 @@ export class CDPHistoryService {
     
     const asset_volume = history.reduce((sum, entry) => 
       sum.plus(new BigNumber(entry.asset_delta).abs()), new BigNumber(0));
+      
+    const interest_volume = history.reduce((sum, entry) => 
+      sum.plus(new BigNumber(entry.interest_delta || "0").abs()), new BigNumber(0));
 
     return {
       xlm_volume: xlm_volume.toString(),
-      asset_volume: asset_volume.toString()
+      asset_volume: asset_volume.toString(),
+      interest_volume: interest_volume.toString()
     };
   }
 }

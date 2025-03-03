@@ -25,6 +25,12 @@ export class UserMetrics {
   @Column({ type: "numeric", precision: 30, scale: 0 })
   total_debt!: string;
 
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  total_accrued_interest!: string;
+
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  total_interest_paid!: string;
+
   @Column({ type: "numeric", precision: 15, scale: 5 })
   avg_collateralization_ratio!: string;
 

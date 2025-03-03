@@ -8,6 +8,7 @@ export enum CDPHistoryAction {
   WITHDRAW_COLLATERAL = "WITHDRAW_COLLATERAL",
   BORROW_ASSET = "BORROW_ASSET",
   REPAY_DEBT = "REPAY_DEBT",
+  PAY_INTEREST = "PAY_INTEREST",
   FREEZE = "FREEZE",
   LIQUIDATE = "LIQUIDATE"
 }
@@ -32,6 +33,15 @@ export class CDPHistory {
 
   @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
   asset_delta!: string;
+
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  interest_delta!: string;
+  
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  accrued_interest!: string;
+  
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  interest_paid!: string;
 
   @Column({
     type: "enum",

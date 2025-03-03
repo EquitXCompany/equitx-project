@@ -3,7 +3,7 @@ use loam_sdk::{
     subcontract,
 };
 
-use crate::{Error, PriceData};
+use crate::{storage::Interest, Error, PriceData};
 
 #[loam_sdk::soroban_sdk::contracttype]
 #[derive(Clone, Copy)]
@@ -29,6 +29,8 @@ pub struct CDP {
     pub asset_lent: i128,
     pub status: CDPStatus,
     pub collateralization_ratio: u32,
+    pub accrued_interest: Interest,
+    pub last_interest_time: u64,
 }
 
 #[subcontract]
@@ -110,6 +112,12 @@ pub trait IsCollateralized {
     /// Closes a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt.
     /// A CDP is closed after all its debt is repaid and its collateral is withdrawn.
     fn close_cdp(&mut self, lender: Address) -> Result<(), Error>;
+
+    /// Updates and returns the accrued interest on a cdp
+    fn get_accrued_interest(&self, lender: Address) -> Result<Interest, Error>;
+    
+    /// Pay the interest on a CDP
+    fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDP, Error>;
 }
 
 #[subcontract]
@@ -137,6 +145,7 @@ pub trait IsCDPAdmin {
         name: String,
         symbol: String,
         decimals: u32,
+        annual_interest_rate: u32,
     );
 
     /// Set the address of the XLM contract
@@ -161,4 +170,13 @@ pub trait IsCDPAdmin {
     /// Should we return anything? Right now it just returns `new_ratio` which seems... maybe
     /// useless?
     fn set_min_collat_ratio(&mut self, to: u32) -> u32;
+
+    /// set annual interest rate 
+    fn set_interest_rate(&mut self, new_rate: u32) -> u32;
+    
+    /// get annual interest rate
+    fn get_interest_rate(&self) -> u32;
+
+    /// get total interest collected
+    fn get_total_interest_collected(&self) -> i128;
 }

@@ -8,6 +8,8 @@ export class ProtocolStatsResource extends BaseEntityResource {
             globalMetrics: {
                 totalValueLocked: entity.total_value_locked,
                 totalDebt: entity.total_debt,
+                totalOutstandingInterest: entity.total_outstanding_interest,
+                totalPaidInterest: entity.total_paid_interest,
                 uniqueUsers: entity.unique_users,
                 activeCDPs: entity.active_cdps,
                 totalStaked: entity.total_staked
@@ -35,6 +37,8 @@ export class ProtocolStatsResource extends BaseEntityResource {
             gm: {
                 tvl: entity.total_value_locked,
                 td: entity.total_debt,
+                toi: entity.total_outstanding_interest,
+                tpi: entity.total_paid_interest,
                 uu: entity.unique_users,
                 ac: entity.active_cdps,
                 ts: entity.total_staked

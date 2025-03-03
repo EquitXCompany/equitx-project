@@ -1,4 +1,4 @@
-import { CalculateCollateralizationRatio, useCdpsByAssetSymbol } from '../../hooks/useCdps';
+import { CalculateCollateralizationRatio, useMergedCdps } from '../../hooks/useCdps';
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
 import { getStatusColor } from "../../../utils/contractHelpers";
@@ -9,6 +9,8 @@ import { contractMapping, XAssetSymbol } from '../../../contracts/contractConfig
 
 function List() {
   const { assetSymbol } = useParams();
+  const { account } = useWallet();
+
   if (!assetSymbol) {
     return (
       <ErrorMessage
@@ -27,9 +29,15 @@ function List() {
     );
   }
 
-  const { data: cdps, isLoading: cdpsLoading, error: cdpsError } = useCdpsByAssetSymbol(assetSymbol);
+    const {
+      data: cdps,
+      isLoading: cdpsLoading,
+      error: cdpsError
+    } = useMergedCdps(
+      assetSymbol as XAssetSymbol,
+      account
+    );
   const { data: stabilityData, isLoading: stabilityLoading, error: stabilityError } = useStabilityPoolMetadata(assetSymbol as XAssetSymbol);
-  const { account } = useWallet();
 
   if (cdpsLoading || stabilityLoading) return <div>Loading...</div>;
   if (cdpsError || stabilityError) return <div>An error occurred: {cdpsError?.message || stabilityError?.message}</div>;
@@ -37,8 +45,7 @@ function List() {
 
   const { lastpriceXLM, lastpriceAsset } = stabilityData;
 
-  const indexOfYours = cdps.findIndex((cdp) => cdp.lender === account);
-  const yours = cdps[indexOfYours];
+  const yours = account ? cdps.find((cdp) => cdp.lender === account) : undefined;
   
   let sortedCdps = [...cdps];
   if (yours) {
@@ -59,15 +66,22 @@ function List() {
         {sortedCdps.map((cdp) => (
           <Card
             key={cdp.lender}
-            href={`/cdps/${assetSymbol}/${cdp.lender}`}
+            href={cdp.status.toLowerCase() === 'closed' 
+              ? `/cdps/${assetSymbol}/new`
+              : `/cdps/${assetSymbol}/${cdp.lender}`}
             title={cdp.lender === account ? "yours" : cdp.lender}
           >
-            <div
+                        <div
               style={{
                 color: getStatusColor(cdp.status),
               }} >
-              {cdp.status} ({CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).times(100).toFixed(1)}%
-              collateralized)
+              {cdp.status}
+              {cdp.status.toLowerCase() !== 'closed' && (
+                ` (${CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).times(100).toFixed(1)}% collateralized)`
+              )}
+              {cdp.status.toLowerCase() === 'closed' && (
+                <div>Open a new one</div>
+              )}
             </div>
           </Card>
         ))}

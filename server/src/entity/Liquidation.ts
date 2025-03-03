@@ -23,16 +23,28 @@ export class Liquidation {
   asset!: Asset;
 
   @Column({ type: "numeric", precision: 30, scale: 0 })
-  xlm_liquidated!: string;
+  collateral_liquidated!: string;
 
   @Column({ type: "numeric", precision: 30, scale: 0 })
-  xlm_liquidated_usd!: string;
+  collateral_liquidated_usd!: string;
 
   @Column({ type: "numeric", precision: 30, scale: 0 })
-  debt_covered!: string;
+  principal_repaid!: string;
+
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  accrued_interest_repaid!: string;
+  
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  collateral_applied_to_interest!: string;
 
   @Column({ type: "numeric", precision: 30, scale: 0 })
   collateralization_ratio!: string;
+
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  xlm_price!: string;
+
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  xasset_price!: string;
 
   @CreateDateColumn()
   timestamp!: Date;

@@ -112,11 +112,11 @@ function Edit() {
       setMessage({ text: actionData.message, type: actionData.type });
       
       if (actionData.type === 'success' && (actionData.action === 'close' || actionData.action === 'liquidate')) {
-        navigate('/');
+        navigate(`/cdps/${assetSymbol}`);
       } else {
         const timer = setTimeout(() => {
           setMessage(null);
-          navigate(`/${actionData.lender}`);
+          navigate(`/cdps/${assetSymbol}/${actionData.lender}`);
         }, 3000);
         
         return () => clearTimeout(timer);

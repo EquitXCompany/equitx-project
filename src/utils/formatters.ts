@@ -25,22 +25,22 @@ export const formatCurrency = (
 
   // For values >= 1, use 2 decimals
   if (bn.isGreaterThanOrEqualTo(1)) {
-    return `${bn.toFormat(2)} ${currency}`;
+    return `${bn.toFormat(decimals)} ${currency}`;
   }
 
   // For values between 0.1 and 1, use 3 decimals
   if (bn.isGreaterThanOrEqualTo(0.1)) {
-    return `${bn.toFormat(3)} ${currency}`;
+    return `${bn.toFormat(decimals)} ${currency}`;
   }
 
   // For values between 0.01 and 0.1, use 4 decimals
   if (bn.isGreaterThanOrEqualTo(0.01)) {
-    return `${bn.toFormat(4)} ${currency}`;
+    return `${bn.toFormat(decimals)} ${currency}`;
   }
 
   // For very small values, use scientific notation
   if (bn.isLessThan(0.01)) {
-    return `${bn.toExponential(2)} ${currency}`;
+    return `${bn.toExponential(decimals)} ${currency}`;
   }
 
   return `${bn.toFormat(decimals)} ${currency}`;

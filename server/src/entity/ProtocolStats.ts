@@ -18,6 +18,12 @@ export class ProtocolStats {
   @Column({ type: "numeric", precision: 30, scale: 0 })
   total_debt!: string;
 
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  total_outstanding_interest!: string;
+  
+  @Column({ type: "numeric", precision: 30, scale: 0, default: "0" })
+  total_paid_interest!: string;
+
   // total xassets staked converted to usd
   @Column({ type: "numeric", precision: 30, scale: 0 })
   total_staked!: string;

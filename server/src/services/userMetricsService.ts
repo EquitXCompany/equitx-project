@@ -8,7 +8,7 @@ import { AppDataSource } from "../ormconfig";
 import BigNumber from "bignumber.js";
 import { CDPHistoryAction } from "../entity/CDPHistory";
 import { StakerHistoryAction } from "../entity/StakerHistory";
-import { UserRiskScoreService } from './userRiskScoreService';
+import { UserRiskScoreService } from "./userRiskScoreService";
 import { AssetService } from "./assetService";
 import { DECIMALS_XASSET, DECIMALS_XLM } from "../config/constants";
 
@@ -33,8 +33,10 @@ export class UserMetricsService {
       .orderBy("metrics.timestamp", "DESC")
       .getOne();
 
-    if (!metrics ||
-        metrics.timestamp < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+    if (
+      !metrics ||
+      metrics.timestamp < new Date(Date.now() - 24 * 60 * 60 * 1000)
+    ) {
       return this.updateForUser(address);
     }
 
@@ -74,7 +76,25 @@ export class UserMetricsService {
       .getMany();
   }
 
-  private async calculateMetrics(address: string): Promise<Partial<UserMetrics>> {
+  private async calculateTotalAccruedInterest(cdps: any[]): Promise<string> {
+    return cdps
+      .reduce((sum, cdp) => {
+        return sum.plus(new BigNumber(cdp.accrued_interest || "0"));
+      }, new BigNumber(0))
+      .toString();
+  }
+
+  private async calculateTotalInterestPaid(cdps: any[]): Promise<string> {
+    return cdps
+      .reduce((sum, cdp) => {
+        return sum.plus(new BigNumber(cdp.interest_paid || "0"));
+      }, new BigNumber(0))
+      .toString();
+  }
+
+  private async calculateMetrics(
+    address: string
+  ): Promise<Partial<UserMetrics>> {
     const cdpService = await CDPService.create();
     const cdpHistoryService = await CDPHistoryService.create();
     const stakerService = await StakerService.create();
@@ -87,136 +107,170 @@ export class UserMetricsService {
     const cdpHistory = await cdpHistoryService.findByLender(address);
     const stakingHistory = await stakerHistoryService.findByAddress(address);
 
-    const cdpValueInUSD = await Promise.all(activeCDPs.map(async (cdp) => {
-      const asset = await assetService.findOne(cdp.asset.symbol);
-      if (!asset) return new BigNumber(0);
+    const cdpValueInUSD = await Promise.all(
+      activeCDPs.map(async (cdp) => {
+        const asset = await assetService.findOne(cdp.asset.symbol);
+        if (!asset) return new BigNumber(0);
 
-      return new BigNumber(cdp.xlm_deposited)
-        .multipliedBy(asset.last_xlm_price)
-        .dividedBy(new BigNumber(10).pow(7));
-    }));
+        return new BigNumber(cdp.xlm_deposited)
+          .multipliedBy(asset.last_xlm_price)
+          .dividedBy(new BigNumber(10).pow(7));
+      })
+    );
 
-    const stakingValueInUSD = await Promise.all(activeStakes.map(async (stake) => {
-      const asset = await assetService.findOne(stake.asset.symbol);
-      if (!asset) return new BigNumber(0);
+    const stakingValueInUSD = await Promise.all(
+      activeStakes.map(async (stake) => {
+        const asset = await assetService.findOne(stake.asset.symbol);
+        if (!asset) return new BigNumber(0);
 
-      return new BigNumber(stake.xasset_deposit)
-        .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
-    }));
+        return new BigNumber(stake.xasset_deposit)
+          .multipliedBy(asset.price)
+          .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
+      })
+    );
 
     const totalValueLocked = [...cdpValueInUSD, ...stakingValueInUSD]
       .reduce((sum, value) => sum.plus(value), new BigNumber(0))
       .toString();
 
-    const cdpRatios = await Promise.all(activeCDPs.map(async (cdp) => {
-      const asset = await assetService.findOne(cdp.asset.symbol);
-      if (!asset) return null;
+    const cdpRatios = await Promise.all(
+      activeCDPs.map(async (cdp) => {
+        const asset = await assetService.findOne(cdp.asset.symbol);
+        if (!asset) return null;
 
-      const collateralValueUSD = new BigNumber(cdp.xlm_deposited)
-        .multipliedBy(asset.last_xlm_price)
+        const collateralValueUSD = new BigNumber(
+          cdp.xlm_deposited
+        ).multipliedBy(asset.last_xlm_price);
 
-      const debtValueUSD = new BigNumber(cdp.asset_lent)
-        .multipliedBy(asset.price)
+        const debtValueUSD = new BigNumber(cdp.asset_lent).multipliedBy(
+          asset.price
+        );
 
-      return debtValueUSD.isZero() ? null : collateralValueUSD
-        .dividedBy(debtValueUSD)
-        .multipliedBy(100);
-    }));
-
-    const validRatios = cdpRatios.filter((ratio): ratio is BigNumber =>
-      ratio !== null
+        return debtValueUSD.isZero()
+          ? null
+          : collateralValueUSD.dividedBy(debtValueUSD).multipliedBy(100);
+      })
     );
 
-    const avgCollateral = validRatios.length > 0
-      ? validRatios
-          .reduce((sum, ratio) => sum.plus(ratio), new BigNumber(0))
-          .dividedBy(validRatios.length)
-          .toFixed(5)
-      : "0";
+    const validRatios = cdpRatios.filter(
+      (ratio): ratio is BigNumber => ratio !== null
+    );
 
-    const totalDebtInUSD = await Promise.all(activeCDPs.map(async (cdp) => {
-      const asset = await assetService.findOne(cdp.asset.symbol);
-      if (!asset) return new BigNumber(0);
+    const avgCollateral =
+      validRatios.length > 0
+        ? validRatios
+            .reduce((sum, ratio) => sum.plus(ratio), new BigNumber(0))
+            .dividedBy(validRatios.length)
+            .toFixed(5)
+        : "0";
 
-      return new BigNumber(cdp.asset_lent)
-        .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
-    }));
+    const totalDebtInUSD = await Promise.all(
+      activeCDPs.map(async (cdp) => {
+        const asset = await assetService.findOne(cdp.asset.symbol);
+        if (!asset) return new BigNumber(0);
+
+        return new BigNumber(cdp.asset_lent)
+          .multipliedBy(asset.price)
+          .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
+      })
+    );
 
     const totalDebt = totalDebtInUSD
       .reduce((sum, value) => sum.plus(value), new BigNumber(0))
       .toString();
 
-    const cdpVolumeInUSD = await Promise.all(cdpHistory.map(async (history) => {
-      const asset = history.asset;
-      if (!asset) return new BigNumber(0);
+    const cdpVolumeInUSD = await Promise.all(
+      cdpHistory.map(async (history) => {
+        const asset = history.asset;
+        if (!asset) return new BigNumber(0);
 
-      return new BigNumber(history.xlm_delta)
-        .abs()
-        .multipliedBy(asset.last_xlm_price)
-        .dividedBy(new BigNumber(10).pow(DECIMALS_XLM));
-    }));
+        return new BigNumber(history.xlm_delta)
+          .abs()
+          .multipliedBy(asset.last_xlm_price)
+          .dividedBy(new BigNumber(10).pow(DECIMALS_XLM));
+      })
+    );
 
-    const stakingVolumeInUSD = await Promise.all(stakingHistory.map(async (history) => {
-      const asset = history.asset;
-      if (!asset) return new BigNumber(0);
+    const stakingVolumeInUSD = await Promise.all(
+      stakingHistory.map(async (history) => {
+        const asset = history.asset;
+        if (!asset) return new BigNumber(0);
 
-      return new BigNumber(history.xasset_delta)
-        .abs()
-        .multipliedBy(asset.price)
-        .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
-    }));
+        return new BigNumber(history.xasset_delta)
+          .abs()
+          .multipliedBy(asset.price)
+          .dividedBy(new BigNumber(10).pow(DECIMALS_XASSET));
+      })
+    );
 
     const totalVolume = [...cdpVolumeInUSD, ...stakingVolumeInUSD]
       .reduce((sum, value) => sum.plus(value), new BigNumber(0))
       .toString();
 
     const liquidationsReceived = cdpHistory.filter(
-      history => history.action === CDPHistoryAction.LIQUIDATE
+      (history) => history.action === CDPHistoryAction.LIQUIDATE
     ).length;
 
     const positionDurations = [
-      ...cdpHistory.filter(h => h.action === CDPHistoryAction.OPEN)
-        .map(openEvent => {
+      ...cdpHistory
+        .filter((h) => h.action === CDPHistoryAction.OPEN)
+        .map((openEvent) => {
           const closeEvent = cdpHistory.find(
-            h => h.original_cdp_id === openEvent.original_cdp_id &&
-            h.action === CDPHistoryAction.LIQUIDATE
+            (h) =>
+              h.original_cdp_id === openEvent.original_cdp_id &&
+              h.action === CDPHistoryAction.LIQUIDATE
           );
           return closeEvent
-            ? (closeEvent.timestamp.getTime() - openEvent.timestamp.getTime()) / 1000
+            ? (closeEvent.timestamp.getTime() - openEvent.timestamp.getTime()) /
+                1000
             : (Date.now() - openEvent.timestamp.getTime()) / 1000;
         }),
-      ...stakingHistory.filter(h => h.action === StakerHistoryAction.STAKE)
-        .map(stakeEvent => {
+      ...stakingHistory
+        .filter((h) => h.action === StakerHistoryAction.STAKE)
+        .map((stakeEvent) => {
           const unstakeEvent = stakingHistory.find(
-            h => h.original_staker_id === stakeEvent.original_staker_id &&
-            h.action === StakerHistoryAction.UNSTAKE
+            (h) =>
+              h.original_staker_id === stakeEvent.original_staker_id &&
+              h.action === StakerHistoryAction.UNSTAKE
           );
           return unstakeEvent
-            ? (unstakeEvent.timestamp.getTime() - stakeEvent.timestamp.getTime()) / 1000
+            ? (unstakeEvent.timestamp.getTime() -
+                stakeEvent.timestamp.getTime()) /
+                1000
             : (Date.now() - stakeEvent.timestamp.getTime()) / 1000;
-        })
+        }),
     ];
 
-    const avgPositionDuration = positionDurations.length > 0
-      ? Math.floor(positionDurations.reduce((a, b) => a + b) / positionDurations.length)
-      : 0;
+    const avgPositionDuration =
+      positionDurations.length > 0
+        ? Math.floor(
+            positionDurations.reduce((a, b) => a + b) / positionDurations.length
+          )
+        : 0;
 
     const userRiskScoreService = await UserRiskScoreService.create();
-    const riskScore = await userRiskScoreService.calculateUserRiskScore(address);
+    const riskScore =
+      await userRiskScoreService.calculateUserRiskScore(address);
 
-    const lastActivity = new Date(Math.max(
-      ...cdpHistory.map(h => h.timestamp.getTime()),
-      ...stakingHistory.map(h => h.timestamp.getTime()),
-      0
-    ));
+    const lastActivity = new Date(
+      Math.max(
+        ...cdpHistory.map((h) => h.timestamp.getTime()),
+        ...stakingHistory.map((h) => h.timestamp.getTime()),
+        0
+      )
+    );
+
+    const totalAccruedInterest =
+      await this.calculateTotalAccruedInterest(activeCDPs);
+    const totalInterestPaid = await this.calculateTotalInterestPaid(activeCDPs);
 
     return {
       address,
       total_cdps: activeCDPs.length,
       total_value_locked: totalValueLocked,
       total_debt: totalDebt,
+      total_accrued_interest: totalAccruedInterest, // Add this line
+      total_interest_paid: totalInterestPaid, // Add this line
       avg_collateralization_ratio: avgCollateral,
       total_volume: totalVolume,
       liquidations_received: liquidationsReceived,
@@ -224,7 +278,7 @@ export class UserMetricsService {
       risk_score: riskScore,
       last_activity: lastActivity,
       avg_position_duration: avgPositionDuration,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
 }

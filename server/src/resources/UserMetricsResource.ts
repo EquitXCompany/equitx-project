@@ -9,6 +9,8 @@ export class UserMetricsResource extends BaseEntityResource {
             activePositions: {
                 totalValueLocked: entity.total_value_locked,
                 totalDebt: entity.total_debt,
+                totalAccruedInterest: entity.total_accrued_interest,
+                totalInterestPaid: entity.total_interest_paid,
                 averageCollateralizationRatio: entity.avg_collateralization_ratio
             },
             historicalMetrics: {
@@ -32,6 +34,8 @@ export class UserMetricsResource extends BaseEntityResource {
             ap: {
                 tvl: entity.total_value_locked,
                 td: entity.total_debt,
+                tai: entity.total_accrued_interest,
+                tip: entity.total_interest_paid,
                 cr: entity.avg_collateralization_ratio
             },
             hm: {

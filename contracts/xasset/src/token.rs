@@ -4,7 +4,7 @@ use loam_sdk::soroban_sdk::{self, env, panic_with_error, token, Address, Instanc
 use loam_sdk::loamstorage;
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
-use crate::storage::{Allowance, CDPInternal};
+use crate::storage::{Allowance, CDPInternal, Interest};
 use crate::{collateralized::CDPStatus, data_feed, storage::Txn, Error};
 use crate::{
     collateralized::{IsCDPAdmin, IsCollateralized, CDP},
@@ -20,6 +20,10 @@ const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 const DEPOSIT_FEE: i128 = 10_000_000;
 const STAKE_FEE: i128 = 70_000_000;
 const UNSTAKE_RETURN: i128 = 20_000_000;
+// Constants for interest calculation
+const SECONDS_PER_YEAR: u64 = 31_536_000; // 365 days
+const INTEREST_PRECISION: i128 = 1_000_000_000; // 9 decimal places for precision
+const DEFAULT_PRECISION: i128 = 10_000_000; // 7 decimal places for precision
 
 fn bankers_round(value: i128, precision: i128) -> i128 {
     let half = precision / 2;
@@ -46,7 +50,15 @@ fn bankers_round(value: i128, precision: i128) -> i128 {
     }
 }
 
-fn calculate_collateralization_ratio(asset_lent: i128, xasset_price: i128, xlm_deposited: i128, xlm_price: i128, xlm_decimals: u32, xasset_decimals: u32) -> u32 {
+fn calculate_collateralization_ratio(
+    asset_lent: i128,
+    xasset_price: i128, 
+    xlm_deposited: i128,
+    xlm_price: i128,
+    xlm_decimals: u32,
+    xasset_decimals: u32,
+    accrued_interest: i128
+) -> u32 {
     let (numer_decimals, denom_decimals) = if xlm_decimals == xasset_decimals {
         (0, 0)
     } else if xlm_decimals > xasset_decimals {
@@ -54,10 +66,13 @@ fn calculate_collateralization_ratio(asset_lent: i128, xasset_price: i128, xlm_d
     } else {
         (xasset_decimals - xlm_decimals, 0)
     };
+    
     let collateralization_ratio = if asset_lent == 0 || xasset_price == 0 {
         u32::MAX
     } else {
-        (BASIS_POINTS * xlm_deposited * xlm_price * 10i128.pow(numer_decimals)
+        // Include accrued interest in the calculation: (a - i)b / (mp)
+        let effective_xlm = xlm_deposited.saturating_sub(accrued_interest);
+        (BASIS_POINTS * effective_xlm * xlm_price * 10i128.pow(numer_decimals)
             / (asset_lent * 10i128.pow(denom_decimals) * xasset_price)) as u32
     };
     collateralization_ratio
@@ -95,6 +110,8 @@ pub struct Token {
     deposits: PersistentMap<Address, StakerPosition>,
     /// stability pool compound records
     compound_record: PersistentMap<u64, i128>,
+    /// stability pool interest collected records
+    interest_record: PersistentMap<u64, i128>,
     /// total xasset in the stability pool
     total_xasset: PersistentItem<i128>,
     /// total collateral in the stability pool
@@ -113,6 +130,10 @@ pub struct Token {
     stake_fee: InstanceItem<i128>,
     /// stability pool fee amount returned upon unstaking
     unstake_return: InstanceItem<i128>,
+    /// Annual interest rate in basis points (e.g., 500 = 5%)
+    interest_rate: InstanceItem<u32>,
+    /// Total interest collected (in XLM) by the protocol
+    interest_collected: InstanceItem<i128>,
 }
 
 impl Token {
@@ -125,6 +146,7 @@ impl Token {
         name: String,
         symbol: String,
         decimals: u32,
+        annual_interest_rate: u32,
     ) {
         let mut token = Token::default();
         token.xlm_sac.set(&xlm_sac);
@@ -144,6 +166,8 @@ impl Token {
         token.deposit_fee.set(&DEPOSIT_FEE);
         token.stake_fee.set(&STAKE_FEE);
         token.unstake_return.set(&UNSTAKE_RETURN);
+        token.interest_collected.set(&0);
+        token.interest_rate.set(&annual_interest_rate);
     }
 }
 
@@ -387,7 +411,7 @@ impl IsCollateralized for Token {
         }
 
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
-        let cdp = CDPInternal::new(collateral, asset_lent);
+        let cdp = CDPInternal::new(collateral, asset_lent, env.ledger().timestamp());
         let xlm_price = self.lastprice_xlm()?;
         let xlm_decimals = self.decimals_xlm_feed()?;
         let xasset_price = self.lastprice_asset()?;
@@ -424,6 +448,9 @@ impl IsCollateralized for Token {
             id: lender.clone(),
             xlm_deposited: cdp.xlm_deposited,
             asset_lent: cdp.asset_lent,
+            accrued_interest: cdp.accrued_interest.amount,
+            interest_paid: cdp.accrued_interest.paid,
+            last_interest_time: cdp.last_interest_time,
             status: cdp.status,
             ledger: env.ledger().sequence(),
             timestamp: env.ledger().timestamp(),
@@ -495,6 +522,8 @@ impl IsCollateralized for Token {
                 xlm_deposited: cdp.xlm_deposited - amount,
                 asset_lent: cdp.asset_lent,
                 status: cdp.status,
+                accrued_interest: cdp.accrued_interest,
+                last_interest_time: cdp.last_interest_time,
             },
             lender.clone(),
             self.lastprice_xlm()?.price,
@@ -531,6 +560,8 @@ impl IsCollateralized for Token {
                 xlm_deposited: cdp.xlm_deposited,
                 asset_lent: cdp.asset_lent + amount,
                 status: cdp.status,
+                accrued_interest: cdp.accrued_interest,
+                last_interest_time: cdp.last_interest_time
             },
             lender.clone(),
             self.lastprice_xlm()?.price,
@@ -554,25 +585,29 @@ impl IsCollateralized for Token {
     fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
-
+    
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolventForRepay);
         }
-
+    
+        // Pay off any interest first
+        cdp = self.pay_interest(lender.clone(), 0)?;
+    
+        // Now continue with debt repayment
         if cdp.asset_lent < amount {
             return Err(Error::RepaymentExceedsDebt);
         }
-
-        // check to ensure enough xasset is available
+    
+        // Check to ensure enough xasset is available
         if self.balance(lender.clone()) < amount {
             return Err(Error::InsufficientBalance);
         }
-
-        //burn the xasset
+    
+        // Burn the xasset
         self.burn_internal(lender.clone(), amount);
-
+    
         cdp.asset_lent -= amount;
-
+    
         if cdp.asset_lent == 0 && cdp.xlm_deposited == 0 {
             self.close_cdp(lender)?;
         } else {
@@ -580,9 +615,88 @@ impl IsCollateralized for Token {
         }
         Ok(())
     }
-
+    
     fn liquidate_cdp(&mut self, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         self.liquidate(lender)
+    }
+
+    fn get_accrued_interest(&self, lender: Address) -> Result<Interest, Error> {
+        let cdp = self.cdps.get(lender.clone()).ok_or(Error::CDPNotFound)?;
+        let (interest, _last_interest_time) = self.get_updated_accrued_interest(&cdp)?;
+        Ok(interest)
+    }
+    
+    fn pay_interest(&mut self, lender: Address, amount_in_xasset: i128) -> Result<CDP, Error> {
+        lender.require_auth();
+        
+        // Check if CDP exists
+        let cdp = self.cdp(lender.clone())?;
+        
+        // Get accrued interest
+        let mut interest = cdp.accrued_interest.clone();
+        
+        // If amount is 0, assume the user wants to pay all accrued interest
+        let amount_to_pay = if amount_in_xasset == 0 {
+            interest.amount
+        } else {
+            // Otherwise validate the payment amount
+            if interest.amount < amount_in_xasset {
+                return Err(Error::PaymentExceedsInterestDue);
+            }
+            amount_in_xasset
+        };
+        
+        // No need to proceed if there's nothing to pay
+        if amount_to_pay == 0 {
+            return Ok(cdp);
+        }
+        
+        // Convert xasset amount to XLM equivalent using the current price
+        let price = self.lastprice_asset().unwrap();
+        let xlmprice = self.lastprice_xlm().unwrap();
+        let xasset_decimals = self.decimals_asset_feed()?;
+        let xlm_decimals = self.decimals_xlm_feed()?;
+        let amount_in_xlm = self.convert_xasset_to_xlm(amount_to_pay)?;
+
+        
+        // Check for sufficient XLM balance
+        if self.native().balance(&lender) < amount_in_xlm {
+            return Err(Error::InsufficientXLMForInterest);
+        }
+        
+        // Transfer XLM from lender to contract
+        let _ = self
+            .native()
+            .try_transfer(&lender, &env().current_contract_address(), &amount_in_xlm)
+            .map_err(|_| Error::XLMTransferFailed)?;
+        
+        interest.amount -= amount_to_pay;
+        interest.paid += amount_in_xlm;
+        
+        let decorated_cdp = self.decorate(
+            CDPInternal {
+                xlm_deposited: cdp.xlm_deposited,
+                asset_lent: cdp.asset_lent,
+                accrued_interest: interest,
+                status: cdp.status,
+                last_interest_time: cdp.last_interest_time,
+            },
+            lender.clone(),
+            xlmprice.price,
+            xlm_decimals,
+            price.price,
+            xasset_decimals,
+        );
+
+        // This is different from repay debt where the xasset is burned from user; here XLM is
+        // being transferred from the user to repay the interest. Its also different from a liquidation 
+        // where the SP's xasset is burned to cover the debt.
+        // Only XLM is being transferred to the SP to pay the interest so the rewards must be updated
+        self.set_cdp_from_decorated(lender, decorated_cdp.clone());
+        self.interest_collected.set(&(self.get_total_interest_collected() + amount_in_xlm));
+        self.increment_interest_for_current_epoch(&amount_in_xlm);
+
+        Ok(decorated_cdp)
     }
 
     fn merge_cdps(&mut self, lenders: Vec<Address>) -> Result<(), Error> {
@@ -592,6 +706,7 @@ impl IsCollateralized for Token {
 
         let mut total_xlm = 0;
         let mut total_asset = 0;
+        let mut total_interest: Interest = Interest::default();
 
         for lender in lenders.iter() {
             let cdp = self.cdp(lender.clone())?;
@@ -600,6 +715,8 @@ impl IsCollateralized for Token {
             }
             total_xlm += cdp.xlm_deposited;
             total_asset += cdp.asset_lent;
+            total_interest.amount += cdp.accrued_interest.amount;
+            total_interest.paid += cdp.accrued_interest.paid;
         }
 
         // Merge into the first CDP
@@ -607,6 +724,8 @@ impl IsCollateralized for Token {
             xlm_deposited: total_xlm,
             asset_lent: total_asset,
             status: CDPStatus::Frozen,
+            accrued_interest: total_interest,
+            last_interest_time: env().ledger().timestamp(),
         };
         let first_lender = lenders.get(0).unwrap();
         self.cdps.set(first_lender.clone(), &merged_cdp);
@@ -652,6 +771,7 @@ impl IsCDPAdmin for Token {
         name: String,
         symbol: String,
         decimals: u32,
+        annual_interest_rate: u32,
     ) {
         self::Contract::require_auth();
         Token::init(
@@ -663,6 +783,7 @@ impl IsCDPAdmin for Token {
             name,
             symbol,
             decimals, // FIXME: we should use this instead of the data feed to get xasset decimals?
+            annual_interest_rate,
         );
     }
     fn set_xlm_sac(&mut self, to: Address) {
@@ -685,6 +806,19 @@ impl IsCDPAdmin for Token {
         self::Contract::require_auth();
         self.min_collat_ratio.set(&to);
         to
+    }
+    fn set_interest_rate(&mut self, new_rate: u32) -> u32 {
+        self::Contract::require_auth();
+        self.set_annual_interest_rate(new_rate);
+        new_rate
+    }
+    
+    fn get_interest_rate(&self) -> u32 {
+        self.get_annual_interest_rate()
+    }
+    
+    fn get_total_interest_collected(&self) -> i128 {
+        self.get_total_interest_collected()
     }
 }
 
@@ -735,57 +869,81 @@ impl IsStabilityPool for Token {
         self.withdraw_internal(to, amount, false)
     }
 
-    fn liquidate(&mut self, cdp_owner: Address) -> Result<(i128, i128, CDPStatus), Error> {
-        let mut cdp = self.cdp(cdp_owner.clone())?;
-        let debt = cdp.asset_lent;
+    fn liquidate(&mut self, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
+        let mut cdp = self.cdp(lender.clone())?;
+        let principal_debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
-
+        let mut interest = cdp.accrued_interest.clone();
+    
         // Check if the CDP is frozen
         if !matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::InvalidLiquidation);
         }
-
+    
         // Ensure the debt and collateral are positive
-        if debt <= 0 || collateral <= 0 {
+        if principal_debt <= 0 || collateral <= 0 {
             return Err(Error::InvalidLiquidation);
         }
-
+    
         let total_xasset = self.get_total_xasset();
-
-        // Determine how much debt can be repaid from the Stability Pool
-        let liquidated_debt = cmp::min(debt, total_xasset);
-
-        // Calculate the proportional amount of collateral to withdraw
-        let liquidated_collateral =
-            (collateral as u128 * liquidated_debt as u128 / debt as u128) as i128;
-
+        
+        // Handle interest first - collect all accrued interest if possible
+        let interest_to_liquidate_xasset = cmp::min(interest.amount, total_xasset);
+        let interest_to_liquidate_xlm= self.convert_xasset_to_xlm(interest_to_liquidate_xasset)?;
+        
+        if interest_to_liquidate_xlm > 0 {
+            interest.amount -= interest_to_liquidate_xasset;
+            interest.paid += interest_to_liquidate_xlm;
+            cdp.accrued_interest = interest;
+            self.interest_collected.set(&(self.get_total_interest_collected() + &interest_to_liquidate_xlm));
+            self.increment_interest_for_current_epoch(&interest_to_liquidate_xlm);
+        }
+        
+        // if unable to cover all interest, go ahead and update rewards and return
+        if interest.amount > 0 {
+            self.set_cdp_from_decorated(lender, cdp);
+            return Ok((0, 0, CDPStatus::Frozen));
+        }
+        // Now handle the principal debt with remaining available xasset
+        let remaining_xasset = self.get_total_xasset();
+        let liquidated_debt = cmp::min(principal_debt, remaining_xasset);
+    
+        // Calculate the proportional amount of collateral to withdraw based on principal repaid
+        let liquidated_collateral = 
+            bankers_round(DEFAULT_PRECISION * collateral * liquidated_debt / principal_debt, DEFAULT_PRECISION);
+            
         // Update constants for the stability pool
         self.update_constants(liquidated_debt, liquidated_collateral);
-
+    
         // Update the stability pool
         self.subtract_total_xasset(liquidated_debt);
         self.add_total_collateral(liquidated_collateral);
-
+    
         // Burn the liquidated debt
         self.burn_internal(env().current_contract_address(), liquidated_debt);
-
+    
         // Update the CDP
         cdp.xlm_deposited -= liquidated_collateral;
         cdp.asset_lent -= liquidated_debt;
 
         #[cfg(feature = "mercury")]
         crate::index_types::Liquidation {
-            cdp_id: cdp_owner.clone(),
-            xlm_liquidated: liquidated_collateral,
-            debt_covered: liquidated_debt,
+            cdp_id: lender.clone(),
+            collateral_liquidated: liquidated_collateral,
+            principal_repaid: liquidated_debt,
+            accrued_interest_repaid: interest_to_liquidate_xasset,
+            collateral_applied_to_interest: interest_to_liquidate_xlm,
             collateralization_ratio: calculate_collateralization_ratio(
-                liquidated_debt,
-                self.lastprice_asset()?.price, 
-                liquidated_collateral,
+                cdp.asset_lent + liquidated_debt,
+                self.lastprice_asset()?.price,
+                cdp.xlm_deposited + liquidated_collateral,
                 self.lastprice_xlm()?.price,
                 self.decimals_xlm_feed()?,
                 self.decimals_asset_feed()?,
+                interest.amount + interest_to_liquidate_xasset,
             ),
+            xlm_price: self.lastprice_xlm()?.price,
+            xasset_price: self.lastprice_asset()?.price,
             ledger: env().ledger().sequence(),
             timestamp: env().ledger().timestamp(),
         }.emit(env());
@@ -793,19 +951,22 @@ impl IsStabilityPool for Token {
         if cdp.asset_lent == 0 {
             #[cfg(feature = "mercury")]
             crate::index_types::CDP {
-                id: cdp_owner.clone(),
+                id: lender.clone(),
                 xlm_deposited: cdp.xlm_deposited,
                 asset_lent: cdp.asset_lent,
+                accrued_interest: cdp.accrued_interest.amount,
+                interest_paid: cdp.accrued_interest.paid,
+                last_interest_time: cdp.last_interest_time,
                 status: CDPStatus::Closed,
                 ledger: env().ledger().sequence(),
                 timestamp: env().ledger().timestamp(),
             }
             .emit(env());
-            self.cdps.remove(cdp_owner);
+            self.cdps.remove(lender);
             Ok((liquidated_debt, liquidated_collateral, CDPStatus::Closed))
         } else {
             // Otherwise, update the CDP
-            self.set_cdp_from_decorated(cdp_owner, cdp);
+            self.set_cdp_from_decorated(lender, cdp);
             Ok((liquidated_debt, liquidated_collateral, CDPStatus::Frozen))
         }
     }
@@ -935,25 +1096,26 @@ impl Token {
         xasset_price: i128,
         xasset_decimals: u32,
     ) -> CDP {
-        // Need to divide in a way that never has a decimal, so decimals don't get truncated (or
-        // that has only truncatable decimals as of the final operation).
-        //
-        // ratio = BASIS_POINTS * XLM locked * XLM's USD price / (xAsset minted * xAsset's USD price)
-        //
-        //   and: a price = multiplied price from oracle / oracle's number of decimals multiplier
-        //   so that:
-        //
-        // ratio = BASIS_POINTS * XLM locked * (XLM's multiplied USD price / XLM's multiplier)
-        //           / (xAsset minted * (xAsset's multiplied USD price / xAsset's USD multiplier)
-        // ratio = BASIS_POINTS * XLM locked * XLM's multiplied USD price * xAsset's USD multiplier
-        //           / (xAsset minted * XLM's multiplier * xAsset's multiplied USD price)
-        //
-        // Need to prevent exceeding i128 limit. Multiply the numerator OR denom by min multiplier.
-        let collateralization_ratio = calculate_collateralization_ratio(cdp.asset_lent, xasset_price, cdp.xlm_deposited, xlm_price, xlm_decimals, xasset_decimals);
+        // Update accrued interest first
+        let (interest, last_interest_time) = self.get_updated_accrued_interest(&cdp)
+            .unwrap_or_default();
+        
+        let collateralization_ratio = calculate_collateralization_ratio(
+            cdp.asset_lent,
+            xasset_price,
+            cdp.xlm_deposited,
+            xlm_price,
+            xlm_decimals,
+            xasset_decimals,
+            interest.amount,
+        );
+        
         CDP {
             lender,
             xlm_deposited: cdp.xlm_deposited,
             asset_lent: cdp.asset_lent,
+            accrued_interest: interest,
+            last_interest_time: last_interest_time,
             collateralization_ratio,
             status: if matches!(cdp.status, CDPStatus::Open)
                 && collateralization_ratio < self.minimum_collateralization_ratio()
@@ -967,12 +1129,16 @@ impl Token {
             },
         }
     }
+
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDP) {
         #[cfg(feature = "mercury")]
         crate::index_types::CDP {
             id: lender.clone(),
             xlm_deposited: decorated_cdp.xlm_deposited,
             asset_lent: decorated_cdp.asset_lent,
+            accrued_interest: decorated_cdp.accrued_interest.amount,
+            interest_paid: decorated_cdp.accrued_interest.paid,
+            last_interest_time: decorated_cdp.last_interest_time,
             status: decorated_cdp.status,
             ledger: env().ledger().sequence(),
             timestamp: env().ledger().timestamp(),
@@ -984,6 +1150,8 @@ impl Token {
                 xlm_deposited: decorated_cdp.xlm_deposited,
                 asset_lent: decorated_cdp.asset_lent,
                 status: decorated_cdp.status,
+                last_interest_time: decorated_cdp.last_interest_time,
+                accrued_interest: decorated_cdp.accrued_interest,
             },
         );
     }
@@ -1072,9 +1240,9 @@ impl Token {
 
     fn calculate_current_deposit(&self, position: &StakerPosition) -> i128 {
         if position.epoch == self.get_epoch() {
-            let value = (BASIS_POINTS * position.xasset_deposit * self.get_product_constant())
+            let value = (DEFAULT_PRECISION * position.xasset_deposit * self.get_product_constant())
                 / position.product_constant;
-            bankers_round(value, BASIS_POINTS)
+            bankers_round(value, DEFAULT_PRECISION)
         } else {
             0
         }
@@ -1082,18 +1250,18 @@ impl Token {
 
     fn calculate_rewards(&self, position: &StakerPosition) -> i128 {
         if position.epoch == self.get_epoch() {
-            let value = (BASIS_POINTS * position.xasset_deposit
+            let value = (DEFAULT_PRECISION * position.xasset_deposit
                 * (self.get_compounded_constant() - position.compounded_constant))
                 / position.product_constant;
-            bankers_round(value, BASIS_POINTS)
+            bankers_round(value, DEFAULT_PRECISION)
         } else {
-            let value = (BASIS_POINTS * position.xasset_deposit
+            let value = (DEFAULT_PRECISION * position.xasset_deposit
                 * (self
                     .get_compounded_epoch(position.epoch)
                     .expect("The historical compounded constant should always be recorded")
                     - position.compounded_constant))
                 / position.product_constant;
-            bankers_round(value, BASIS_POINTS)
+            bankers_round(value, DEFAULT_PRECISION)
         }
     }
 
@@ -1233,6 +1401,71 @@ impl Token {
         self.deposits.remove(address);
     }
 
+    pub fn get_annual_interest_rate(&self) -> u32 {
+        self.interest_rate.get().expect("Interest rate should be initialized")
+    }
+
+    pub fn set_annual_interest_rate(&mut self, rate: u32) {
+        self.interest_rate.set(&rate);
+    }
+
+    pub fn get_updated_accrued_interest(&self, cdp: &CDPInternal) -> Result<(Interest, u64), Error> {
+        let now = env().ledger().timestamp();
+        let last_time = cdp.last_interest_time;
+        
+        // If this is a new CDP or first interest calculation
+        if last_time == 0 {
+            return Ok((Interest::default(), now));
+        }
+
+        // Calculate time elapsed since last interest calculation
+        let time_elapsed = now.saturating_sub(last_time);
+        if time_elapsed == 0 {
+            return Ok((cdp.accrued_interest, now));
+        }
+
+        // Do not accrue interest after it has been frozen
+        if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
+            return Ok((cdp.accrued_interest, now));
+        }
+
+        // Calculate interest based on time elapsed
+        let annual_rate = self.get_annual_interest_rate() as i128;
+        // Calculate interest: debt * rate * time
+        let interest_amount = bankers_round(cdp.asset_lent * annual_rate * (time_elapsed as i128) * INTEREST_PRECISION / (BASIS_POINTS * (SECONDS_PER_YEAR as i128)), INTEREST_PRECISION);
+        
+        let interest = Interest {
+            amount: cdp.accrued_interest.amount + interest_amount, 
+            paid: cdp.accrued_interest.paid
+        };
+
+        Ok((interest, now))
+    }
+
+    pub fn get_total_interest_collected(&self) -> i128 {
+        self.interest_collected.get().expect("Total interest collected should be initialized")
+    }
+
+    fn convert_xasset_to_xlm(&self, amount_in_xasset: i128) -> Result<i128, Error> {
+        let price = self.lastprice_asset().unwrap();
+        let xlmprice = self.lastprice_xlm().unwrap();
+        let xasset_decimals = self.decimals_asset_feed()?;
+        let xlm_decimals = self.decimals_xlm_feed()?;
+        Ok(bankers_round(
+            (DEFAULT_PRECISION * amount_in_xasset * price.price * 10i128.pow(xlm_decimals-xasset_decimals)) / (xlmprice.price), 
+            DEFAULT_PRECISION
+        ))
+    }
+
+    fn increment_interest_for_current_epoch(&mut self, amount: &i128) {
+        let current_epoch = self.get_epoch();
+        let current_interest = self.interest_record.get(current_epoch).unwrap_or_default();
+        self.interest_record.set(current_epoch, &(current_interest + amount));
+    }
+
+    /*fn get_interest_for_epoch(&self, epoch: u64) -> i128 {
+        self.interest_record.get(epoch).unwrap_or_default()
+    }*/
 
 }
 

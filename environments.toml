@@ -18,7 +18,7 @@ set_asset_price --price 100000000000000 --asset '{"Other":"USDT"}' --timestamp "
 client = true
 init = """
 admin_set --new-admin equitx
-cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USDT --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7
+cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USDT --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7 --annual_interest_rate 100
 STELLAR_ACCOUNT=alice open_cdp --lender alice --collateral 1700000000 --asset-lent 100000000
 STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 100000000
 set_min_collat_ratio --to 15000
@@ -32,9 +32,9 @@ rpc-url = "https://soroban-testnet.stellar.org"
 network-passphrase = "Test SDF Network ; September 2015"
 
 [staging.contracts]
-xSOL = { id = "CB5DCBNBWC5HCJLH7WZM6Y3O46K2QQFI5JHVCPS4CXRHT7AZPYQVG5MD" }
-xXRP = { id = "CBLAKI2KEYAVUXUMJGGIIY7K3S36TCWMVTKDBTOMV2AXANPCXMRLDSLP" }
-xUSDT = { id = "CACRGVS4QYOUN4TL7SR6FLEYYLQ2MXT4GX2HRRLCREUUVUKWKQUT5573" }
-xETH = { id = "CD73YEVU5XYQFNLVUAWMBNCGRBZW6IQ6INE3HSGLSCMN77UPF3EKL3CB" }
-xBTC = { id = "CA6IENUECWPCFF5XI3D6FNT43GQ74BSH6KIG5LS5UKVUIABCPNAX5NCR" }
+xSOL = { id = "CACS2RY27HYWH2QTRXTG4CY2C3CPYZDEULSGITSIFOCZEO7HGNSFH7GB" }
+xXRP = { id = "CC5NGZO6G4PYPAPLATWMZHMZ6VHI5D2H4OCBDPVYLWMLZ6JWJ5TRQDFC" }
+xUSDT = { id = "CBOY2553BC7DWV25QK7ZOSIDPSGRZWJFMFS2NBMGTG3YWEHIDEV5R7TZ" }
+xETH = { id = "CCJCAJOOEKNE7RVPEKAABKBPCOF3SVRECV44RQB2CUDK7WR6XEML5BOW" }
+xBTC = { id = "CDPR34HXNJA6FXKKX4K3IKN6VBB2GA7BDAJPRIANLJ2YND4FP5USZGK5" }
 data_feed = { id = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63" }

@@ -222,11 +222,12 @@ export async function getTotalXAsset(contractId: string) {
       contractId,
       "xasset"
     );
+    console.log(totalXAssetData);
 
-    if (!totalXAssetData || !totalXAssetData.result) {
+    if (!totalXAssetData || totalXAssetData.result === undefined) {
       throw new Error("Could not get total xAsset");
     }
-    return new BigNumber(totalXAssetData.result.toString());
+    return new BigNumber(totalXAssetData.result);
   } catch (error) {
     console.error("Error getting total xAsset:", error);
     throw error;

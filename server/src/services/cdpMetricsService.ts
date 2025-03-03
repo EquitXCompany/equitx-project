@@ -102,6 +102,24 @@ export class CDPMetricsService {
       .toFixed(5);
   }
 
+  // Calculate total outstanding interest for all CDPs in an asset
+  private calculateTotalOutstandingInterest(cdps: CDP[]): string {
+    return cdps.reduce((sum, cdp) => {
+      return sum.plus(
+        new BigNumber(cdp.accrued_interest || '0')
+      );
+    }, new BigNumber(0)).toString();
+  }
+
+  // Calculate total paid interest for all CDPs in an asset
+  private calculateTotalPaidInterest(cdps: CDP[]): string {
+    return cdps.reduce((sum, cdp) => {
+      return sum.plus(
+        new BigNumber(cdp.interest_paid || '0')
+      );
+    }, new BigNumber(0)).toString();
+  }
+
   private calculateCollateralRatioHistogram(cdps: CDP[], asset: Asset): CDPMetrics['collateral_ratio_histogram'] {
     const BUCKET_SIZE = 5;
     const MAX_BUCKET = 1000;
@@ -128,7 +146,7 @@ export class CDPMetricsService {
       max: MAX_BUCKET,
       buckets: buckets.map((n) => n.toString())
     };
-}
+  }
 
   private async calculateMetrics(asset: Asset): Promise<Partial<CDPMetrics>> {
     const activeCDPs = await this.getActiveCDPs(asset);
@@ -143,6 +161,10 @@ export class CDPMetricsService {
     const totalXLMLocked = activeCDPs
       .reduce((sum, cdp) => sum.plus(cdp.xlm_deposited), new BigNumber(0))
       .toString();
+
+    // Calculate interest metrics
+    const totalOutstandingInterest = this.calculateTotalOutstandingInterest(activeCDPs);
+    const totalPaidInterest = this.calculateTotalPaidInterest(activeCDPs);
 
     const avgCollRatio = this.calculateCollateralRatio(activeCDPs);
 
@@ -173,6 +195,9 @@ export class CDPMetricsService {
       asset,
       active_cdps_count: activeCDPsCount,
       total_xlm_locked: totalXLMLocked,
+      // Add interest metrics
+      total_outstanding_interest: totalOutstandingInterest,
+      total_paid_interest: totalPaidInterest,
       collateral_ratio: avgCollRatio,
       cdps_near_liquidation: this.countCDPsNearLiquidation(activeCDPs),
       recent_liquidations: await this.healthScoreService.getRecentLiquidations(asset),

@@ -16,6 +16,8 @@ function transformProtocolStats(data: any): ProtocolStatsData {
       uniqueUsers: Number(data.globalMetrics.uniqueUsers),
       activeCDPs: Number(data.globalMetrics.activeCDPs),
       totalStaked: new BigNumber(data.globalMetrics.totalStaked),
+      totalOutstandingInterest: new BigNumber(data.globalMetrics.totalOutstandingInterest),
+      totalPaidInterest: new BigNumber(data.globalMetrics.totalPaidInterest),
     },
     riskMetrics: {
       systemCollateralization: new BigNumber(data.riskMetrics.systemCollateralization),

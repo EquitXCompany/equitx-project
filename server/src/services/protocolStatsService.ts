@@ -7,6 +7,7 @@ import { Asset } from "../entity/Asset";
 import BigNumber from "bignumber.js";
 import { UserMetrics } from "../entity/UserMetrics";
 import { LiquidationService } from "./liquidationService";
+import { CDPMetricsService } from "./cdpMetricsService";
 
 export class ProtocolStatsService {
   private protocolStatsRepository: Repository<ProtocolStats>;
@@ -83,7 +84,7 @@ export class ProtocolStatsService {
     const tvlService = await TVLService.create();
     const utilizationService = await UtilizationMetricsService.create();
     const liquidationService = await LiquidationService.create();
-
+    const cdpMetricsService = await CDPMetricsService.create();
 
     const assets = await this.dataSource.getRepository(Asset).find();
     const tvlMetrics = await tvlService.calculateTVLMetricsForAllAssets();
@@ -107,6 +108,22 @@ export class ProtocolStatsService {
       (sum, metric) => sum + metric.active_cdps_count,
       0
     );
+
+    // Calculate protocol-wide interest metrics
+    let totalOutstandingInterest = new BigNumber(0);
+    let totalPaidInterest = new BigNumber(0);
+
+    for (const asset of assets) {
+      const assetMetrics = await cdpMetricsService.findLatestByAsset(asset.symbol);
+      if (assetMetrics) {
+        totalOutstandingInterest = totalOutstandingInterest.plus(
+          assetMetrics.total_outstanding_interest || '0'
+        );
+        totalPaidInterest = totalPaidInterest.plus(
+          assetMetrics.total_paid_interest || '0'
+        );
+      }
+    }
 
     const uniqueUsers = await this.dataSource
       .getRepository(UserMetrics)
@@ -136,7 +153,6 @@ export class ProtocolStatsService {
       .where("stats.timestamp <= :timestamp", { timestamp: oneDayAgo })
       .orderBy("stats.timestamp", "DESC")
       .getOne();
-
 
     const userMetrics = await this.dataSource
       .getRepository(UserMetrics)
@@ -174,6 +190,8 @@ export class ProtocolStatsService {
       total_value_locked: totalValueLocked,
       total_debt: totalDebt,
       total_staked: totalStaked,
+      total_outstanding_interest: totalOutstandingInterest.toString(),
+      total_paid_interest: totalPaidInterest.toString(),
       unique_users: uniqueUsers,
       active_cdps: activeCdps,
       system_collateralization: systemCollateralization,

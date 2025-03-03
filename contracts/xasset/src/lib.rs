@@ -19,6 +19,7 @@ pub mod token;
 pub mod index_types;
 
 pub use error::Error;
+use crate::storage::Interest;
 
 // FIXME: copied from data_feed; find way to reuse
 #[loam_sdk::soroban_sdk::contracttype]

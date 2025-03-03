@@ -1,4 +1,13 @@
-import { Box, Paper, Typography } from "@mui/material";
+import {
+  Box,
+  Paper,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Tabs,
+  Tab,
+} from "@mui/material";
 import { formatCurrency } from "../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
 import { useCdps } from "../hooks/useCdps";
@@ -12,14 +21,44 @@ import { StackedHistogram } from "./charts/StackedHistogram";
 import { LiquidationsHistory } from "./LiquidationsHistory";
 import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
 import BigNumber from "bignumber.js";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useLiquidations } from "../hooks/useLiquidations";
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
+    </div>
+  );
+}
 
 export default function CDPStats() {
+  const [tabValue, setTabValue] = useState(0);
   const { data: cdps, isLoading: cdpsLoading } = useCdps();
   const { data: stabilityPoolData, isLoading: spLoading } =
     useAllStabilityPoolMetadata();
   const TVLMetricsResults = useLatestTVLMetricsForAllAssets();
   const cdpMetricsResults = useLatestCdpMetricsForAllAssets();
+  const { data: liquidations, isLoading: liquidationsLoading } =
+    useLiquidations();
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
   // Wait for stability pool data to be loaded before processing CDPs
   const enrichedCdps = useMemo(() => {
@@ -36,8 +75,7 @@ export default function CDPStats() {
       const collateralRatio = collateralXLM.div(debtValueXLM).times(100);
       const netValue = collateralXLM.minus(debtValueXLM);
       const minRatio = new BigNumber(spMetadata.min_ratio).div(1e4);
-      console.log(`debt asset is ${debtAsset.toString()} collateral xlm is ${collateralXLM.toString()} `)
-      const liquidationPriceXLM = collateralXLM.times(1e7).div(debtAsset).div(minRatio);
+      const liquidationPriceXLM = collateralXLM.div(debtAsset).div(minRatio);
       return {
         ...cdp,
         asset_symbol: cdp.asset.symbol,
@@ -46,10 +84,116 @@ export default function CDPStats() {
         debtAsset: formatCurrency(debtAsset, 7, 2, cdp.asset.symbol),
         debtValueXLM: formatCurrency(debtValueXLM, 7, 2, "XLM"),
         netValue: formatCurrency(netValue, 7, 2, "XLM"),
-        liquidationPriceXLM: formatCurrency(liquidationPriceXLM, 7, 2, "XLM"),
+        liquidationPriceXLM: formatCurrency(liquidationPriceXLM, 0, 2, "XLM"),
       };
     });
   }, [cdps, stabilityPoolData, spLoading]);
+
+  const enrichedLiquidations = useMemo(() => {
+    if (liquidationsLoading || !liquidations || !stabilityPoolData) return [];
+    
+    return liquidations.map(liquidation => {
+      const spMetadata = stabilityPoolData[liquidation.asset as XAssetSymbol];
+      if (!spMetadata) return liquidation;
+  
+      const collateralLiquidated = new BigNumber(liquidation.collateralLiquidated);
+      const principalRepaid = new BigNumber(liquidation.principalRepaid);
+      const xlmPrice = liquidation.xlmPrice;
+      const xAssetPrice = liquidation.xassetPrice.div(liquidation.xlmPrice);
+  
+      return {
+        ...liquidation,
+        asset: liquidation.asset,
+        collateralLiquidated: formatCurrency(collateralLiquidated, 7, 6, "XLM"),
+        principalRepaid: formatCurrency(principalRepaid, 7, 6, liquidation.asset),
+        interest: formatCurrency(liquidation.collateralAppliedToInterest, 7, 6, "XLM"),
+        xlmPrice: formatCurrency(xlmPrice, 14, 6, "USD"),
+        xAssetPrice: formatCurrency(xAssetPrice, 0, 6, "XLM"),
+        timestamp: new Date(liquidation.timestamp).toLocaleString(),
+      };
+    });
+  }, [liquidations, liquidationsLoading, stabilityPoolData]);
+
+  // Calculate system-wide metrics
+  const systemMetrics = useMemo(() => {
+    // Default state when loading
+    const defaultMetrics = {
+      totalActiveCdps: 0,
+      totalCollateralXlm: new BigNumber(0),
+      totalDebtValueXlm: new BigNumber(0),
+      totalOutstandingInterestXlm: new BigNumber(0),
+      systemCollateralRatio: 0,
+    };
+
+    // Check if metrics data is available
+    const loadedCdpMetrics = cdpMetricsResults.filter(
+      (result) => result.isSuccess && result.data
+    );
+
+    const loadedTvlMetrics = TVLMetricsResults.filter(
+      (result) => result.isSuccess && result.data
+    );
+
+    if (loadedCdpMetrics.length === 0 || loadedTvlMetrics.length === 0) {
+      return defaultMetrics;
+    }
+
+    // Aggregate metrics across all assets
+    let totalActiveCdps = 0;
+    let totalCollateralXlm = new BigNumber(0);
+    let totalDebtValueXlm = new BigNumber(0);
+    let totalOutstandingInterestXlm = new BigNumber(0);
+
+    // Create a map for easier access to TVL data by asset
+    const tvlDataByAsset = loadedTvlMetrics.reduce(
+      (acc, result) => {
+        if (result.data) {
+          acc[result.data.asset] = result.data;
+        }
+        return acc;
+      },
+      {} as Record<XAssetSymbol, TVLMetricsData>
+    );
+
+    loadedCdpMetrics.forEach((result) => {
+      if (!result.data) return;
+
+      const metrics = result.data;
+      const asset = metrics.asset;
+      const tvlData = tvlDataByAsset[asset];
+
+      // Skip if TVL data for this asset is not available
+      if (!tvlData) return;
+
+      totalActiveCdps += metrics.totalCDPs;
+      totalCollateralXlm = totalCollateralXlm.plus(metrics.totalXLMLocked);
+      totalOutstandingInterestXlm = totalOutstandingInterestXlm.plus(
+        metrics.interestMetrics.totalOutstandingInterest
+      );
+
+      // Use stabilityPool data to convert xAssetsMinted to XLM value
+      if (stabilityPoolData && stabilityPoolData[asset]) {
+        const spMetadata = stabilityPoolData[asset];
+        const debtValueXLM = tvlData.totalXassetsMinted
+          .times(spMetadata.lastpriceAsset)
+          .div(spMetadata.lastpriceXLM);
+
+        totalDebtValueXlm = totalDebtValueXlm.plus(debtValueXLM);
+      }
+    });
+
+    const systemCollateralRatio = totalDebtValueXlm.isGreaterThan(0)
+      ? totalCollateralXlm.div(totalDebtValueXlm).times(100).toNumber()
+      : 0;
+
+    return {
+      totalActiveCdps,
+      totalCollateralXlm,
+      totalDebtValueXlm,
+      totalOutstandingInterestXlm,
+      systemCollateralRatio,
+    };
+  }, [cdpMetricsResults, TVLMetricsResults, stabilityPoolData]);
 
   const piChartData: { id: number; value: number; label: string }[] | [] =
     !TVLMetricsResults.some((result) => result.isLoading)
@@ -64,7 +208,7 @@ export default function CDPStats() {
         })
       : [];
 
-  const columns = [
+  const cdpColumns = [
     {
       field: "asset_symbol",
       headerName: "xAsset",
@@ -76,8 +220,7 @@ export default function CDPStats() {
       width: 130,
       valueFormatter: (value: number) => {
         return `${value}%`;
-      }
-
+      },
     },
     {
       field: "collateralXLM",
@@ -107,11 +250,125 @@ export default function CDPStats() {
     { field: "status", headerName: "Status", width: 120 },
   ];
 
+  const liquidationColumns = [
+    {
+      field: "asset",
+      headerName: "xAsset",
+      width: 100,
+    },
+    {
+      field: "collateralLiquidated",
+      headerName: "Collateral Liquidated (XLM)",
+      width: 200,
+    },
+    {
+      field: "principalRepaid",
+      headerName: "Debt Burned",
+      width: 180,
+    },
+    {
+      field: "xAssetPrice",
+      headerName: "Oracle Price",
+      width: 150,
+    },
+    {
+      field: "xlmPrice",
+      headerName: "XLM Price",
+      width: 150,
+    },
+    {
+      field: "interest",
+      headerName: "Interest Collected",
+      width: 150,
+    },
+    {
+      field: "timestamp",
+      headerName: "Liquidated At",
+      width: 180,
+    },
+  ];
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         CDP Statistics
       </Typography>
+
+      {/* System-wide metrics summary */}
+      <Paper sx={{ mb: 4, p: 2 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={2.4}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom>
+                  Active CDPs
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {systemMetrics.totalActiveCdps}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={2.4}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom>
+                  System Collateral Ratio
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {systemMetrics.systemCollateralRatio.toFixed(2)}%
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={2.4}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom>
+                  Total Collateral
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {formatCurrency(
+                    systemMetrics.totalCollateralXlm,
+                    7,
+                    2,
+                    "XLM"
+                  )}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={2.4}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom>
+                  Total Debt Value
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {formatCurrency(systemMetrics.totalDebtValueXlm, 7, 2, "XLM")}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={2.4}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom>
+                  Outstanding Interest
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {formatCurrency(
+                    systemMetrics.totalOutstandingInterestXlm,
+                    7,
+                    2,
+                    "XLM"
+                  )}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Paper>
 
       <Typography variant="h5" gutterBottom>
         XLM locked by asset
@@ -151,17 +408,50 @@ export default function CDPStats() {
       )}
 
       <LiquidationsHistory />
-      {enrichedCdps && enrichedCdps.length > 0 && (
-        <Paper sx={{ height: 600, width: "100%" }}>
-          <DataGrid
-            rows={enrichedCdps}
-            columns={columns}
-            loading={cdpsLoading || spLoading}
-            getRowId={(row) => `${row.contract_id}-${row.lender}`}
-            pageSizeOptions={[10, 25, 50]}
-          />
-        </Paper>
-      )}
+
+      <Paper sx={{ mt: 4, width: "100%" }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="CDP and Liquidations tabs"
+          >
+            <Tab label="Active CDPs" id="tab-0" />
+            <Tab label="Liquidations" id="tab-1" />
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          {enrichedCdps && enrichedCdps.length > 0 && (
+            <Box sx={{ height: 600, width: "100%" }}>
+              <DataGrid
+                rows={enrichedCdps}
+                columns={cdpColumns}
+                loading={cdpsLoading || spLoading}
+                getRowId={(row) => `${row.contract_id}-${row.lender}`}
+                pageSizeOptions={[10, 25, 50]}
+              />
+            </Box>
+          )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ height: 600, width: "100%" }}>
+            <DataGrid
+              rows={enrichedLiquidations}
+              columns={liquidationColumns}
+              loading={liquidationsLoading}
+              getRowId={(row) => `${row.cdpId}-${row.timestamp.toString()}`}
+              pageSizeOptions={[10, 25, 50]}
+              initialState={{
+                sorting: {
+                  sortModel: [{ field: "timestamp", sort: "desc" }],
+                },
+              }}
+            />
+          </Box>
+        </TabPanel>
+      </Paper>
     </Box>
   );
 }

@@ -25,7 +25,6 @@ export const getStatusColor = (status: string): string => {
 };
 
 export function unwrapResult<T>(result: Result<T>, errorMessage: string): T {
-  console.log(result);
   if (result.isOk()) {
     return result.unwrap();
   } else {

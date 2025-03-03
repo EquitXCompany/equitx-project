@@ -25,7 +25,7 @@ const apiClient = axios.create({
   },
 });
 
-function CalculateCollateralizationRatio(
+/*function CalculateCollateralizationRatio(
   asset_lent: BigNumber,
   xlm_deposited: BigNumber,
   xlm_price: BigNumber,
@@ -37,9 +37,7 @@ function CalculateCollateralizationRatio(
   return xlm_deposited
     .times(xlm_price).times(100)
     .div(asset_lent.times(xasset_price));
-}
-
-
+}*/
 
 interface RetroShadeCDP {
   id: string;
@@ -47,6 +45,24 @@ interface RetroShadeCDP {
   xlm_deposited: string;
   asset_lent: string;
   status: string[];
+  timestamp: number;
+  accrued_interest: string;
+  interest_paid: string;
+  last_interest_time: string;
+  ledger: number;
+}
+
+interface RetroShadeLiquidation {
+  cdp_id: string;
+  contract_id: string;
+  collateral_liquidated: string;
+  principal_repaid: string;
+  accrued_interest_repaid: string;
+  collateral_applied_to_interest: string;
+  collateralization_ratio: number;
+  xasset_price: string;
+  xlm_price: string;
+  ledger: number;
   timestamp: number;
 }
 
@@ -63,6 +79,13 @@ async function determineAction(oldCDP: CDP | null, newCDP: CDP): Promise<CDPHist
   const newXlm = new BigNumber(newCDP.xlm_deposited);
   const oldAsset = new BigNumber(oldCDP.asset_lent);
   const newAsset = new BigNumber(newCDP.asset_lent);
+  const oldInterestPaid = new BigNumber(oldCDP.interest_paid || '0');
+  const newInterestPaid = new BigNumber(newCDP.interest_paid || '0');
+
+  // Check if interest was paid
+  if (newInterestPaid.isGreaterThan(oldInterestPaid)) {
+    return CDPHistoryAction.PAY_INTEREST;
+  }
 
   if (!oldXlm.isEqualTo(newXlm)) {
     return newXlm.isGreaterThan(oldXlm) 
@@ -99,32 +122,68 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
       xlm_deposited: new BigNumber(cdp.xlm_deposited).toString(),
       asset_lent: new BigNumber(cdp.asset_lent).toString(),
       status: CDPStatus[cdp.status[0] as keyof typeof CDPStatus],
+      accrued_interest: new BigNumber(cdp.accrued_interest || '0').toString(),
+      interest_paid: new BigNumber(cdp.interest_paid || '0').toString(),
+      last_interest_time: cdp.last_interest_time || '0',
     });
       
-
     const action = await determineAction(oldCDP, newCDP);
-    if(action === CDPHistoryAction.LIQUIDATE){
-      const liquidationService = await LiquidationService.create();
-      const oldXLMDeposited = new BigNumber(oldCDP!.xlm_deposited);
-      const newXLMDeposited = new BigNumber(newCDP.xlm_deposited);
-      const oldAssetLent = new BigNumber(oldCDP!.asset_lent);
-      const newAssetLent = new BigNumber(newCDP.asset_lent);
-      const xlmDiff = oldXLMDeposited.minus(newXLMDeposited);
-      const assetDiff = oldAssetLent.minus(newAssetLent);
-      const xlmPrice = (await getLatestPriceData("XLM", cdp.contract_id)).price;
-      const assetPrice = (await getLatestPriceData(assetSymbol, cdp.contract_id)).price;
-      const collateralizationRatio = assetDiff.isEqualTo(0) ? 0 : CalculateCollateralizationRatio(assetDiff, xlmDiff, xlmPrice, assetPrice);
-      console.log(`Ratio is ${collateralizationRatio}`);
-      await liquidationService.createLiquidation(
-        newCDP,
-        newCDP.asset,
-        xlmDiff.toString(),
-        assetDiff.toString(),
-        collateralizationRatio.toString(),
-        xlmDiff.multipliedBy(xlmPrice).dividedBy((new BigNumber(10)).pow(DECIMALS_XLM)).toString(),
-      );
+    
+    await cdpHistoryService.createHistoryEntry(
+      newCDP.id, 
+      newCDP, 
+      action, 
+      oldCDP, 
+      {
+        interestDelta: oldCDP ? 
+          new BigNumber(newCDP.interest_paid).minus(oldCDP.interest_paid || '0').toString() : 
+          '0',
+        accruedInterest: newCDP.accrued_interest,
+        interestPaid: newCDP.interest_paid
+      }
+    );
+  }
+}
+
+async function processLiquidations(
+  liquidations: RetroShadeLiquidation[], 
+  assetSymbol: string
+): Promise<void> {
+  const assetService = await AssetService.create();
+  const cdpService = await CDPService.create();
+  const liquidationService = await LiquidationService.create();
+  const asset = await assetService.findOne(assetSymbol);
+
+  if (!asset) {
+    console.error(`Could not find asset ${assetSymbol}`);
+    return;
+  }
+
+  for (const liquidation of liquidations) {
+    const cdp = await cdpService.findOneRaw(assetSymbol, liquidation.cdp_id);
+    if (!cdp) {
+      console.error(`Could not find CDP for lender ${liquidation.cdp_id}`);
+      continue;
     }
-    await cdpHistoryService.createHistoryEntry(newCDP.id, newCDP, action, oldCDP);
+
+    const xlmPrice = liquidation.xlm_price;
+    const xlmLiquidatedUsd = new BigNumber(liquidation.collateral_liquidated)
+      .multipliedBy(xlmPrice)
+      .dividedBy((new BigNumber(10)).pow(DECIMALS_XLM))
+      .toString();
+
+    await liquidationService.createLiquidation(
+      cdp,
+      asset,
+      liquidation.collateral_liquidated,
+      liquidation.principal_repaid,
+      liquidation.collateralization_ratio.toString(),
+      xlmLiquidatedUsd,
+      liquidation.accrued_interest_repaid,
+      liquidation.collateral_applied_to_interest,
+      liquidation.xlm_price,
+      liquidation.xasset_price,
+    );
   }
 }
 
@@ -134,7 +193,7 @@ async function fetchCDPs(
 ): Promise<RetroShadeCDP[]> {
   try {
     const { data } = await apiClient.post("/retroshadesv1", {
-      query: `SELECT * FROM ${tableName} WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`,
+      query: `SELECT * FROM ${tableName} WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp ASC`,
     });
     const latestEntries = new Map<string, RetroShadeCDP>();
     data.forEach((item: RetroShadeCDP) => {
@@ -146,24 +205,46 @@ async function fetchCDPs(
       }
     });
 
-    return Array.from(latestEntries.values());
+    return Array.from(latestEntries.values()).sort((a, b) => a.timestamp - b.timestamp);
   } catch (error) {
     console.error("Error fetching CDPs:", error);
     throw error;
   }
 }
 
-async function getLastQueriedTimestamp(wasmHash: string): Promise<number> {
+async function fetchLiquidations(
+  tableName: string,
+  lastQueriedTimestamp: number
+): Promise<RetroShadeLiquidation[]> {
+  try {
+    const { data } = await apiClient.post("/retroshadesv1", {
+      query: `SELECT * FROM ${tableName} WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp ASC`,
+    });
+
+    return data.sort((a: RetroShadeLiquidation, b: RetroShadeLiquidation) => a.timestamp - b.timestamp);
+  } catch (error: unknown) {
+    const axiosError = error as import('axios').AxiosError;
+    const errorMessage = axiosError.response
+      ? `Failed to fetch liquidations: ${axiosError.response.status} - ${axiosError.response.statusText}`
+      : `Failed to fetch liquidations: ${axiosError.message || 'Unknown error'}`;
+    
+    console.error(errorMessage);
+    throw error;
+  }
+}
+
+async function getLastQueriedTimestamp(wasmHash: string, tableType: TableType): Promise<number> {
   const timestampService = await LastQueriedTimestampService.create();
-  return timestampService.getTimestamp(wasmHash, TableType.CDP);
+  return timestampService.getTimestamp(wasmHash, tableType);
 }
 
 async function updateLastQueriedTimestamp(
   wasmHash: string,
+  tableType: TableType,
   timestamp: number
 ): Promise<void> {
   const timestampService = await LastQueriedTimestampService.create();
-  await timestampService.updateTimestamp(wasmHash, TableType.CDP, timestamp);
+  await timestampService.updateTimestamp(wasmHash, tableType, timestamp);
 }
 
 async function getWasmHashToLiquidityPoolMapping(): Promise<Map<string, Map<string, string>>> {
@@ -189,9 +270,10 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
         continue;
       }
       let nLiquidated = 0;
-      const lastTimestamp = await getLastQueriedTimestamp(wasmHash);
-      //console.log(`querying cdps from reflector with timestamp ${lastTimestamp}`);
-      const cdps = await fetchCDPs(`cdp${wasmHash}`, lastTimestamp);
+      
+      // Process CDPs
+      const lastCDPTimestamp = await getLastQueriedTimestamp(wasmHash, TableType.CDP);
+      const cdps = await fetchCDPs(`cdp${wasmHash}`, lastCDPTimestamp);
 
       for (const cdp of cdps) {
         const assetSymbol = contractMapping.get(cdp.contract_id);
@@ -222,8 +304,8 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
           } else if (cdp.status[0] === "Frozen") {
             console.log(`Attempting to liquidate frozen CDP for lender: ${cdp.id}`);
             try {
-              const totalXLM = await getTotalXAsset(cdp.contract_id);
-              if(totalXLM.isGreaterThan(0)){
+              const totalXasset = await getTotalXAsset(cdp.contract_id);
+              if(totalXasset.isGreaterThan(0)){
                 const {result, status} = await serverAuthenticatedContractCall(
                   "liquidate_cdp",
                   { lender: cdp.id },
@@ -236,7 +318,7 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
                 else{
                   if(status === "SUCCESS"){
                     nLiquidated++;
-                    console.log("CDP has been partially liquidated");
+                    console.log(`CDP has been partially liquidated, status is ${result.value[2]}`);
                   } 
                   else console.log("CDP liquidation failed");
                 }
@@ -252,14 +334,31 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
 
       if (cdps.length > 0) {
         const newLastTimestamp = Math.max(...cdps.map((cdp) => cdp.timestamp));
-        await updateLastQueriedTimestamp(wasmHash, newLastTimestamp);
-        //console.log(`Updated last queried timestamp for wasm hash ${wasmHash} with ${newLastTimestamp}`);
+        await updateLastQueriedTimestamp(wasmHash, TableType.CDP, newLastTimestamp);
+      }
+      
+      // Process Liquidations
+      const lastLiquidationTimestamp = await getLastQueriedTimestamp(wasmHash, TableType.LIQUIDATION);
+      const liquidations = await fetchLiquidations(`liquidation${wasmHash}`, lastLiquidationTimestamp);
+      
+      for (const liquidation of liquidations) {
+        const assetSymbol = contractMapping.get(liquidation.contract_id);
+        if (!assetSymbol) {
+          console.warn(`No asset found for contract ID ${liquidation.contract_id}`);
+          continue;
+        }
+        
+        await processLiquidations([liquidation], assetSymbol);
+      }
+      
+      if (liquidations.length > 0) {
+        const newLastTimestamp = Math.max(...liquidations.map((liq) => liq.timestamp));
+        await updateLastQueriedTimestamp(wasmHash, TableType.LIQUIDATION, newLastTimestamp);
       }
 
-      //console.log(`Updated ${cdps.length} CDPs for wasm hash ${wasmHash}`);
       if(nLiquidated > 0){
         console.log(`${nLiquidated} were liquidated, scheduling requery in 20s`);
-        setTimeout(() => updateCDPs(wasmHash), 20000); // todo instead we should recheck the cdp by querying the blockchain directly then ensure no history values get put in db if the previous value of the cdp is hte same as currrent
+        setTimeout(() => updateCDPs(wasmHash), 20000);
       }
     }
   } catch (error) {

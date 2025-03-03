@@ -8,7 +8,8 @@ import {
 
 export enum TableType {
   CDP = "CDP",
-  STAKE = "STAKE"
+  STAKE = "STAKE",
+  LIQUIDATION = "LIQUIDATION"
 }
 
 @Entity("last_queried_timestamps") 

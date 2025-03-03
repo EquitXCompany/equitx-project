@@ -46,18 +46,26 @@ export class LiquidationService {
   async createLiquidation(
     cdp: CDP,
     asset: Asset,
-    xlmLiquidated: string,
-    debtCovered: string,
+    collateralLiquidated: string,
+    principalRepaid: string,
     collateralizationRatio: string,
-    xlmLiquidatedUsd: string,
+    collateralLiquidatedUsd: string,
+    accruedInterestRepaid: string = "0",
+    collateralAppliedToInterest: string = "0",
+    xlmPrice: string = "0",
+    xassetPrice: string = "0"
   ): Promise<Liquidation> {
     const liquidation = this.liquidationRepository.create({
       cdp,
       asset,
-      xlm_liquidated: xlmLiquidated,
-      debt_covered: debtCovered,
+      collateral_liquidated: collateralLiquidated,
+      principal_repaid: principalRepaid,
       collateralization_ratio: collateralizationRatio,
-      xlm_liquidated_usd: xlmLiquidatedUsd,
+      collateral_liquidated_usd: collateralLiquidatedUsd,
+      accrued_interest_repaid: accruedInterestRepaid,
+      collateral_applied_to_interest: collateralAppliedToInterest,
+      xlm_price: xlmPrice,
+      xasset_price: xassetPrice
     });
 
     return await this.liquidationRepository.save(liquidation);

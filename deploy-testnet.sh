@@ -27,7 +27,7 @@ deploy_xasset() {
     echo "Deploying $symbol..."
     local contract_id=$(stellar contract deploy --wasm target/loam/xasset.wasm)
     stellar contract invoke --id $contract_id -- admin_set --new-admin equitxtestnet
-    stellar contract invoke --id $contract_id -- cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --asset_contract "$DATAFEED" --pegged_asset "$asset" --min_collat_ratio 11000 --symbol "$symbol" --name "$name" --decimals 7
+    stellar contract invoke --id $contract_id -- cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --asset_contract "$DATAFEED" --pegged_asset "$asset" --min_collat_ratio 11000 --symbol "$symbol" --name "$name" --decimals 7 --annual_interest_rate 100
     
     # Update environments.toml
     if grep -q "^$symbol = { id = " environments.toml; then
