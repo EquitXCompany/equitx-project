@@ -56,7 +56,7 @@ export default function CDPStats() {
   const { data: liquidations, isLoading: liquidationsLoading } =
     useLiquidations();
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
