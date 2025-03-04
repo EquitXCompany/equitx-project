@@ -32,6 +32,9 @@ RUN npm install
 RUN apt-get install -y curl
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+# Install specific toolchain
+RUN rustup toolchain install 1.81.0
+RUN rustup default 1.81.0
 RUN rustup target add wasm32-unknown-unknown
 RUN cargo install loam-cli --locked
 
