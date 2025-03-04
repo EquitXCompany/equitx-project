@@ -28,7 +28,6 @@ export interface ContractCDP {
     amount: i128;
     paid: i128;
   };
-  interest_paid: i128;
   last_interest_time: u64;
 }
 
@@ -159,7 +158,7 @@ const retryPolicy = (failureCount: number, error: Error): boolean => {
   return failureCount < 3;
 };
 
-const retryDelay = (attemptIndex: number): number => 
+const retryDelay = (attemptIndex: number): number =>
   Math.min(1000 * 2 ** attemptIndex, 30000);
 
 const commonQueryOptions = {
@@ -171,11 +170,14 @@ const commonQueryOptions = {
 export function useContractCdp(
   assetSymbol: XAssetSymbol,
   lender: string,
-  options?: Omit<UseQueryOptions<ContractCDP | null, Error>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<ContractCDP | null, Error>,
+    "queryKey" | "queryFn"
+  >
 ): UseQueryResult<ContractCDP | null, Error> {
   const { contract, loading } = useXAssetContract(assetSymbol);
 
-  return useQuery<ContractCDP | null, Error>(
+  return useQuery<ContractCDP | null, Error, ContractCDP | null>(
     ["contract-cdp", assetSymbol, lender],
     async () => {
       if (loading || !contract) {
@@ -184,9 +186,9 @@ export function useContractCdp(
 
       try {
         const tx = await contract.cdp({ lender });
-        
-        if(tx?.simulation?.error){
-          if(isCdpNotFoundError(tx.simulation.error)){
+
+        if (tx.simulation && "error" in tx.simulation) {
+          if (isCdpNotFoundError(tx.simulation.error)) {
             return null;
           }
         }
@@ -223,14 +225,13 @@ export function useAllContractCdps(
       const cdpPromises = lenders.map(async (lender) => {
         try {
           const tx = await contract.cdp({ lender });
-          
-        
-          if(tx?.simulation?.error){
-            if(isCdpNotFoundError(tx.simulation.error)){
+
+          if (tx.simulation && "error" in tx.simulation) {
+            if (isCdpNotFoundError(tx.simulation.error)) {
               return [lender, null];
             }
           }
-          
+
           const cdp = unwrapResult(
             tx.result,
             "Failed to retrieve CDP from contract"
@@ -258,14 +259,16 @@ function convertContractCDPtoClientCDP(
   asset: Asset,
   contractId: string
 ): Omit<CDP, "createdAt" | "updatedAt"> {
-  console.log(contractCDP)
+  console.log(contractCDP);
   return {
     asset,
     contract_id: contractId,
     lender: contractCDP.lender,
     xlm_deposited: new BigNumber(contractCDP.xlm_deposited.toString()),
     asset_lent: new BigNumber(contractCDP.asset_lent.toString()),
-    accrued_interest: new BigNumber(contractCDP.accrued_interest.amount.toString()),
+    accrued_interest: new BigNumber(
+      contractCDP.accrued_interest.amount.toString()
+    ),
     interest_paid: new BigNumber(contractCDP.accrued_interest.paid.toString()),
     last_interest_time: contractCDP.last_interest_time.toString(),
     status: contractCDP.status.tag,
@@ -278,7 +281,7 @@ export function useMergedCdps(
   options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">
 ) {
   const { data: assets } = useAssets();
-  
+
   const indexedCDPsQuery = useCdpsByAssetSymbol(assetSymbol, {
     ...options,
     staleTime: 300000,
@@ -295,15 +298,17 @@ export function useMergedCdps(
     const indexedCDPs = [...indexedCDPsQuery.data];
 
     if (contractCDPQuery.data && userAddress) {
-      console.log(contractCDPQuery.data)
+      console.log(contractCDPQuery.data);
       const userCDPIndex = indexedCDPs.findIndex(
         (cdp) => cdp.lender === userAddress
       );
 
-      const indexedCDP = userCDPIndex >= 0 ? indexedCDPs[userCDPIndex] : undefined;
+      const indexedCDP =
+        userCDPIndex >= 0 ? indexedCDPs[userCDPIndex] : undefined;
 
       // Find matching asset from assets query or use indexed CDP asset
-      const asset = indexedCDP?.asset ?? assets?.find(a => a.symbol === assetSymbol);
+      const asset =
+        indexedCDP?.asset ?? assets?.find((a) => a.symbol === assetSymbol);
 
       if (!asset) {
         throw new Error(`Could not find asset data for symbol: ${assetSymbol}`);
@@ -333,7 +338,7 @@ export function useMergedCdps(
           } as CDP);
         }
       } catch (error) {
-        console.error('Error merging CDP data:', error);
+        console.error("Error merging CDP data:", error);
         // Continue with unmodified indexed data
       }
     }
@@ -343,8 +348,9 @@ export function useMergedCdps(
 
   return {
     data: mergedCDPs,
-    isLoading: indexedCDPsQuery.isLoading || 
-               (!!userAddress && contractCDPQuery.isLoading),
+    isLoading:
+      indexedCDPsQuery.isLoading ||
+      (!!userAddress && contractCDPQuery.isLoading),
     error: indexedCDPsQuery.error, // Only consider indexed query errors as fatal
     refetch: () => {
       indexedCDPsQuery.refetch();
