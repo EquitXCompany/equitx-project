@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { getStatusColor } from '../../../utils/contractHelpers';
 import { ContractCDP } from '../../hooks/useCdps';
+import { useTheme } from "../../../contexts/ThemeContext";
 
 interface CDPDisplayProps {
   cdp: ContractCDP;
@@ -28,7 +29,8 @@ export const CDPDisplay: React.FC<CDPDisplayProps> = ({
   decimals,
   symbolAsset,
 }) => {
-  const statusColor = getStatusColor(cdp.status.tag);
+  const { isDarkMode } = useTheme();
+  const statusColor = getStatusColor(cdp.status.tag, isDarkMode);
 
   return (
     <Card className="cdp-display">

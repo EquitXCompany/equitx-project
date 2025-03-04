@@ -440,42 +440,50 @@ export default function CDPStats() {
         </Grid>
       </Paper>
 
-      <Typography variant="h5" gutterBottom>
-        XLM locked by asset
-      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <Typography variant="h5" gutterBottom>
+            XLM locked by asset
+          </Typography>
 
-      <Paper style={{ height: 400, width: "100%" }}>
-        {!TVLMetricsResults.some((result) => result.isLoading) && (
-          <PieChart series={[{ data: piChartData }]} />
-        )}
-      </Paper>
+          <Paper style={{ height: 400, width: "100%" }}>
+            {!TVLMetricsResults.some((result) => result.isLoading) && (
+              <PieChart series={[{ data: piChartData }]} />
+            )}
+          </Paper>
+        </Grid>
 
-      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
-        Collateral Ratio Distribution
-      </Typography>
+        <Grid item xs={12} md={6}>
+          <Typography variant="h5" gutterBottom>
+            Collateral Ratio Distribution
+          </Typography>
 
-      {!cdpMetricsResults.some((result) => result.isLoading) && (
-        <StackedHistogram
-          data={Object.keys(contractMapping).reduce(
-            (acc, asset) => {
-              const result = cdpMetricsResults.find(
-                (r) => r.data?.asset === asset
-              );
-              if (result?.data) {
-                acc[asset as XAssetSymbol] =
-                  result.data.collateralRatioHistogram;
-              }
-              return acc;
-            },
-            {} as Record<
-              XAssetSymbol,
-              CDPMetricsData["collateralRatioHistogram"]
-            >
+          {!cdpMetricsResults.some((result) => result.isLoading) && (
+            <Paper>
+              <StackedHistogram
+                data={Object.keys(contractMapping).reduce(
+                  (acc, asset) => {
+                    const result = cdpMetricsResults.find(
+                      (r) => r.data?.asset === asset
+                    );
+                    if (result?.data) {
+                      acc[asset as XAssetSymbol] =
+                        result.data.collateralRatioHistogram;
+                    }
+                    return acc;
+                  },
+                  {} as Record<
+                    XAssetSymbol,
+                    CDPMetricsData["collateralRatioHistogram"]
+                  >
+                )}
+                isLoading={cdpMetricsResults.some((result) => result.isLoading)}
+                normalize={1e7}
+              />
+            </Paper>
           )}
-          isLoading={cdpMetricsResults.some((result) => result.isLoading)}
-          normalize={1e7}
-        />
-      )}
+        </Grid>
+      </Grid>
 
       <LiquidationsHistory />
 

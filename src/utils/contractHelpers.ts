@@ -9,18 +9,21 @@ export async function authenticatedContractCall(contractMethod: any, params: any
   return result;
 }
 
-export const getStatusColor = (status: string): string => {
+export const getStatusColor = (status: string, isDarkMode?: boolean): string => {
+  const mode = isDarkMode ? 'dark' : 'light';
+  console.log(mode)
+  
   switch (status.toLowerCase()) {
     case 'open':
-      return '#f2e8c9'; // --color-cream
+      return mode === 'dark' ? '#f0e6c3' : '#8a7d52'; // Light for dark mode, dark for light mode
     case 'closed':
-      return '#d1d8e0'; // light grey
+      return mode === 'dark' ? '#e2e8f0' : '#4a5568'; // Light for dark mode, dark for light mode
     case 'insolvent':
-      return '#c0392b'; // --color-red
+      return mode === 'dark' ? '#fc8181' : '#9b2c2c'; // Light red for dark mode, dark red for light mode
     case 'frozen':
-      return '#e67e22'; // --color-orange
+      return mode === 'dark' ? '#fbd38d' : '#9c4221'; // Light orange for dark mode, dark orange for light mode
     default:
-      return '#f2e8c9'; // --color-cream
+      return mode === 'dark' ? '#f0e6c3' : '#8a7d52'; // Light for dark mode, dark for light mode
   }
 };
 

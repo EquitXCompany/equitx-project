@@ -44,7 +44,6 @@ export const MetricCard = ({
             variant="subtitle2" 
             component="h2" 
             sx={{ 
-              color: 'rgba(255, 255, 255, 0.7)',
               fontWeight: 500 
             }}
           >
@@ -56,7 +55,6 @@ export const MetricCard = ({
                 sx={{ 
                   ml: 1, 
                   fontSize: 16, 
-                  color: 'rgba(255, 255, 255, 0.5)' 
                 }} 
               />
             </Tooltip>
@@ -115,7 +113,6 @@ export const MetricCard = ({
             component="p" 
             sx={{ 
               mb: 1,
-              color: 'rgba(255, 255, 255, 0.87)',
               fontWeight: 500
             }}
           >
@@ -139,9 +136,6 @@ export const MetricCard = ({
       {subtitle && (
         <Typography 
           variant="body2" 
-          sx={{ 
-            color: 'rgba(255, 255, 255, 0.5)'
-          }}
         >
           {subtitle}
         </Typography>

@@ -164,16 +164,23 @@ export default function StabilityPoolStats() {
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: "100%" }}>
+          <Paper
+            sx={{
+              p: 2,
+              height: "100%",
+              minHeight: "400px", // Add minimum height
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <Typography variant="subtitle2" color="textSecondary">
               Staked Share Value
             </Typography>
             <Box
               sx={{
-                height: 200,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                flex: 1, // Take remaining space
+                minHeight: 0, // Allow box to shrink
+                position: "relative",
               }}
             >
               {isLoading ? (
@@ -217,7 +224,6 @@ export default function StabilityPoolStats() {
             </Box>
           </Paper>
         </Grid>
-
         {Object.entries(contractMapping).map(([symbol]) => {
           const tvlMetrics = tvlMetricsResults.find(
             (result) => result.data?.asset === symbol
@@ -281,7 +287,12 @@ export default function StabilityPoolStats() {
                           <>
                             <Typography variant="body2">
                               Staked:{" "}
-                              {formatCurrency(userStake?.xasset_deposit || new BigNumber(0), 7, 2, symbol)}
+                              {formatCurrency(
+                                userStake?.xasset_deposit || new BigNumber(0),
+                                7,
+                                2,
+                                symbol
+                              )}
                             </Typography>
                             <Typography variant="body2">
                               Staked Share:{" "}

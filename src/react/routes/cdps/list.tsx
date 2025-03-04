@@ -6,10 +6,12 @@ import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
 import { useParams } from 'react-router-dom';
 import ErrorMessage from '../../components/errorMessage';
 import { contractMapping, XAssetSymbol } from '../../../contracts/contractConfig';
+import { useTheme } from "../../../contexts/ThemeContext";
 
 function List() {
   const { assetSymbol } = useParams();
   const { account } = useWallet();
+  const { isDarkMode } = useTheme();
 
   if (!assetSymbol) {
     return (
@@ -71,9 +73,9 @@ function List() {
               : `/cdps/${assetSymbol}/${cdp.lender}`}
             title={cdp.lender === account ? "yours" : cdp.lender}
           >
-                        <div
+              <div
               style={{
-                color: getStatusColor(cdp.status),
+                color: getStatusColor(cdp.status, isDarkMode),
               }} >
               {cdp.status}
               {cdp.status.toLowerCase() !== 'closed' && (

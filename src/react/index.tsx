@@ -1,9 +1,10 @@
 import { StrictMode } from "react";
 import { createHashRouter, RouterProvider, Outlet } from "react-router-dom";
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import theme from '../styles/theme';
+import { ThemeProvider as MUIThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { lightTheme, darkTheme } from "../styles/theme";
+import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 import cdps from "./routes/cdps";
 import errorElement from "./routes/error";
 import StabilityPool from "./routes/stabilityPool";
@@ -19,23 +20,23 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       retry: 1,
     },
-  }
+  },
 });
 
 const router = createHashRouter([
   {
     path: "/",
     element: (
-      <Box sx={{ display: 'flex' }}>
+      <Box sx={{ display: "flex" }}>
         <Navbar />
         <Box
           component="main"
           sx={{
             flexGrow: 1,
-            height: '100vh',
-            overflow: 'auto',
+            height: "100vh",
+            overflow: "auto",
             backgroundColor: (theme) =>
-              theme.palette.mode === 'light'
+              theme.palette.mode === "light"
                 ? theme.palette.grey[100]
                 : theme.palette.grey[900],
           }}
@@ -56,7 +57,7 @@ const router = createHashRouter([
       },
       {
         path: "cdps",
-        element: <CDPStats/>,
+        element: <CDPStats />,
         errorElement,
       },
       {
@@ -68,19 +69,28 @@ const router = createHashRouter([
         path: "stability-pool/:assetSymbol",
         element: <StabilityPool />,
         errorElement,
-}
-    ]
-  }
+      },
+    ],
+  },
 ]);
+
+function AppContent() {
+  const { isDarkMode } = useTheme();
+  return (
+    <MUIThemeProvider theme={isDarkMode ? darkTheme : lightTheme}>
+      <CssBaseline />
+      <StrictMode>
+        <RouterProvider router={router} />
+      </StrictMode>
+    </MUIThemeProvider>
+  );
+}
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <StrictMode>
-          <RouterProvider router={router} />
-        </StrictMode>
+      <ThemeProvider>
+        <AppContent />
       </ThemeProvider>
     </QueryClientProvider>
   );

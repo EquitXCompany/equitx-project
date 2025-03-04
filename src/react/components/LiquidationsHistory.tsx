@@ -90,7 +90,10 @@ export const LiquidationsHistory = () => {
       {} as Record<string, any>
     );
 
-    return Object.values(liquidationsByDay);
+    // Convert to array and sort by date (oldest to newest)
+    return Object.values(liquidationsByDay).sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
   }, [liquidations, stabilityPoolData]);
 
   const assetColors = useMemo(() => {

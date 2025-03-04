@@ -101,7 +101,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#0a0b1e", minHeight: "100vh" }}>
+    <Box sx={{ p: 3, minHeight: "100vh" }}>
       {/* Top Metrics Grid */}
       <Grid container spacing={3} mb={4}>
         {topMetrics.map((metric, index) => (

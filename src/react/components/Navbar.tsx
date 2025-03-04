@@ -18,14 +18,18 @@ import {
   AccountBalance as CDPIcon,
   Pool as PoolIcon,
   ChevronLeft as ChevronLeftIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from '@mui/icons-material';
 import { contractMapping } from '../../contracts/contractConfig';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const drawerWidth = 240;
 
 export default function Navbar() {
   const [open, setOpen] = useState(true);
   const location = useLocation();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -92,6 +96,15 @@ export default function Navbar() {
         </ListItem>
 
         {open && <Divider sx={{ my: 1 }} />}
+
+        <ListItem disablePadding>
+          <ListItemButton onClick={toggleTheme}>
+            <ListItemIcon>
+              {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </ListItemIcon>
+            {open && <ListItemText primary={`${isDarkMode ? 'Light' : 'Dark'} Mode`} />}
+            </ListItemButton>
+          </ListItem>
 
         {open && Object.keys(contractMapping).map((symbol) => (
           <ListItem key={symbol} disablePadding>
