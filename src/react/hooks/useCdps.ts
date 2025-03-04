@@ -2,13 +2,14 @@ import {
   useQuery,
   type UseQueryResult,
   type UseQueryOptions,
+  useQueries,
 } from "react-query";
 import { apiClient } from "../../utils/apiClient";
 import BigNumber from "bignumber.js";
 import { unwrapResult } from "../../utils/contractHelpers";
 import { i128, u32, u64 } from "@stellar/stellar-sdk/contract";
-import { useXAssetContract } from "./useXAssetContract";
-import { XAssetSymbol } from "../../contracts/contractConfig";
+import { useXAssetContract, useXAssetContractsForAll } from "./useXAssetContract";
+import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import { Asset, useAssets } from "./useAssets";
 import { useMemo } from "react";
 
@@ -205,6 +206,57 @@ export function useContractCdp(
   );
 }
 
+
+export function useContractCdpForAllAssets(
+  lender: string,
+  options?: Omit<UseQueryOptions<ContractCDP | null, Error>, "queryKey" | "queryFn">
+): UseQueryResult<Record<XAssetSymbol, ContractCDP | null>, Error> {
+  const assets = Object.keys(contractMapping) as XAssetSymbol[];
+  const contracts = useXAssetContractsForAll(assets);
+  
+  const results = useQueries<UseQueryOptions<ContractCDP | null, Error>[]>(
+    assets.map((asset) => ({
+      queryKey: ["contract-cdp", asset, lender],
+      queryFn: async () => {
+        const contract = contracts[asset];
+        if (!contract) {
+          throw new Error("Contract is not available");
+        }
+        try {
+          const tx = await contract.cdp({ lender });
+
+          if (tx.simulation && "error" in tx.simulation) {
+            if (isCdpNotFoundError(tx.simulation.error)) {
+              return null;
+            }
+          }
+          return unwrapResult(tx.result, "Failed to retrieve CDP from contract");
+        } catch (error) {
+          throw error;
+        }
+      },
+      enabled: !!lender,
+      ...commonQueryOptions,
+      ...options,
+    }))
+  );
+
+  const isLoading = results.some(result => result.isLoading);
+  const error = results.find(result => result.error)?.error;
+  
+  const data = results.every(result => result.data !== undefined)
+    ? Object.fromEntries(
+        results.map((result, index) => [assets[index], result.data])
+      ) as Record<XAssetSymbol, ContractCDP | null>
+    : undefined;
+
+  return {
+    data,
+    isLoading,
+    error,
+  } as UseQueryResult<Record<XAssetSymbol, ContractCDP | null>, Error>;
+}
+
 export function useAllContractCdps(
   assetSymbol: XAssetSymbol,
   lenders: string[],
@@ -254,7 +306,7 @@ export function useAllContractCdps(
   );
 }
 
-function convertContractCDPtoClientCDP(
+export function convertContractCDPtoClientCDP(
   contractCDP: ContractCDP,
   asset: Asset,
   contractId: string
@@ -289,7 +341,7 @@ export function useMergedCdps(
 
   const contractCDPQuery = useContractCdp(assetSymbol, userAddress ?? "", {
     enabled: !!userAddress,
-    staleTime: 30000,
+    staleTime: 300000,
   });
 
   const mergedCDPs = useMemo(() => {

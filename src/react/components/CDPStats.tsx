@@ -10,7 +10,11 @@ import {
 } from "@mui/material";
 import { formatCurrency } from "../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
-import { useCdps } from "../hooks/useCdps";
+import {
+  convertContractCDPtoClientCDP,
+  useCdps,
+  useContractCdpForAllAssets,
+} from "../hooks/useCdps";
 import { PieChart } from "@mui/x-charts";
 import { useLatestTVLMetricsForAllAssets } from "../hooks/useTvlMetrics";
 import { CDPMetricsData, TVLMetricsData } from "../hooks/types";
@@ -23,6 +27,9 @@ import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
 import BigNumber from "bignumber.js";
 import { useMemo, useState } from "react";
 import { useLiquidations } from "../hooks/useLiquidations";
+import { useWallet } from "../../wallet";
+import ErrorMessage from "../components/errorMessage";
+import { useAssets } from "../hooks/useAssets";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -48,18 +55,25 @@ function TabPanel(props: TabPanelProps) {
 
 export default function CDPStats() {
   const [tabValue, setTabValue] = useState(0);
+  const { account } = useWallet();
   const { data: cdps, isLoading: cdpsLoading } = useCdps();
   const { data: stabilityPoolData, isLoading: spLoading } =
     useAllStabilityPoolMetadata();
+  const { data: assets } = useAssets();
   const TVLMetricsResults = useLatestTVLMetricsForAllAssets();
   const cdpMetricsResults = useLatestCdpMetricsForAllAssets();
   const { data: liquidations, isLoading: liquidationsLoading } =
     useLiquidations();
-
+  const {
+    data: userCdpsMap,
+    isLoading: userCdpsLoading,
+    error: userCdpsError,
+  } = useContractCdpForAllAssets(account || "", {
+    enabled: !!account,
+  });
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
-
   // Wait for stability pool data to be loaded before processing CDPs
   const enrichedCdps = useMemo(() => {
     if (spLoading || !cdps || !stabilityPoolData) return [];
@@ -89,24 +103,80 @@ export default function CDPStats() {
     });
   }, [cdps, stabilityPoolData, spLoading]);
 
+  const enrichedUserCdps = useMemo(() => {
+    if (!userCdpsMap || !stabilityPoolData) return [];
+
+    return Object.entries(userCdpsMap)
+      .filter(([_, cdp]) => cdp !== null) // Filter out null CDPs
+      .map(([assetSymbol, contractCdp]) => {
+        const contractId = contractMapping[assetSymbol as XAssetSymbol];
+        const asset = assets?.find((v) => v.symbol === assetSymbol);
+        if (!asset) return null;
+        const cdp = convertContractCDPtoClientCDP(
+          contractCdp!,
+          asset,
+          contractId
+        );
+        const spMetadata = stabilityPoolData[assetSymbol as XAssetSymbol];
+        if (!spMetadata || !cdp) return null;
+
+        const collateralXLM = cdp.xlm_deposited;
+        const debtAsset = cdp.asset_lent;
+        const debtValueXLM = debtAsset
+          .times(spMetadata.lastpriceAsset)
+          .div(spMetadata.lastpriceXLM);
+
+        const collateralRatio = collateralXLM.div(debtValueXLM).times(100);
+        const netValue = collateralXLM.minus(debtValueXLM);
+        const minRatio = new BigNumber(spMetadata.min_ratio).div(1e4);
+        const liquidationPriceXLM = collateralXLM.div(debtAsset).div(minRatio);
+
+        return {
+          ...cdp,
+          asset_symbol: assetSymbol,
+          collateralRatio: collateralRatio.toNumber(),
+          collateralXLM: formatCurrency(collateralXLM, 7, 2, "XLM"),
+          debtAsset: formatCurrency(debtAsset, 7, 2, assetSymbol),
+          debtValueXLM: formatCurrency(debtValueXLM, 7, 2, "XLM"),
+          netValue: formatCurrency(netValue, 7, 2, "XLM"),
+          liquidationPriceXLM: formatCurrency(liquidationPriceXLM, 0, 2, "XLM"),
+          contract_id: cdp.contract_id,
+          lender: cdp.lender,
+        };
+      })
+      .filter((cdp): cdp is NonNullable<typeof cdp> => cdp !== null);
+  }, [userCdpsMap, stabilityPoolData, assets]);
+
   const enrichedLiquidations = useMemo(() => {
     if (liquidationsLoading || !liquidations || !stabilityPoolData) return [];
-    
-    return liquidations.map(liquidation => {
+
+    return liquidations.map((liquidation) => {
       const spMetadata = stabilityPoolData[liquidation.asset as XAssetSymbol];
       if (!spMetadata) return liquidation;
-  
-      const collateralLiquidated = new BigNumber(liquidation.collateralLiquidated);
+
+      const collateralLiquidated = new BigNumber(
+        liquidation.collateralLiquidated
+      );
       const principalRepaid = new BigNumber(liquidation.principalRepaid);
       const xlmPrice = liquidation.xlmPrice;
       const xAssetPrice = liquidation.xassetPrice.div(liquidation.xlmPrice);
-  
+
       return {
         ...liquidation,
         asset: liquidation.asset,
         collateralLiquidated: formatCurrency(collateralLiquidated, 7, 6, "XLM"),
-        principalRepaid: formatCurrency(principalRepaid, 7, 6, liquidation.asset),
-        interest: formatCurrency(liquidation.collateralAppliedToInterest, 7, 6, "XLM"),
+        principalRepaid: formatCurrency(
+          principalRepaid,
+          7,
+          6,
+          liquidation.asset
+        ),
+        interest: formatCurrency(
+          liquidation.collateralAppliedToInterest,
+          7,
+          6,
+          "XLM"
+        ),
         xlmPrice: formatCurrency(xlmPrice, 14, 6, "USD"),
         xAssetPrice: formatCurrency(xAssetPrice, 0, 6, "XLM"),
         timestamp: new Date(liquidation.timestamp).toLocaleString(),
@@ -417,7 +487,8 @@ export default function CDPStats() {
             aria-label="CDP and Liquidations tabs"
           >
             <Tab label="Active CDPs" id="tab-0" />
-            <Tab label="Liquidations" id="tab-1" />
+            <Tab label="Your CDPs" id="tab-1" />
+            <Tab label="Liquidations" id="tab-2" />
           </Tabs>
         </Box>
 
@@ -434,8 +505,40 @@ export default function CDPStats() {
             </Box>
           )}
         </TabPanel>
-
         <TabPanel value={tabValue} index={1}>
+          {!account ? (
+            <ErrorMessage
+              title="Wallet Not Connected"
+              message="Please connect your wallet to view your CDPs."
+            />
+          ) : userCdpsLoading ? (
+            <Box sx={{ p: 2 }}>
+              <Typography>Loading your CDPs...</Typography>
+            </Box>
+          ) : userCdpsError ? (
+            <ErrorMessage
+              title="Error Loading CDPs"
+              message={userCdpsError.message}
+            />
+          ) : (
+            <Box sx={{ height: 600, width: "100%" }}>
+              {enrichedUserCdps.length === 0 ? (
+                <Typography sx={{ p: 2 }}>
+                  You don't have any active CDPs.
+                </Typography>
+              ) : (
+                <DataGrid
+                  rows={enrichedUserCdps}
+                  columns={cdpColumns}
+                  loading={userCdpsLoading || spLoading}
+                  getRowId={(row) => `${row.contract_id}-${row.lender}`}
+                  pageSizeOptions={[10, 25, 50]}
+                />
+              )}
+            </Box>
+          )}
+        </TabPanel>
+        <TabPanel value={tabValue} index={2}>
           <Box sx={{ height: 600, width: "100%" }}>
             <DataGrid
               rows={enrichedLiquidations}

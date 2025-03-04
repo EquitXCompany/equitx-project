@@ -115,9 +115,9 @@ for contract_name in "${!CONTRACT_IDS[@]}"; do
         # Random XLM amount between 100 and 9900 XLM (in stroops)
         xlm_amount=$((RANDOM % 9800 + 100))0000000
         
-        # Random CR between min_cr and 200% (20000)
+        # Random CR between min_cr and 1000% (100000)
         cr_range=$((100000 - min_cr))
-        cr_range=${cr_range:-18900}  # Default range if calculation results in 0
+        cr_range=${cr_range:-89000}  # Default range if calculation results in 0
         random_cr_addition=$((RANDOM % cr_range))
         desired_cr=$((min_cr + random_cr_addition))
         
@@ -154,8 +154,8 @@ for contract_name in "${!CONTRACT_IDS[@]}"; do
     for ((i=1; i<=RISKY_CDPS_PER_CONTRACT; i++)); do
         user=$(generate_random_user)
         
-        # Random XLM amount between 500 and 5000 XLM (in stroops)
-        xlm_amount=$((RANDOM % 4500 + 500))0000000
+        # Random XLM amount between 500 and 10000 XLM (in stroops)
+        xlm_amount=$((RANDOM % 9500 + 500))0000000
         
         # Random CR between 110.1% and 120% (11010-12000)
         desired_cr=$((11010 + RANDOM % 990))

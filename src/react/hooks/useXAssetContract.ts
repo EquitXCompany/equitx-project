@@ -10,3 +10,19 @@ export function useXAssetContract(symbol: XAssetSymbol) {
 
   return { contract, loading: false };
 }
+
+export function useXAssetContractsForAll(assets: XAssetSymbol[]) {
+  const [contracts, setContracts] = useState<Record<XAssetSymbol, XAssetContract>>(() => 
+    Object.fromEntries(assets.map(symbol => [symbol, getContractBySymbol(symbol)])) as Record<XAssetSymbol, XAssetContract>
+  );
+
+  useEffect(() => {
+    setContracts(
+      Object.fromEntries(
+        assets.map(symbol => [symbol, getContractBySymbol(symbol)])
+      ) as Record<XAssetSymbol, XAssetContract>
+    );
+  }, [assets.join()]);
+
+  return contracts;
+}
