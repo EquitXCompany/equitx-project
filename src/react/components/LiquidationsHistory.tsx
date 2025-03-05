@@ -178,7 +178,8 @@ export const LiquidationsHistory = () => {
       </Grid>
 
       <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", borderRadius: 2 }}>
-        <Box height={300}>
+        <Box height={330}>
+          Liquidations Over Time 
           <BarChart
             data={chartData}
             xAxis={{

@@ -40,14 +40,11 @@ body {
   color: var(--color-text-primary-light);
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--color-background-dark);
-    color: var(--color-text-primary-dark);
-  }
+/* Dark mode - using data attribute instead of media query */
+[data-theme="dark"] body {
+  background-color: var(--color-background-dark);
+  color: var(--color-text-primary-dark);
 }
-
 
 .card:hover {
   transform: translateY(-2px);
@@ -65,7 +62,7 @@ button {
 }
 
 button:hover {
-  background-color: var(--color-primary-dark);
+  background-color: var(--color-surface-light);
   transform: translateY(-1px);
 }
 
@@ -73,6 +70,14 @@ button:disabled {
   background-color: var(--color-text-secondary-light);
   cursor: not-allowed;
   transform: none;
+}
+
+[data-theme="dark"] button:hover {
+  background-color: var(--color-primary-dark);
+}
+
+[data-theme="dark"] button:disabled {
+  background-color: var(--color-text-secondary-dark);
 }
 
 input, select, textarea {
@@ -84,12 +89,12 @@ input, select, textarea {
   transition: all 0.2s ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  input, select, textarea {
-    background-color: var(--color-surface-dark);
-    border-color: var(--color-text-secondary-dark);
-    color: var(--color-text-primary-dark);
-  }
+[data-theme="dark"] input, 
+[data-theme="dark"] select, 
+[data-theme="dark"] textarea {
+  background-color: var(--color-surface-dark);
+  border-color: var(--color-text-secondary-dark);
+  color: var(--color-text-primary-dark);
 }
 
 input:focus, select:focus, textarea:focus {
@@ -121,11 +126,9 @@ input:focus, select:focus, textarea:focus {
   justify-content: center;
 }
 
-@media (prefers-color-scheme: dark) {
-  .stat-item {
-    background-color: var(--color-surface-dark);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
+[data-theme="dark"] .stat-item {
+  background-color: var(--color-surface-dark);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .stat-item h2 {
@@ -135,10 +138,8 @@ input:focus, select:focus, textarea:focus {
   font-weight: 500;
 }
 
-@media (prefers-color-scheme: dark) {
-  .stat-item h2 {
-    color: var(--color-text-secondary-dark);
-  }
+[data-theme="dark"] .stat-item h2 {
+  color: var(--color-text-secondary-dark);
 }
 
 .stat-item p {
@@ -174,10 +175,8 @@ code {
   font-size: 0.875rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  code {
-    background-color: var(--color-surface-dark);
-  }
+[data-theme="dark"] code {
+  background-color: var(--color-surface-dark);
 }
 
 .root-container {
@@ -212,6 +211,15 @@ code {
     transparent
   );
   animation: loading 1.5s infinite;
+}
+
+[data-theme="dark"] .loading::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.1),
+    transparent
+  );
 }
 
 @keyframes loading {

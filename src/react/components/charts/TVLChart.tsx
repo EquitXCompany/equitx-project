@@ -68,6 +68,19 @@ export const TVLChart = ({
     }));
 
     processedData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    
+    // Determine colors based on theme mode
+    const borderColor = theme.palette.mode === "dark"
+      ? "rgba(255, 255, 255, 0.1)"
+      : "rgba(0, 0, 0, 0.1)";
+    
+    const primaryHoverColor = theme.palette.mode === "dark" 
+      ? theme.palette.primary.dark 
+      : theme.palette.primary.light;
+      
+    const secondaryHoverColor = theme.palette.mode === "dark" 
+      ? theme.palette.secondary.dark 
+      : theme.palette.secondary.light;
 
     return {
       labels: processedData.map((d) => {
@@ -83,24 +96,18 @@ export const TVLChart = ({
           data: processedData.map((d) => d.staked),
           stack: "stack0",
           backgroundColor: secondaryColor,
-          borderColor:
-            theme.palette.mode === "dark"
-              ? "rgba(255, 255, 255, 0.1)"
-              : "rgba(0, 0, 0, 0.1)",
+          borderColor: borderColor,
           borderWidth: 1,
-          hoverBackgroundColor: theme.palette.secondary.light,
+          hoverBackgroundColor: secondaryHoverColor,
         },
         {
           label: "TVL",
           data: processedData.map((d) => d.tvl),
           backgroundColor: primaryColor,
           stack: "stack0",
-          borderColor:
-            theme.palette.mode === "dark"
-              ? "rgba(255, 255, 255, 0.1)"
-              : "rgba(0, 0, 0, 0.1)",
+          borderColor: borderColor,
           borderWidth: 1,
-          hoverBackgroundColor: theme.palette.primary.light,
+          hoverBackgroundColor: primaryHoverColor,
         },
       ],
     };
@@ -111,7 +118,9 @@ export const TVLChart = ({
     secondaryColor,
     theme.palette.mode,
     theme.palette.primary.light,
+    theme.palette.primary.dark,
     theme.palette.secondary.light,
+    theme.palette.secondary.dark,
   ]);
 
   const options = useMemo(
