@@ -36,6 +36,7 @@ interface XAssetClient {
   lastprice_asset: () => Promise<any>;
   minimum_collateralization_ratio: () => Promise<any>;
   get_total_xasset: () => Promise<any>;
+  get_interest_rate: () => Promise<any>;
   get_total_collateral: () => Promise<any>;
 }
 
@@ -118,6 +119,10 @@ export async function serverAuthenticatedContractCall(
       case "get_total_xasset":
         needsSign = false;
         tx = await xassetClient.get_total_xasset();
+        break;
+      case "get_interest_rate":
+        needsSign = false;
+        tx = await xassetClient.get_interest_rate();
         break;
       case "get_total_collateral":
         needsSign = false;

@@ -100,5 +100,6 @@ AppDataSource.initialize()
     startCDPUpdateJob();
 
     startStakeUpdateJob();
+    runDailyMetrics();
   })
   .catch((error) => console.log("TypeORM connection error: ", error));

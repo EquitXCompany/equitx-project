@@ -164,13 +164,11 @@ export default function Dashboard() {
                         component={Link}
                         to={`/cdps/${row.asset}`}
                         sx={{
-                          bgcolor: "#6b2cf5",
                           px: 2,
                           py: 0.5,
                           borderRadius: 1,
                           cursor: "pointer",
                           textDecoration: "none",
-                          color: "white"
                         }}
                       >
                         View

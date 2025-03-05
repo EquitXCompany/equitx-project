@@ -12,6 +12,7 @@ export interface StabilityPoolMetadata {
   min_ratio: number;
   symbolAsset: XAssetSymbol;
   contractId: string;
+  interestRate: number;
 }
 
 export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
@@ -25,6 +26,7 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
         const contract = getContractBySymbol(assetSymbol);
         
         const tx = await contract.minimum_collateralization_ratio();
+        const interestRate = await contract.get_interest_rate();
         const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t: lastPriceResult) => {
           if (t.result.isOk()) {
             return t.result.unwrap().price.toString();
@@ -47,6 +49,7 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
           min_ratio: tx.result,
           symbolAsset: assetSymbol,
           contractId: contract.options.contractId,
+          interestRate: interestRate.result,
         });
       } catch (err) {
         setError(err as Error);
@@ -78,10 +81,11 @@ export function useAllStabilityPoolMetadata() {
             const assetSymbol = symbol as XAssetSymbol;
             const contract = getContractBySymbol(assetSymbol);
 
-            const [minRatio, xlmPrice, assetPrice] = await Promise.all([
+            const [minRatio, xlmPrice, assetPrice, interestRate] = await Promise.all([
               contract.minimum_collateralization_ratio(),
               contract.lastprice_xlm(),
               contract.lastprice_asset(),
+              contract.get_interest_rate(),
             ]);
 
             const lastpriceXLM = new BigNumber(
@@ -101,6 +105,7 @@ export function useAllStabilityPoolMetadata() {
               data: {
                 lastpriceXLM,
                 lastpriceAsset,
+                interestRate: interestRate.result,
                 min_ratio: minRatio.result,
                 symbolAsset: assetSymbol,
                 contractId: contract.options.contractId,

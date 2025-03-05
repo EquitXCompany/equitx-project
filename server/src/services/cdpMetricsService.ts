@@ -1,13 +1,17 @@
 import { Repository, DataSource, MoreThan } from "typeorm";
 import { CDPMetrics } from "../entity/CDPMetrics";
 import { AppDataSource } from "../ormconfig";
+import { serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
 import { Asset } from "../entity/Asset";
 import { CDP, CDPStatus } from "../entity/CDP";
 import { CDPHistory, CDPHistoryAction } from "../entity/CDPHistory";
 import BigNumber from "bignumber.js";
 import { RISK_THRESHOLDS } from "../config/thresholds";
 import { LiquidityPool } from "../entity/LiquidityPool";
-import { HealthScoreService } from './healthScoreService';
+import { HealthScoreService } from "./healthScoreService";
+import { assetConfig } from "../config/AssetConfig";
+
+const SECONDS_PER_YEAR = 31536000;
 
 export class CDPMetricsService {
   private healthScoreService: HealthScoreService;
@@ -75,8 +79,9 @@ export class CDPMetricsService {
   }
 
   private countCDPsNearLiquidation(cdps: CDP[]): number {
-    return cdps.filter(cdp => {
-      const healthFactor = this.healthScoreService.calculateCDPHealthFactor(cdp);
+    return cdps.filter((cdp) => {
+      const healthFactor =
+        this.healthScoreService.calculateCDPHealthFactor(cdp);
       return healthFactor <= RISK_THRESHOLDS.LIQUIDATION.NEAR_THRESHOLD;
     }).length;
   }
@@ -102,49 +107,80 @@ export class CDPMetricsService {
       .toFixed(5);
   }
 
+  // Add the necessary import for the rate fetching
+
   // Calculate total outstanding interest for all CDPs in an asset
-  private calculateTotalOutstandingInterest(cdps: CDP[]): string {
-    return cdps.reduce((sum, cdp) => {
-      return sum.plus(
-        new BigNumber(cdp.accrued_interest || '0')
-      );
-    }, new BigNumber(0)).toString();
+  private async calculateTotalOutstandingInterest(
+    cdps: CDP[],
+    contractId: string
+  ): Promise<string> {
+    // Fetch the current interest rate
+    const rateData = await serverAuthenticatedContractCall(
+      "get_interest_rate",
+      null,
+      contractId,
+      "xasset"
+    );
+
+    if (!rateData || !rateData.result) {
+      throw new Error("Could not get interest rate");
+    }
+
+    const interestRate = new BigNumber(rateData.result);
+
+    return cdps
+      .reduce((sum, cdp) => {
+        const accruedInterest = new BigNumber(cdp.accrued_interest || "0");
+
+        // Calculate interest since last interest time
+        const lastInterestTime = new BigNumber(cdp.last_interest_time);
+        const currentTime = new BigNumber(Math.floor(Date.now() / 1000)); // Current time in seconds
+        const timeElapsed = currentTime.minus(lastInterestTime);
+        const newInterest = new BigNumber(cdp.asset_lent).times(interestRate).times(timeElapsed).div(SECONDS_PER_YEAR*1e4);
+        return sum.plus(accruedInterest.plus(newInterest));
+      }, new BigNumber(0))
+      .toString();
   }
 
   // Calculate total paid interest for all CDPs in an asset
   private calculateTotalPaidInterest(cdps: CDP[]): string {
-    return cdps.reduce((sum, cdp) => {
-      return sum.plus(
-        new BigNumber(cdp.interest_paid || '0')
-      );
-    }, new BigNumber(0)).toString();
+    return cdps
+      .reduce((sum, cdp) => {
+        return sum.plus(new BigNumber(cdp.interest_paid || "0"));
+      }, new BigNumber(0))
+      .toString();
   }
 
-  private calculateCollateralRatioHistogram(cdps: CDP[], asset: Asset): CDPMetrics['collateral_ratio_histogram'] {
+  private calculateCollateralRatioHistogram(
+    cdps: CDP[],
+    asset: Asset
+  ): CDPMetrics["collateral_ratio_histogram"] {
     const BUCKET_SIZE = 5;
     const MAX_BUCKET = 1000;
     const buckets: Array<BigNumber> = [];
-    for(let i = 0; i < Math.floor(MAX_BUCKET/BUCKET_SIZE) + 2; i++){
+    for (let i = 0; i < Math.floor(MAX_BUCKET / BUCKET_SIZE) + 2; i++) {
       buckets.push(new BigNumber(0));
     }
 
-    cdps.forEach(cdp => {
-      const percentageAboveMin = this.healthScoreService.calculateCDPCRAboveMinimum(cdp);
+    cdps.forEach((cdp) => {
+      const percentageAboveMin =
+        this.healthScoreService.calculateCDPCRAboveMinimum(cdp);
       let bucketIndex = 0;
-      if(percentageAboveMin > 0) {
+      if (percentageAboveMin > 0) {
         bucketIndex = Math.min(
           Math.floor(percentageAboveMin / BUCKET_SIZE) + 1,
-          buckets.length - 1,
+          buckets.length - 1
         );
       }
-      if (bucketIndex >= 0) buckets[bucketIndex] = buckets[bucketIndex].plus(cdp.xlm_deposited);
+      if (bucketIndex >= 0)
+        buckets[bucketIndex] = buckets[bucketIndex].plus(cdp.xlm_deposited);
     });
 
     return {
       bucket_size: BUCKET_SIZE,
       min: 0,
       max: MAX_BUCKET,
-      buckets: buckets.map((n) => n.toString())
+      buckets: buckets.map((n) => n.toString()),
     };
   }
 
@@ -163,7 +199,7 @@ export class CDPMetricsService {
       .toString();
 
     // Calculate interest metrics
-    const totalOutstandingInterest = this.calculateTotalOutstandingInterest(activeCDPs);
+    const totalOutstandingInterest = await this.calculateTotalOutstandingInterest(activeCDPs, assetConfig[asset.symbol].pool_address);
     const totalPaidInterest = this.calculateTotalPaidInterest(activeCDPs);
 
     const avgCollRatio = this.calculateCollateralRatio(activeCDPs);
@@ -200,12 +236,16 @@ export class CDPMetricsService {
       total_paid_interest: totalPaidInterest,
       collateral_ratio: avgCollRatio,
       cdps_near_liquidation: this.countCDPsNearLiquidation(activeCDPs),
-      recent_liquidations: await this.healthScoreService.getRecentLiquidations(asset),
+      recent_liquidations:
+        await this.healthScoreService.getRecentLiquidations(asset),
       health_score: healthScore,
       daily_volume: oneDayVolume,
       weekly_volume: oneWeekVolume,
       monthly_volume: oneMonthVolume,
-      collateral_ratio_histogram: this.calculateCollateralRatioHistogram(activeCDPs, asset)
+      collateral_ratio_histogram: this.calculateCollateralRatioHistogram(
+        activeCDPs,
+        asset
+      ),
     };
   }
 
@@ -217,12 +257,16 @@ export class CDPMetricsService {
     const history = await this.cdpHistoryRepository.find({
       where: {
         asset: { id: asset.id },
-        timestamp: MoreThan(startTime)
-      }
+        timestamp: MoreThan(startTime),
+      },
     });
 
     return history
-      .reduce((sum, record) => sum.plus(new BigNumber(record.asset_delta).absoluteValue()), new BigNumber(0))
+      .reduce(
+        (sum, record) =>
+          sum.plus(new BigNumber(record.asset_delta).absoluteValue()),
+        new BigNumber(0)
+      )
       .toString();
   }
 }
