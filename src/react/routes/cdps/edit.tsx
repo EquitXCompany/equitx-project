@@ -152,6 +152,7 @@ function Edit() {
           <CDPDisplay
             cdp={cdp}
             decimals={decimals}
+            interestRate={metadata.interestRate}
             lastpriceXLM={metadata.lastpriceXLM}
             lastpriceAsset={metadata.lastpriceAsset}
             symbolAsset={metadata.symbolAsset}
