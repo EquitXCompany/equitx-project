@@ -111,6 +111,8 @@ async function updateStakesInDatabase(
         (oldStaker?.total_rewards_claimed ?? 0) + stake.rewards_claimed,
       epoch: stake.epoch,
       asset,
+      updated_at: new Date(stake.timestamp * 1000),
+      created_at: oldStaker ? oldStaker.created_at : new Date(stake.timestamp * 1000),
     });
 
     const action = await determineStakeAction(oldStaker, newStaker, stake.rewards_claimed);

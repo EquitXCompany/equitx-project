@@ -125,6 +125,8 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
       accrued_interest: new BigNumber(cdp.accrued_interest || '0').toString(),
       interest_paid: new BigNumber(cdp.interest_paid || '0').toString(),
       last_interest_time: cdp.last_interest_time || '0',
+      updated_at: new Date(cdp.timestamp * 1000),
+      created_at: oldCDP ? oldCDP.created_at : new Date(cdp.timestamp * 1000),
     });
       
     const action = await determineAction(oldCDP, newCDP);
@@ -179,6 +181,7 @@ async function processLiquidations(
       liquidation.principal_repaid,
       liquidation.collateralization_ratio.toString(),
       xlmLiquidatedUsd,
+      new Date(liquidation.timestamp * 1000),
       liquidation.accrued_interest_repaid,
       liquidation.collateral_applied_to_interest,
       liquidation.xlm_price,

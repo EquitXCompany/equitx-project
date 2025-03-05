@@ -54,6 +54,6 @@ export class StakerHistory {
   @Column({ type: "uuid" })
   original_staker_id!: string;
 
-  @CreateDateColumn()
+  @Column({ type: "timestamp" })
   timestamp!: Date;
 }

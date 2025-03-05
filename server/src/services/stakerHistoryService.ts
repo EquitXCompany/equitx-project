@@ -61,7 +61,7 @@ export class StakerHistoryService {
       epoch: newStaker.epoch,
       action,
       asset: newStaker.asset,
-      timestamp: new Date()
+      timestamp: newStaker.updated_at,
     } as DeepPartial<StakerHistory>);
 
     return this.stakerHistoryRepository.save(historyEntry);

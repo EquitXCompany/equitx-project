@@ -57,6 +57,6 @@ export class CDPHistory {
   @Column({ type: "uuid" })
   original_cdp_id!: string;
 
-  @CreateDateColumn()
-  timestamp!: Date
+  @Column({ type: "timestamp" })
+  timestamp!: Date;
 }

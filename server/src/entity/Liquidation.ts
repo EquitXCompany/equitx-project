@@ -46,6 +46,6 @@ export class Liquidation {
   @Column({ type: "numeric", precision: 30, scale: 0 })
   xasset_price!: string;
 
-  @CreateDateColumn()
+  @Column({ type: "timestamp" })
   timestamp!: Date;
 }

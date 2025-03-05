@@ -552,7 +552,7 @@ export default function CDPStats() {
               rows={enrichedLiquidations}
               columns={liquidationColumns}
               loading={liquidationsLoading}
-              getRowId={(row) => `${row.cdpId}-${row.timestamp.toString()}`}
+              getRowId={(row) => `${row.cdpId}-${row.timestamp.toLocaleString()}`}
               pageSizeOptions={[10, 25, 50]}
               initialState={{
                 sorting: {

@@ -119,7 +119,7 @@ export class CDPHistoryService {
       interest_paid,
       action,
       asset: newCDP.asset,
-      timestamp: new Date()
+      timestamp: newCDP.updated_at,
     } as DeepPartial<CDPHistory>);
 
     return this.cdpHistoryRepository.save(historyEntry);

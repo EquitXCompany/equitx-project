@@ -50,6 +50,7 @@ export class LiquidationService {
     principalRepaid: string,
     collateralizationRatio: string,
     collateralLiquidatedUsd: string,
+    timestamp: Date,
     accruedInterestRepaid: string = "0",
     collateralAppliedToInterest: string = "0",
     xlmPrice: string = "0",
@@ -65,7 +66,8 @@ export class LiquidationService {
       accrued_interest_repaid: accruedInterestRepaid,
       collateral_applied_to_interest: collateralAppliedToInterest,
       xlm_price: xlmPrice,
-      xasset_price: xassetPrice
+      xasset_price: xassetPrice,
+      timestamp
     });
 
     return await this.liquidationRepository.save(liquidation);

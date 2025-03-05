@@ -44,10 +44,10 @@ export class CDP {
   @JoinColumn({ name: "asset_id" })
   asset!: Asset;
 
-  @CreateDateColumn()
+  @Column({ type: "timestamp" })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @Column({ type: "timestamp" })
   updated_at!: Date;
 
   @Column({ type: "boolean", default: false })
