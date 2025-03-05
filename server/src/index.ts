@@ -100,8 +100,5 @@ AppDataSource.initialize()
     startCDPUpdateJob();
 
     startStakeUpdateJob();
-    setTimeout(() => {
-      runDailyMetrics();
-    }, 20000); // 20000 milliseconds = 20 seconds
   })
   .catch((error) => console.log("TypeORM connection error: ", error));
