@@ -18,7 +18,7 @@ import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { StackedHistogram } from "./charts/StackedHistogram";
 import { TVLMetricsData } from "../hooks/types";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, generateAssetColors } from "../../utils/formatters";
 import { Link } from "react-router-dom";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -79,8 +79,11 @@ export default function StabilityPoolStats() {
       }, new BigNumber(0))
     : new BigNumber(0);
 
+  const assets = Object.keys(contractMapping);
+  const assetColors = generateAssetColors(assets);
+
   const distributionData = {
-    labels: Object.keys(contractMapping),
+    labels: assets,
     datasets: [
       {
         data: tvlMetricsResults.map((result) => {
@@ -91,15 +94,10 @@ export default function StabilityPoolStats() {
 
           return result.data.totalXassetsStakedUSD
             .div(assetStabilityData.lastpriceXLM)
+            .div(1e14)
             .toNumber();
         }),
-        backgroundColor: [
-          "#8247E5",
-          "#3C3C3D",
-          "#26A17B",
-          "#23292F",
-          "#00FFA3",
-        ],
+        backgroundColor: assets.map((asset) => assetColors[asset]),
       },
     ],
   };
@@ -155,6 +153,14 @@ export default function StabilityPoolStats() {
                     cutout: "70%",
                     plugins: {
                       legend: { display: false },
+                      tooltip: {
+                        callbacks: {
+                          label: function (context) {
+                            const value = context.raw as number;
+                            return `${value.toLocaleString()} XLM`;
+                          },
+                        },
+                      },
                     },
                   }}
                 />

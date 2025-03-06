@@ -8,7 +8,7 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, generateAssetColors } from "../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   convertContractCDPtoClientCDP,
@@ -265,6 +265,9 @@ export default function CDPStats() {
     };
   }, [cdpMetricsResults, TVLMetricsResults, stabilityPoolData]);
 
+  const assetSymbols = Object.keys(contractMapping);
+  const assetColors = generateAssetColors(assetSymbols);
+
   const piChartData: { id: number; value: number; label: string }[] | [] =
     !TVLMetricsResults.some((result) => result.isLoading)
       ? TVLMetricsResults.map((result: UseQueryResult, idx) => {
@@ -274,6 +277,7 @@ export default function CDPStats() {
               .div(1e7)
               .toNumber(),
             label: (result?.data as TVLMetricsData).asset,
+            backgroundColor: assetSymbols.map((asset) => assetColors[asset]),
           };
         })
       : [];
