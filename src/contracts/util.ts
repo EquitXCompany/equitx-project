@@ -47,9 +47,9 @@ const contractClientMap = {
     publicKey: undefined,
   }),
 
-  xAQUA: new Client({
+  xDOT: new Client({
     networkPassphrase,
-    contractId: contractMapping.xAQUA,
+    contractId: contractMapping.xDOT,
     rpcUrl,
     publicKey: undefined,
   }),} as const;
