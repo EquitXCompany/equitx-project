@@ -18,10 +18,10 @@ interface DeployAssetRequest {
 
 const commitAndPushChanges = async (symbol: string) => {
   try {
-    // Create a temporary directory for the SSH key
+    // Create a temporary directory for the SSH key inside the application directory
     const sshDir = path.join(
-      os.tmpdir(),
-      "ssh-" + Math.random().toString(36).substring(2, 10)
+      process.cwd(),
+      ".ssh-" + Math.random().toString(36).substring(2, 10)
     );
     fs.mkdirSync(sshDir, { recursive: true, mode: 0o700 });
 
@@ -90,12 +90,12 @@ const commitAndPushChanges = async (symbol: string) => {
       return;
     }
 
-const configFiles = [
-  "server/src/config/AssetConfig.ts",
-  "src/contracts/contractConfig.ts", 
-  "src/contracts/util.ts",
-  "environments.toml"  // Add this line
-];
+    const configFiles = [
+      "server/src/config/AssetConfig.ts",
+      "src/contracts/contractConfig.ts",
+      "src/contracts/util.ts",
+      "environments.toml", // Add this line
+    ];
     await git.add(configFiles);
 
     const commitMessage = `feat: add ${symbol} asset configuration`;
@@ -105,13 +105,10 @@ const configFiles = [
     await git.push("origin", "main");
     console.log(`Successfully pushed ${symbol} config changes to GitHub`);
 
-    // Clean up the temporary SSH directory
+    // Improved cleanup to ensure all temporary files are removed
     try {
-      fs.unlinkSync(keyPath);
-      if (process.env.GITHUB_KNOWN_HOSTS) {
-        fs.unlinkSync(path.join(sshDir, "known_hosts"));
-      }
-      fs.rmdirSync(sshDir);
+      fs.rmSync(sshDir, { recursive: true, force: true });
+      console.log("Successfully cleaned up temporary SSH directory");
     } catch (err) {
       console.warn("Failed to clean up temporary SSH files:", err);
     }
@@ -125,7 +122,6 @@ const configFiles = [
   }
 };
 
-// Deploy a new asset and update configs
 // Deploy a new asset and update configs
 export const deployAsset: RequestHandler = async (req, res) => {
   try {
@@ -411,10 +407,7 @@ const updateFrontendConfig = async (symbol: string, contractId: string) => {
       __dirname,
       "../../../src/contracts/contractConfig.ts"
     );
-    const utilPath = path.resolve(
-      __dirname,
-      "../../../src/contracts/util.ts"
-    );
+    const utilPath = path.resolve(__dirname, "../../../src/contracts/util.ts");
 
     // Update contractConfig.ts
     let content = fs.readFileSync(configPath, "utf8");
@@ -446,15 +439,20 @@ const updateFrontendConfig = async (symbol: string, contractId: string) => {
 
     // Update util.ts to add the new client
     let utilContent = fs.readFileSync(utilPath, "utf8");
-    
+
     // Find the client map
-    const clientMapStartIndex = utilContent.indexOf("const contractClientMap = {");
-    const clientMapEndIndex = utilContent.indexOf("} as const;", clientMapStartIndex);
-    
+    const clientMapStartIndex = utilContent.indexOf(
+      "const contractClientMap = {"
+    );
+    const clientMapEndIndex = utilContent.indexOf(
+      "} as const;",
+      clientMapStartIndex
+    );
+
     if (clientMapStartIndex === -1 || clientMapEndIndex === -1) {
       throw new Error("Could not find contractClientMap in util.ts");
     }
-    
+
     // Insert the new client before the end of the map
     const clientToAdd = `
   ${xSymbol}: new Client({
@@ -463,12 +461,12 @@ const updateFrontendConfig = async (symbol: string, contractId: string) => {
     rpcUrl,
     publicKey: undefined,
   }),`;
-    
-    const updatedUtilContent = 
+
+    const updatedUtilContent =
       utilContent.slice(0, clientMapEndIndex) +
       clientToAdd +
       utilContent.slice(clientMapEndIndex);
-    
+
     fs.writeFileSync(utilPath, updatedUtilContent);
 
     // Add to the list of files to commit
@@ -484,30 +482,32 @@ const updateEnvironmentsToml = async (symbol: string, contractId: string) => {
   try {
     const xSymbol = symbol.startsWith("x") ? symbol : `x${symbol}`;
     const envTomlPath = path.resolve(__dirname, "../../../environments.toml");
-    
+
     let tomlContent = fs.readFileSync(envTomlPath, "utf8");
-    
+
     // Find the [staging.contracts] section
     const stagingContractsIndex = tomlContent.indexOf("[staging.contracts]");
     if (stagingContractsIndex === -1) {
-      throw new Error("Could not find [staging.contracts] section in environments.toml");
+      throw new Error(
+        "Could not find [staging.contracts] section in environments.toml"
+      );
     }
-    
+
     // Find the end of staging.contracts section or the beginning of a new section
     let endIndex = tomlContent.indexOf("[", stagingContractsIndex + 1);
     if (endIndex === -1) {
       // If there's no next section, use the end of the file
       endIndex = tomlContent.length;
     }
-    
+
     // Insert the new contract right before the end of the section
     const contractEntry = `${xSymbol} = { id = "${contractId}" }\n`;
-    
-    const updatedTomlContent = 
+
+    const updatedTomlContent =
       tomlContent.slice(0, endIndex) +
       contractEntry +
       tomlContent.slice(endIndex);
-    
+
     fs.writeFileSync(envTomlPath, updatedTomlContent);
     return true;
   } catch (error) {
@@ -515,4 +515,3 @@ const updateEnvironmentsToml = async (symbol: string, contractId: string) => {
     throw error;
   }
 };
-
