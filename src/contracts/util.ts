@@ -40,7 +40,19 @@ const contractClientMap = {
     rpcUrl,
     publicKey: undefined,
   }),
-} as const;
+  xADA: new Client({
+    networkPassphrase,
+    contractId: contractMapping.xADA,
+    rpcUrl,
+    publicKey: undefined,
+  }),
+
+  xAQUA: new Client({
+    networkPassphrase,
+    contractId: contractMapping.xAQUA,
+    rpcUrl,
+    publicKey: undefined,
+  }),} as const;
 
 // Get contract instance by symbol
 export const getContractBySymbol = (symbol: XAssetSymbol): XAssetContract => {
