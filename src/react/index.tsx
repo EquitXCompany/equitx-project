@@ -13,6 +13,7 @@ import { Box } from "@mui/material";
 import Dashboard from "./components/Dashboard";
 import CDPStats from "./components/CDPStats";
 import StabilityPoolStats from "./components/StabilityPoolStats";
+import AdminPanel from "./components/AdminPanel";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,11 @@ const router = createHashRouter([
       {
         path: "stability-pool/:assetSymbol",
         element: <StabilityPool />,
+        errorElement,
+      },
+      {
+        path: "admin",
+        element: <AdminPanel />,
         errorElement,
       },
     ],

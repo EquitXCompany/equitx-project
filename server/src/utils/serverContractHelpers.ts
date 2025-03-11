@@ -6,11 +6,15 @@ import BigNumber from "bignumber.js";
 import { assetConfig } from "../config/AssetConfig";
 
 // Reverse mapping from pool address to asset symbol
-const poolAddressToSymbol: Record<string, string> = Object.entries(assetConfig)
-  .reduce((accumulator, [symbol, details]) => {
+const poolAddressToSymbol: Record<string, string> = Object.entries(
+  assetConfig
+).reduce(
+  (accumulator, [symbol, details]) => {
     accumulator[details.pool_address] = symbol;
     return accumulator;
-  }, {} as Record<string, string>);
+  },
+  {} as Record<string, string>
+);
 
 const serverSecretKey = process.env.SERVER_SECRET_KEY;
 
@@ -26,15 +30,16 @@ function mnemonicToSeed(mnemonic: string): Buffer {
 }
 
 const seedBuffer = mnemonicToSeed(serverSecretKey);
-const keypair = Keypair.fromRawEd25519Seed(seedBuffer);
-const publicKey = keypair.publicKey();
+export const SERVER_KEYPAIR = Keypair.fromRawEd25519Seed(seedBuffer);
+const publicKey = SERVER_KEYPAIR.publicKey();
 
 interface XAssetClient {
   freeze_cdp: (params: any) => Promise<any>;
   liquidate_cdp: (params: any) => Promise<any>;
-  lastprice_xlm: () => Promise<any>; 
+  lastprice_xlm: () => Promise<any>;
   lastprice_asset: () => Promise<any>;
   minimum_collateralization_ratio: () => Promise<any>;
+  admin_get: () => Promise<any>;
   get_total_xasset: () => Promise<any>;
   get_interest_rate: () => Promise<any>;
   get_total_collateral: () => Promise<any>;
@@ -44,7 +49,9 @@ interface DataFeedClient {
   lastprice: (params: any) => Promise<any>;
 }
 
-async function getClientByPoolAddress(poolAddress: string): Promise<XAssetClient | DataFeedClient> {
+async function getClientByPoolAddress(
+  poolAddress: string
+): Promise<XAssetClient | DataFeedClient> {
   const symbol = poolAddressToSymbol[poolAddress];
 
   if (!symbol) {
@@ -52,16 +59,15 @@ async function getClientByPoolAddress(poolAddress: string): Promise<XAssetClient
   }
 
   const module = await import(/* @vite-ignore */ symbol);
-  return new module.Client(
-    {
-      networkPassphrase:
-        process.env.SERVER_NETWORK_PASSPHRASE ??
-        "Test SDF Network ; September 2015",
-      contractId: poolAddress,
-      rpcUrl:
-        process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
-      publicKey,
-    });
+  return new module.Client({
+    networkPassphrase:
+      process.env.SERVER_NETWORK_PASSPHRASE ??
+      "Test SDF Network ; September 2015",
+    contractId: poolAddress,
+    rpcUrl:
+      process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
+    publicKey,
+  });
 }
 
 async function getClient(
@@ -116,6 +122,10 @@ export async function serverAuthenticatedContractCall(
         needsSign = false;
         tx = await xassetClient.minimum_collateralization_ratio();
         break;
+      case "admin_get":
+        needsSign = false;
+        tx = await xassetClient.admin_get();
+        break;
       case "get_total_xasset":
         needsSign = false;
         tx = await xassetClient.get_total_xasset();
@@ -131,8 +141,7 @@ export async function serverAuthenticatedContractCall(
       default:
         throw new Error(`Unsupported xasset method: ${contractMethod}`);
     }
-  }
-  else {
+  } else {
     const datafeedClient = client as DataFeedClient;
     switch (contractMethod) {
       case "lastprice":
@@ -145,7 +154,7 @@ export async function serverAuthenticatedContractCall(
   }
 
   const signer = basicNodeSigner(
-    keypair,
+    SERVER_KEYPAIR,
     process.env.STELLAR_NETWORK_PASSPHRASE ?? ""
   );
 
@@ -158,12 +167,16 @@ export async function serverAuthenticatedContractCall(
         status: txResult.result.isOk() ? "SUCCESS" : "FAILED",
         result: txResult.result,
       };
-    }
-    else{
+    } else {
       return {
-        status: typeof tx.result.isOk === 'function' ? tx.result.isOk() ? "SUCCESS" : "FAILED" : "SUCCESS",
+        status:
+          typeof tx.result.isOk === "function"
+            ? tx.result.isOk()
+              ? "SUCCESS"
+              : "FAILED"
+            : "SUCCESS",
         result: tx.result,
-      }
+      };
     }
   } catch (error) {
     console.error("Error submitting transaction:", error);
@@ -177,7 +190,7 @@ export async function getLatestPriceData(
 ) {
   try {
     let method = "lastprice_asset";
-    if(assetSymbol === "XLM") method = "lastprice_xlm";
+    if (assetSymbol === "XLM") method = "lastprice_xlm";
     const priceData = await serverAuthenticatedContractCall(
       method,
       null,
@@ -209,7 +222,7 @@ export async function getMinimumCollateralizationRatio(contractId: string) {
       "xasset"
     );
 
-    if (!ratioData){
+    if (!ratioData) {
       throw new Error("Could not get minimum collateralization ratio");
     }
     return Number(ratioData.result);
@@ -254,6 +267,26 @@ export async function getTotalCollateral(contractId: string) {
     return new BigNumber(totalCollateralData.result.toString());
   } catch (error) {
     console.error("Error getting total collateral:", error);
+    throw error;
+  }
+}
+
+export async function getAdminAddress(contractId: string): Promise<string> {
+  try {
+    const adminData = await serverAuthenticatedContractCall(
+      "admin_get",
+      null,
+      contractId,
+      "xasset"
+    );
+
+    if (!adminData || !adminData.result) {
+      throw new Error("Could not get admin address");
+    }
+
+    return adminData.result.toString();
+  } catch (error) {
+    console.error("Error getting admin address:", error);
     throw error;
   }
 }

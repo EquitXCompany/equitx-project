@@ -20,9 +20,11 @@ import {
   ChevronLeft as ChevronLeftIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import { contractMapping } from '../../contracts/contractConfig';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useWallet } from '../../wallet';
 
 const drawerWidth = 240;
 
@@ -30,6 +32,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(true);
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { isSignedIn } = useWallet();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -95,6 +98,21 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
+        {isSignedIn && (
+        <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              to="/admin"
+              selected={location.pathname === '/admin'}
+            >
+              <ListItemIcon>
+                <AdminIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Admin" />}
+            </ListItemButton>
+          </ListItem>
+        )}
+
         {open && <Divider sx={{ my: 1 }} />}
 
         <ListItem disablePadding>
@@ -103,8 +121,8 @@ export default function Navbar() {
               {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
             </ListItemIcon>
             {open && <ListItemText primary={`${isDarkMode ? 'Light' : 'Dark'} Mode`} />}
-            </ListItemButton>
-          </ListItem>
+          </ListItemButton>
+        </ListItem>
 
         {open && Object.keys(contractMapping).map((symbol) => (
           <ListItem key={symbol} disablePadding>

@@ -18,6 +18,7 @@ import cdpMetricsRoutes from "./routes/cdpMetricsRoutes";
 import liquidationRoutes from "./routes/liquidationRoutes";
 import protocolStatsRoutes from "./routes/protocolStatsRoutes";
 import userMetricsRoutes from "./routes/userMetricsRoutes";
+import adminRoutes from "./routes/adminRoutes";
 
 import { startCDPUpdateJob } from "./scripts/updateCDPs";
 import { startPriceUpdateJob } from "./scripts/updatePrices";
@@ -30,19 +31,20 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const CLIENTPORT = process.env.CLIENTPORT || 4321;
 
+// Middleware
 const corsOptions = {
   origin: ['https://equitxcompany.github.io', 'http://localhost:' + CLIENTPORT],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 };
-
 app.use(cors(corsOptions));
-app.set('trust proxy', 2 /* number of proxies between user and server */)
-app.get('/', (_, res) => { res.json({ status: 'OK' }) });
-app.get('/ip', (req, res) => { res.send(req.ip) }); // Testing route to figure out rate limiter limits
-app.options('*', cors(corsOptions)); // Enable preflight requests for all routes
+    app.use(express.json());
 
+app.set('trust proxy', 2);
+app.get('/', (_, res) => { res.json({ status: 'OK' }) });
+app.get('/ip', (req, res) => { res.send(req.ip) });
+app.options('*', cors(corsOptions));
 async function initializeRoutes() {
   const assetRouter = await assetRoutes();
   const priceHistoryRouter = await priceHistoryRoutes();
@@ -69,18 +71,21 @@ async function initializeRoutes() {
   app.use("/api/liquidations", liquidationRouter);
   app.use("/api/protocol-stats", protocolStatsRouter);
   app.use("/api/user-metrics", userMetricsRouter);
+  app.use("/api/admin", adminRoutes);
 }
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+    });
 
 AppDataSource.initialize()
   .then(async () => {
     console.log("Database connection established");
 
-    app.use(express.json());
-
     await initializeRoutes();
-
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
 
     await createAssetsIfNotExist(assetConfig);
@@ -96,9 +101,7 @@ AppDataSource.initialize()
     });
 
     startPriceUpdateJob();
-
     startCDPUpdateJob();
-
     startStakeUpdateJob();
     runDailyMetrics();
   })

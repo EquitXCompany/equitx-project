@@ -13,6 +13,7 @@
     "coldstart": "npm run migration:run && npm run start",
     "start": "node dist/src/index.js",
     "dev": "nodemon src/index.ts",
+    "dev:once": "ts-node src/index.ts",
     "build": "tsc",
     "test": "jest"
   },
@@ -29,7 +30,10 @@
     "joi": "^17.13.3",
     "node-cron": "^3.0.3",
     "pg": "^8.13.1",
+    "simple-git": "^3.27.0",
     "stellar-sdk": "^13.1.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
     "typeorm": "^0.3.20",
     "winston": "^3.17.0"
   },
