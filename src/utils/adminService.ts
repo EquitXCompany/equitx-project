@@ -16,6 +16,7 @@ export interface DeployAssetResponse {
   contractId: string;
   wasmHash: string;
   message: string;
+  errors: string[];
 }
 
 export interface UpdateConfigParams {

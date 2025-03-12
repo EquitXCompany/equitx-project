@@ -67,7 +67,10 @@ export default function AdminPanel() {
 
   const [deploymentResult, setDeploymentResult] = useState<{
     contractId: string;
+    wasmHash: string;
     txHash: string;
+    partialSuccess: boolean;
+    configErrors: string[];
   } | null>(null);
 
   const steps = ["Check Admin Access", "Configure Asset", "Deploy Contract"];
@@ -140,12 +143,21 @@ export default function AdminPanel() {
         annualInterestRate: newAsset.annualInterestRate,
         feedAddress: newAsset.feedAddress, // Pass the feed address to the API
       });
+      
       setDeploymentResult({
         contractId: deployResponse.contractId,
+        wasmHash: deployResponse.wasmHash,
         txHash: deployResponse.message,
+        configErrors: deployResponse.errors || [],
+        partialSuccess: deployResponse.errors?.length > 0,
       });
 
-      setSuccess(`Contract for x${newAsset.symbol} deployed successfully!`);
+      if (deployResponse.errors?.length > 0) {
+        // Partial success - contract deployed but configs couldn't be updated
+        setSuccess(`Contract for x${newAsset.symbol} deployed, but configuration updates failed.`);
+      } else {
+        setSuccess(`Contract for x${newAsset.symbol} deployed successfully!`);
+      }
       setActiveStep(3);
     } catch (err: any) {
       console.error("Contract deployment failed:", err);
@@ -443,16 +455,46 @@ export default function AdminPanel() {
               </Paper>
 
               {deploymentResult && (
-                <Alert severity="success" sx={{ mb: 3 }}>
-                  <Typography variant="body1">
-                    Contract deployed successfully!
+                <Alert 
+                  severity={deploymentResult.partialSuccess ? "warning" : "success"} 
+                  sx={{ mb: 3 }}
+                >
+                  <Typography variant="body1" fontWeight="bold">
+                    {deploymentResult.partialSuccess 
+                      ? "Contract deployed with configuration issues" 
+                      : "Contract deployed successfully!"}
                   </Typography>
                   <Typography variant="body2">
                     Contract ID: {deploymentResult.contractId}
                   </Typography>
+                  {deploymentResult.wasmHash && (
+                    <Typography variant="body2">
+                      WASM Hash: {deploymentResult.wasmHash}
+                    </Typography>
+                  )}
                   <Typography variant="body2">
-                    Transaction Hash: {deploymentResult.txHash}
+                    Transaction: {deploymentResult.txHash}
                   </Typography>
+                  
+                  {deploymentResult.partialSuccess && (
+                    <>
+                      <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                        Manual configuration required: The contract was deployed but server configurations could not be updated.
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        Configuration errors:
+                      </Typography>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        {deploymentResult.configErrors.map((error, index) => (
+                          <li key={index}>
+                            <Typography variant="body2">
+                              {error}
+                            </Typography>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </Alert>
               )}
 

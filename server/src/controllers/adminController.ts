@@ -152,32 +152,18 @@ export const deployAsset: RequestHandler = async (req, res) => {
 
     // Determine if we're using testnet or mainnet
     const isTestnet = process.env.NETWORK === "testnet" || !process.env.NETWORK;
-    const loamEnv = isTestnet ? "staging" : "production";
-
-    // Set environment for loam commands
-    const loamEnvOptions = {
-      encoding: "utf8" as BufferEncoding, // Type assertion to BufferEncoding
-      env: { ...process.env, LOAM_ENV: loamEnv },
-    };
-
-    // First build without Mercury features for Stellar deployment
-    const standardBuildResult = spawnSync(
-      "loam",
-      ["build", "--manifest-path", "../Cargo.toml"],
-      loamEnvOptions
-    );
-
-    if (standardBuildResult.error || standardBuildResult.status !== 0) {
-      throw new Error(
-        `Failed to build standard version: ${standardBuildResult.stderr}`
-      );
-    }
-
-    // Deploy contract using Stellar CLI with standard build
+    // Use pre-built wasm file instead of building at runtime
     const wasmpath = path.resolve(
       __dirname,
-      "../../../target/wasm32-unknown-unknown/release/xasset.wasm"
+      "../../prebuilt_contracts/xasset_standard.wasm"
     );
+
+    // Check if the prebuilt wasm exists
+    if (!fs.existsSync(wasmpath)) {
+      throw new Error(`Pre-built WASM file not found at ${wasmpath}`);
+    }
+
+    // Deploy contract using Stellar CLI with pre-built standard wasm
     const serverSecretKey = SERVER_KEYPAIR.secret();
     const deployResult = spawnSync(
       "stellar",
@@ -193,7 +179,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
     );
 
     if (deployResult.error || deployResult.status !== 0) {
-      throw new Error(`Contract deployment failed: ${deployResult.stderr}`);
+      throw new Error(`Contract deployment failed: ${deployResult.stderr || deployResult.error}`);
     }
 
     const contractId = deployResult.stdout.trim();
@@ -273,20 +259,18 @@ export const deployAsset: RequestHandler = async (req, res) => {
     );
 
     if (initResult.error || initResult.status !== 0) {
-      throw new Error(`Contract initialization failed: ${initResult.stderr}`);
+      throw new Error(`Contract initialization failed: ${initResult.stderr || initResult.error}`);
     }
 
-    // Now build with Mercury features for Mercury deployment
-    const mercuryBuildResult = spawnSync(
-      "loam",
-      ["build", "--features", "mercury", "--manifest-path", "../Cargo.toml"],
-      loamEnvOptions
+    // Use pre-built Mercury wasm file
+    const mercuryWasmPath = path.resolve(
+      __dirname,
+      "../../prebuilt_contracts/xasset_mercury.wasm"
     );
-
-    if (mercuryBuildResult.error || mercuryBuildResult.status !== 0) {
-      throw new Error(
-        `Failed to build with Mercury features: ${mercuryBuildResult.stderr}`
-      );
+    
+    // Check if the prebuilt mercury wasm exists
+    if (!fs.existsSync(mercuryWasmPath)) {
+      throw new Error(`Pre-built Mercury WASM file not found at ${mercuryWasmPath}`);
     }
 
     // Get all existing contract IDs
@@ -294,7 +278,15 @@ export const deployAsset: RequestHandler = async (req, res) => {
       __dirname,
       "../../../src/contracts/contractConfig.ts"
     );
-    const configContent = fs.readFileSync(configPath, "utf8");
+    
+    let configContent;
+    try {
+      configContent = fs.readFileSync(configPath, "utf8");
+    } catch (err) {
+      console.warn(`Could not read ${configPath}, using just the new contract ID`);
+      configContent = "";
+    }
+    
     const contractIds = [
       ...configContent.matchAll(/x[A-Z]+:\s*"([A-Z0-9]+)"/g),
     ].map((match) => match[1]);
@@ -312,7 +304,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
       "equitx",
       ...contractIds.flatMap((id) => ["--contracts", id]),
       "--target",
-      wasmpath,
+      mercuryWasmPath,
     ];
 
     const mercuryResult = spawnSync(mercuryArgs[0], mercuryArgs.slice(1), {
@@ -320,7 +312,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
     });
 
     if (mercuryResult.error || mercuryResult.status !== 0) {
-      throw new Error(`Mercury deployment failed: ${mercuryResult.stderr}`);
+      throw new Error(`Mercury deployment failed: ${mercuryResult.stderr || mercuryResult.error}`);
     }
 
     // Extract WASM hash from Mercury output
@@ -329,23 +321,57 @@ export const deployAsset: RequestHandler = async (req, res) => {
       throw new Error("Could not extract WASM hash from Mercury output");
     }
 
+    // Keep track of update failures
+    const updateErrors = [];
+
     // Update AssetConfig.ts
-    await updateAssetConfig(symbol, contractId, wasmHash, feedAddress);
+    try {
+      await updateAssetConfig(symbol, contractId, wasmHash, feedAddress);
+    } catch (err) {
+      updateErrors.push(`Failed to update AssetConfig.ts: ${err}`);
+    }
 
-    // Update frontend config
-    await updateFrontendConfig(symbol, contractId);
+    // Update frontend config if the file exists in the container
+    try {
+      await updateFrontendConfig(symbol, contractId);
+    } catch (err) {
+      updateErrors.push(`Failed to update frontend config: ${err}`);
+    }
 
-    // Update environments.toml
-    await updateEnvironmentsToml(symbol, contractId);
+    // Update environments.toml if it exists in the container
+    try {
+      await updateEnvironmentsToml(symbol, contractId);
+    } catch (err) {
+      updateErrors.push(`Failed to update environments.toml: ${err}`);
+    }
 
     // Commit and push to github
-    await commitAndPushChanges(symbol);
+    let gitPushError = null;
+    try {
+      await commitAndPushChanges(symbol);
+    } catch (err) {
+      gitPushError = `Failed to commit changes to GitHub: ${err}`;
+      updateErrors.push(gitPushError);
+    }
+
+    // If there were update errors but deployment succeeded
+    if (updateErrors.length > 0) {
+      res.status(207).json({
+        success: true,
+        contractId,
+        wasmHash,
+        message: "Contract deployed successfully but failed to update configurations",
+        errors: updateErrors,
+        details: "Please manually update configurations with the provided contract ID and WASM hash",
+      });
+      return;
+    }
 
     res.status(200).json({
       success: true,
       contractId,
       wasmHash,
-      message: `Deployed x${symbol} contract successfully and pushed config changes to GitHub`,
+      message: `Deployed x${symbol} contract successfully`,
     });
   } catch (error: any) {
     console.error("Error deploying asset:", error);
