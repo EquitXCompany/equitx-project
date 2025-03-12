@@ -1,4 +1,3 @@
-file:///home/blaine/projects/equitx-project/Dockerfile
 # syntax = docker/dockerfile:1
 
 # Adjust NODE_VERSION as desired
