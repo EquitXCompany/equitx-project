@@ -21,12 +21,14 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   AdminPanelSettings as AdminIcon,
+  Feedback as FeedbackIcon,
 } from '@mui/icons-material';
 import { contractMapping } from '../../contracts/contractConfig';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useWallet } from '../../wallet';
 
 const drawerWidth = 240;
+const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIw31uG19BYszyMnKeDfRo4-UnbKAkHxQWBhpYvtdFEr-F-g/viewform?usp=dialog';
 
 export default function Navbar() {
   const [open, setOpen] = useState(true);
@@ -112,6 +114,20 @@ export default function Navbar() {
             </ListItemButton>
           </ListItem>
         )}
+
+        <ListItem disablePadding>
+          <ListItemButton
+            component="a"
+            href={FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ListItemIcon>
+              <FeedbackIcon />
+            </ListItemIcon>
+            {open && <ListItemText primary="Give Feedback" />}
+          </ListItemButton>
+        </ListItem>
 
         {open && <Divider sx={{ my: 1 }} />}
 

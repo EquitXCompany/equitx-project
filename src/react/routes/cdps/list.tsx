@@ -1,11 +1,17 @@
-import { CalculateCollateralizationRatio, useMergedCdps } from '../../hooks/useCdps';
+import {
+  CalculateCollateralizationRatio,
+  useMergedCdps,
+} from "../../hooks/useCdps";
 import Card from "../../components/card";
 import { useWallet } from "../../../wallet";
 import { getStatusColor } from "../../../utils/contractHelpers";
-import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
-import { useParams } from 'react-router-dom';
-import ErrorMessage from '../../components/errorMessage';
-import { contractMapping, XAssetSymbol } from '../../../contracts/contractConfig';
+import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
+import { useParams } from "react-router-dom";
+import ErrorMessage from "../../components/errorMessage";
+import {
+  contractMapping,
+  XAssetSymbol,
+} from "../../../contracts/contractConfig";
 import { useTheme } from "../../../contexts/ThemeContext";
 
 function List() {
@@ -21,7 +27,7 @@ function List() {
       />
     );
   }
-  
+
   if (!contractMapping[assetSymbol as XAssetSymbol]) {
     return (
       <ErrorMessage
@@ -31,27 +37,35 @@ function List() {
     );
   }
 
-    const {
-      data: cdps,
-      isLoading: cdpsLoading,
-      error: cdpsError
-    } = useMergedCdps(
-      assetSymbol as XAssetSymbol,
-      account
-    );
-  const { data: stabilityData, isLoading: stabilityLoading, error: stabilityError } = useStabilityPoolMetadata(assetSymbol as XAssetSymbol);
+  const {
+    data: cdps,
+    isLoading: cdpsLoading,
+    error: cdpsError,
+  } = useMergedCdps(assetSymbol as XAssetSymbol, account);
+  const {
+    data: stabilityData,
+    isLoading: stabilityLoading,
+    error: stabilityError,
+  } = useStabilityPoolMetadata(assetSymbol as XAssetSymbol);
 
   if (cdpsLoading || stabilityLoading) return <div>Loading...</div>;
-  if (cdpsError || stabilityError) return <div>An error occurred: {cdpsError?.message || stabilityError?.message}</div>;
+  if (cdpsError || stabilityError)
+    return (
+      <div>
+        An error occurred: {cdpsError?.message || stabilityError?.message}
+      </div>
+    );
   if (!cdps || !stabilityData) return <div>No CDPs found</div>;
 
   const { lastpriceXLM, lastpriceAsset } = stabilityData;
 
-  const yours = account ? cdps.find((cdp) => cdp.lender === account) : undefined;
-  
+  const yours = account
+    ? cdps.find((cdp) => cdp.lender === account)
+    : undefined;
+
   let sortedCdps = [...cdps];
   if (yours) {
-    sortedCdps = [yours, ...cdps.filter(cdp => cdp.lender !== account)];
+    sortedCdps = [yours, ...cdps.filter((cdp) => cdp.lender !== account)];
   }
 
   return (
@@ -68,22 +82,25 @@ function List() {
         {sortedCdps.map((cdp) => (
           <Card
             key={cdp.lender}
-            href={cdp.status.toLowerCase() === 'closed' 
-              ? `/cdps/${assetSymbol}/new`
-              : `/cdps/${assetSymbol}/${cdp.lender}`}
+            href={
+              cdp.status.toLowerCase() === "closed"
+                ? cdp.lender === account
+                  ? `/cdps/${assetSymbol}/new`
+                  : ""
+                : `/cdps/${assetSymbol}/${cdp.lender}`
+            }
             title={cdp.lender === account ? "yours" : cdp.lender}
           >
-              <div
+            <div
               style={{
                 color: getStatusColor(cdp.status, isDarkMode),
-              }} >
+              }}
+            >
               {cdp.status}
-              {cdp.status.toLowerCase() !== 'closed' && (
-                ` (${CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).times(100).toFixed(1)}% collateralized)`
-              )}
-              {cdp.status.toLowerCase() === 'closed' && (
-                <div>Open a new one</div>
-              )}
+              {cdp.status.toLowerCase() !== "closed" &&
+                ` (${CalculateCollateralizationRatio(cdp, lastpriceXLM, lastpriceAsset).times(100).toFixed(1)}% collateralized)`}
+              {cdp.status.toLowerCase() === "closed" &&
+                cdp.lender === account && <div>Open a new one</div>}
             </div>
           </Card>
         ))}
