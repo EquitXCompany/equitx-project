@@ -17,11 +17,21 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 import { deployAsset } from "../../utils/adminService";
 import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import { useWallet } from "../../wallet";
 import { getContractBySymbol } from "../../contracts/util";
+import { authenticatedContractCall } from "../../utils/contractHelpers";
+import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
+
+import { Link as RouterLink } from "react-router-dom";
 
 const DATAFEED_ADDRESS =
   "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63";
@@ -33,6 +43,18 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const {
+    data: allPoolMetadata,
+    isLoading: metadataLoading,
+    refetch: refetchMetadata,
+  } = useAllStabilityPoolMetadata();
+  // Asset editing state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentAsset, setCurrentAsset] = useState<XAssetSymbol | null>(null);
+  const [newMinRatio, setNewMinRatio] = useState<number>(0);
+  const [newInterestRate, setNewInterestRate] = useState<number>(0);
+  const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [newAsset, setNewAsset] = useState({
     symbol: "",
@@ -142,6 +164,88 @@ export default function AdminPanel() {
       newAsset.annualInterestRate >= 0 &&
       newAsset.feedAddress.length > 0
     );
+  };
+
+  // Handle opening the edit dialog for a specific asset
+  const handleEditAsset = (symbol: XAssetSymbol) => {
+    setCurrentAsset(symbol);
+
+    if (allPoolMetadata && allPoolMetadata[symbol]) {
+      const metadata = allPoolMetadata[symbol];
+      // Divide by 100 to convert from contract format (11000) to percentage display (110.00)
+      setNewMinRatio(metadata!.min_ratio / 100);
+      setNewInterestRate(metadata!.interestRate / 100);
+    }
+
+    setEditDialogOpen(true);
+    setUpdateError(null);
+    setUpdateSuccess(null);
+  };
+
+  const handleUpdateMinRatio = async () => {
+    if (!currentAsset) return;
+
+    setLoading(true);
+    setUpdateError(null);
+
+    try {
+      const contract = getContractBySymbol(currentAsset);
+      const contractValue = Math.round(newMinRatio * 100);
+      const result = await authenticatedContractCall(
+        contract.set_min_collat_ratio,
+        { to: contractValue }
+      );
+
+      const status = result.getTransactionResponse.status;
+      if (status === "SUCCESS") {
+        setUpdateSuccess(
+          `Minimum collateralization ratio updated to ${newMinRatio}%`
+        );
+        // Refetch metadata to update the UI
+        refetchMetadata();
+      } else {
+        throw new Error(`Transaction failed with status: ${status}`);
+      }
+    } catch (err: any) {
+      console.error("Failed to update min ratio:", err);
+      setUpdateError(
+        `Failed to update minimum ratio: ${err.message || "Unknown error"}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateInterestRate = async () => {
+    if (!currentAsset) return;
+
+    setLoading(true);
+    setUpdateError(null);
+
+    try {
+      const contract = getContractBySymbol(currentAsset);
+      const contractValue = Math.round(newInterestRate * 100);
+      const result = await authenticatedContractCall(
+        contract.set_interest_rate,
+        { new_rate: contractValue }
+      );
+
+      const status = result.getTransactionResponse.status;
+      if (status === "SUCCESS") {
+        setUpdateSuccess(`Interest rate updated to ${newInterestRate}%`);
+        // Refetch metadata to update the UI
+        refetchMetadata();
+      } else {
+        throw new Error(`Transaction failed with status: ${status}`);
+      }
+    } catch (err: any) {
+      console.error("Failed to update interest rate:", err);
+      setUpdateError(
+        `Failed to update interest rate: ${err.message || "Unknown error"}`
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isSignedIn) {
@@ -279,7 +383,7 @@ export default function AdminPanel() {
                 inputProps={{ step: "0.01" }}
                 helperText="E.g. 1 for 1%, allows decimals up to 2 places"
               />
-              
+
               <TextField
                 name="feedAddress"
                 label="Price Feed Address"
@@ -389,47 +493,163 @@ export default function AdminPanel() {
         Current xAssets
       </Typography>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Symbol</TableCell>
-              <TableCell>Contract ID</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {Object.entries(contractMapping).map(([symbol, contractId]) => (
-              <TableRow key={symbol}>
-                <TableCell>{symbol}</TableCell>
-                <TableCell>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      maxWidth: "300px",
-                    }}
-                  >
-                    {contractId}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    href={`/cdps/${symbol}`}
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    View in Explorer
-                  </Button>
-                </TableCell>
+      {metadataLoading ? (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Symbol</TableCell>
+                <TableCell>Contract ID</TableCell>
+                <TableCell>Min Ratio</TableCell>
+                <TableCell>Interest Rate</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {Object.entries(contractMapping).map(([symbol, contractId]) => {
+                const metadata = allPoolMetadata
+                  ? allPoolMetadata[symbol as XAssetSymbol]
+                  : undefined;
+
+                return (
+                  <TableRow key={symbol}>
+                    <TableCell>{symbol}</TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          maxWidth: "300px",
+                        }}
+                      >
+                        {contractId}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      {metadata ? `${metadata.min_ratio / 100}%` : "Loading..."}
+                    </TableCell>
+                    <TableCell>
+                      {metadata
+                        ? `${metadata.interestRate / 100}%`
+                        : "Loading..."}
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" gap={1}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          component={RouterLink}
+                          to={`/cdps/${symbol}`}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          View in Explorer
+                        </Button>
+                        <IconButton
+                          color="primary"
+                          onClick={() =>
+                            handleEditAsset(symbol as XAssetSymbol)
+                          }
+                          size="small"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Edit Asset Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Edit {currentAsset} Parameters</DialogTitle>
+        <DialogContent>
+          {updateError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {updateError}
+            </Alert>
+          )}
+          {updateSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {updateSuccess}
+            </Alert>
+          )}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Minimum Collateralization Ratio
+            </Typography>
+            <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
+              <TextField
+                label="Min Ratio (%)"
+                type="number"
+                value={newMinRatio}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (!isNaN(value)) {
+                    // Round to 2 decimal places
+                    const roundedValue = Math.round(value * 100) / 100;
+                    setNewMinRatio(roundedValue);
+                  }
+                }}
+                fullWidth
+                inputProps={{ min: "100", step: "0.01" }} // Changed step to 0.01
+              />
+              <Button
+                variant="contained"
+                onClick={handleUpdateMinRatio}
+                disabled={loading}
+              >
+                Update
+              </Button>
+            </Box>
+
+            <Typography variant="subtitle1" gutterBottom>
+              Annual Interest Rate
+            </Typography>
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <TextField
+                label="Interest Rate (%)"
+                type="number"
+                value={newInterestRate}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (!isNaN(value)) {
+                    // Round to 2 decimal places
+                    const roundedValue = Math.round(value * 100) / 100;
+                    setNewInterestRate(roundedValue);
+                  }
+                }}
+                fullWidth
+                inputProps={{ min: "0", step: "0.01" }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleUpdateInterestRate}
+                disabled={loading}
+              >
+                Update
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
