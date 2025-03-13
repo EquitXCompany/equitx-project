@@ -17,16 +17,35 @@ FROM base AS build
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3 curl wget ca-certificates && \
-    update-ca-certificates
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    node-gyp \
+    pkg-config \
+    python-is-python3 \
+    curl \
+    wget \
+    ca-certificates \
+    gcc \
+    libc6-dev \
+    libssl-dev \
+    pkg-config \
+    && update-ca-certificates
 
-# Install Rust toolchain
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+# Install Rust toolchain with minimal components to save memory
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 # Install specific toolchain
-RUN rustup toolchain install 1.81.0
+RUN rustup toolchain install 1.81.0 --profile minimal
 RUN rustup default 1.81.0
 RUN rustup target add wasm32-unknown-unknown
+
+# Optimize Cargo build to use less memory
+ENV CARGO_BUILD_JOBS=1
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV RUSTFLAGS="-C codegen-units=1"
+
+# Install mercury-cli with memory optimizations
+RUN cargo install mercury-cli --no-default-features
 
 # Install loam CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/loam && \
@@ -88,9 +107,26 @@ RUN apt-get update -qq && \
     libssl3 \
     libdbus-1-3 \
     libssl-dev \
+    gcc \
+    libc6-dev \
+    build-essential \
+    pkg-config \
     && apt-get clean && \
     update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain in the final image for mercury-cli with minimal profile
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup default stable
+
+# Optimize Cargo build to use less memory
+ENV CARGO_BUILD_JOBS=1
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV RUSTFLAGS="-C codegen-units=1"
+
+# Install mercury-cli with memory optimizations
+RUN cargo install mercury-cli --no-default-features
 
 # Install stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar && \
