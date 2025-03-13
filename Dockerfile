@@ -36,7 +36,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup toolchain install 1.81.0
 RUN rustup default 1.81.0
 RUN rustup target add wasm32-unknown-unknown
-RUN cargo install loam-cli --locked
+RUN RUSTFLAGS="-C codegen-units=1" cargo install --jobs 1 loam-cli --locked
 
 # Copy everything so we can build contracts
 COPY . .
@@ -89,7 +89,7 @@ RUN echo "Checking cargo version:" && cargo --version
 
 # Install stellar CLI with proper OpenSSL configuration
 RUN pkg-config --libs --cflags openssl && \
-    cargo install --locked stellar-cli --features opt
+    RUSTFLAGS="-C codegen-units=1" cargo install --jobs 1 --locked stellar-cli --features opt 
 
 # Set the working directory to /app/server
 WORKDIR /app/server
