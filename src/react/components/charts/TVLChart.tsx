@@ -53,6 +53,7 @@ export const TVLChart = ({
   const tooltipTextColor = theme.palette.text.primary;
 
   const chartData = useMemo(() => {
+    // Map data to a consistent structure
     const processedData = data.map((item) => ({
       timestamp: new Date(item.timestamp),
       tvl:
@@ -67,7 +68,42 @@ export const TVLChart = ({
           : (item as TVLMetricsData).totalXassetsStakedUSD.toNumber(),
     }));
 
+    // Sort by timestamp
     processedData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    
+    // Limit to 3 data points per day
+    const limitedData: typeof processedData = [];
+    const dataByDay = new Map<string, typeof processedData>();
+    
+    // Group data points by day
+    processedData.forEach(item => {
+      const day = item.timestamp.toISOString().split('T')[0];
+      if (!dataByDay.has(day!)) {
+        dataByDay.set(day!, []);
+      }
+      dataByDay.get(day!)!.push(item);
+    });
+    
+    // Limit to 3 points per day and flatten
+    dataByDay.forEach((dayPoints, _) => {
+      // If we have more than 3 points for a day, take evenly spaced samples
+      if (dayPoints.length > 3) {
+        const step = Math.floor(dayPoints.length / 3);
+        limitedData.push(dayPoints[0]!); // First point
+        if (dayPoints.length > 1) {
+          limitedData.push(dayPoints[Math.min(step, dayPoints.length - 1)]!); // Middle point
+        }
+        if (dayPoints.length > 2) {
+          limitedData.push(dayPoints[dayPoints.length - 1]!); // Last point
+        }
+      } else {
+        // If 3 or fewer, include all
+        limitedData.push(...dayPoints);
+      }
+    });
+    
+    // Re-sort the limited data
+    limitedData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
     // Determine colors based on theme mode
     const borderColor = theme.palette.mode === "dark"
@@ -83,17 +119,20 @@ export const TVLChart = ({
       : theme.palette.secondary.light;
 
     return {
-      labels: processedData.map((d) => {
+      labels: limitedData.map((d) => {
         const date = new Date(d.timestamp);
-        return date.toLocaleDateString(undefined, {
+        return `${date.toLocaleDateString(undefined, {
           month: "short",
           day: "numeric",
-        });
+        })} ${date.toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`;
       }),
       datasets: [
         {
           label: "Total Staked",
-          data: processedData.map((d) => d.staked),
+          data: limitedData.map((d) => d.staked),
           stack: "stack0",
           backgroundColor: secondaryColor,
           borderColor: borderColor,
@@ -102,7 +141,7 @@ export const TVLChart = ({
         },
         {
           label: "TVL",
-          data: processedData.map((d) => d.tvl),
+          data: limitedData.map((d) => d.tvl),
           backgroundColor: primaryColor,
           stack: "stack0",
           borderColor: borderColor,
@@ -186,11 +225,13 @@ export const TVLChart = ({
             color: borderColor,
           },
           ticks: {
-            maxTicksLimit: 8,
+            maxRotation: 45,
+            minRotation: 45,
+            maxTicksLimit: 12,
             color: textColor,
             font: {
               family: theme.typography.fontFamily,
-              size: 12,
+              size: 11,
             },
           },
         },
