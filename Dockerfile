@@ -52,7 +52,6 @@ RUN npm install
 
 # Copy everything so we can build contracts
 COPY . .
-RUN rm ./target/loam/*
 RUN mkdir -p ./target/loam && \
     mkdir -p ./server/prebuilt_contracts
 
