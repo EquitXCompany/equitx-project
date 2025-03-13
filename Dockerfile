@@ -40,6 +40,7 @@ RUN cargo install loam-cli --locked
 
 # Copy everything so we can build contracts
 COPY . .
+RUN rm ./target/loam/* && mkdir -p ./server/prebuilt_contracts
 # Build prebuilt contracts and the rest of the application
 RUN npm run build:prebuilt-contracts
 RUN LOAM_ENV=staging loam build --build-clients
@@ -63,21 +64,32 @@ RUN npm prune --omit=dev
 # Final stage for app image
 FROM base
 
-# Install only the minimum required runtime dependencies
+# Install all required runtime dependencies including those needed for stellar-cli
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl build-essential && \
-    apt-get clean && \
+    apt-get install --no-install-recommends -y \
+    curl \
+    build-essential \
+    ca-certificates \
+    pkg-config \
+    libdbus-1-dev \
+    libssl-dev \
+    openssl \
+    libudev-dev \
+    libssl3 \
+    libssl-dev \
+    && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Rust (required for cargo install)
+# Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install stelar CLI
-RUN cargo install --locked stellar-cli --features opt
+# Verify cargo is available
+RUN echo "Checking cargo version:" && cargo --version
 
-# Add to PATH (Stellar CLI installs to ~/.cargo/bin)
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Install stellar CLI with proper OpenSSL configuration
+RUN pkg-config --libs --cflags openssl && \
+    cargo install --locked stellar-cli --features opt
 
 # Set the working directory to /app/server
 WORKDIR /app/server
