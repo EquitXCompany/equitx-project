@@ -16,13 +16,54 @@ interface DeployAssetRequest {
   annualInterestRate: number;
 }
 
+const determineRepoRoot = () => {
+  // Start from the current working directory
+  let currentDir = process.cwd();
+
+  // Check if we're in the Docker container (where server code is at /app/server)
+  if (currentDir === "/app/server") {
+    return "/app";
+  }
+
+  // For local development, find the git root by traversing up
+  // We know we're in the server directory, so we go one level up
+  return path.resolve(currentDir, "..");
+};
+
+const findPrebuiltContractsPath = (filename: string) => {
+  // Check multiple possible locations for the prebuilt contracts
+  const possiblePaths = [
+    // Docker path
+    path.join(process.cwd(), "prebuilt_contracts", filename),
+    // Local development path relative to dist
+    path.join(__dirname, "../../prebuilt_contracts", filename),
+    // Local development path relative to src
+    path.join(process.cwd(), "../prebuilt_contracts", filename),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      console.log(`Found prebuilt contract at: ${p}`);
+      return p;
+    }
+  }
+
+  throw new Error(
+    `Pre-built WASM file ${filename} not found. Checked paths: ${possiblePaths.join(", ")}`
+  );
+};
+
 const commitAndPushChanges = async (symbol: string) => {
   try {
-    // Create a temporary directory for the SSH key inside the application directory
+    // Get the repo root that works in both Docker and local development
+    const repoRoot = determineRepoRoot();
+
+    // Create SSH directory under the server directory
     const sshDir = path.join(
-      process.cwd(),
+      process.cwd(), // This will be the server directory in both envs
       ".ssh-" + Math.random().toString(36).substring(2, 10)
     );
+
     fs.mkdirSync(sshDir, { recursive: true, mode: 0o700 });
 
     // Write the SSH key to a file
@@ -55,11 +96,9 @@ const commitAndPushChanges = async (symbol: string) => {
 
     fs.writeFileSync(knownHostsPath, githubKnownHosts, { mode: 0o600 });
 
-    const repoRoot = path.resolve(__dirname, "../../..");
     const git = simpleGit({
       baseDir: repoRoot,
     });
-
     // Set environment variables for SSH
     git.env({
       GIT_SSH_COMMAND: `ssh -i ${keyPath} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${knownHostsPath} -o User=git -v`,
@@ -94,8 +133,9 @@ const commitAndPushChanges = async (symbol: string) => {
       "server/src/config/AssetConfig.ts",
       "src/contracts/contractConfig.ts",
       "src/contracts/util.ts",
-      "environments.toml", // Add this line
+      "environments.toml",
     ];
+
     await git.add(configFiles);
 
     const commitMessage = `feat: add ${symbol} asset configuration`;
@@ -153,10 +193,8 @@ export const deployAsset: RequestHandler = async (req, res) => {
     // Determine if we're using testnet or mainnet
     const isTestnet = process.env.NETWORK === "testnet" || !process.env.NETWORK;
     // Use pre-built wasm file instead of building at runtime
-    const wasmpath = path.resolve(
-      __dirname,
-      "../../prebuilt_contracts/xasset_standard.wasm"
-    );
+
+    const wasmpath = findPrebuiltContractsPath("xasset_standard.wasm");
 
     // Check if the prebuilt wasm exists
     if (!fs.existsSync(wasmpath)) {
@@ -179,7 +217,9 @@ export const deployAsset: RequestHandler = async (req, res) => {
     );
 
     if (deployResult.error || deployResult.status !== 0) {
-      throw new Error(`Contract deployment failed: ${deployResult.stderr || deployResult.error}`);
+      throw new Error(
+        `Contract deployment failed: ${deployResult.stderr || deployResult.error}`
+      );
     }
 
     const contractId = deployResult.stdout.trim();
@@ -259,18 +299,18 @@ export const deployAsset: RequestHandler = async (req, res) => {
     );
 
     if (initResult.error || initResult.status !== 0) {
-      throw new Error(`Contract initialization failed: ${initResult.stderr || initResult.error}`);
+      throw new Error(
+        `Contract initialization failed: ${initResult.stderr || initResult.error}`
+      );
     }
 
-    // Use pre-built Mercury wasm file
-    const mercuryWasmPath = path.resolve(
-      __dirname,
-      "../../prebuilt_contracts/xasset_mercury.wasm"
-    );
-    
+    const mercuryWasmPath = findPrebuiltContractsPath("xasset_mercury.wasm");
+
     // Check if the prebuilt mercury wasm exists
     if (!fs.existsSync(mercuryWasmPath)) {
-      throw new Error(`Pre-built Mercury WASM file not found at ${mercuryWasmPath}`);
+      throw new Error(
+        `Pre-built Mercury WASM file not found at ${mercuryWasmPath}`
+      );
     }
 
     // Get all existing contract IDs
@@ -278,15 +318,17 @@ export const deployAsset: RequestHandler = async (req, res) => {
       __dirname,
       "../../../src/contracts/contractConfig.ts"
     );
-    
+
     let configContent;
     try {
       configContent = fs.readFileSync(configPath, "utf8");
     } catch (err) {
-      console.warn(`Could not read ${configPath}, using just the new contract ID`);
+      console.warn(
+        `Could not read ${configPath}, using just the new contract ID`
+      );
       configContent = "";
     }
-    
+
     const contractIds = [
       ...configContent.matchAll(/x[A-Z]+:\s*"([A-Z0-9]+)"/g),
     ].map((match) => match[1]);
@@ -312,7 +354,9 @@ export const deployAsset: RequestHandler = async (req, res) => {
     });
 
     if (mercuryResult.error || mercuryResult.status !== 0) {
-      throw new Error(`Mercury deployment failed: ${mercuryResult.stderr || mercuryResult.error}`);
+      throw new Error(
+        `Mercury deployment failed: ${mercuryResult.stderr || mercuryResult.error}`
+      );
     }
 
     // Extract WASM hash from Mercury output
@@ -360,9 +404,11 @@ export const deployAsset: RequestHandler = async (req, res) => {
         success: true,
         contractId,
         wasmHash,
-        message: "Contract deployed successfully but failed to update configurations",
+        message:
+          "Contract deployed successfully but failed to update configurations",
         errors: updateErrors,
-        details: "Please manually update configurations with the provided contract ID and WASM hash",
+        details:
+          "Please manually update configurations with the provided contract ID and WASM hash",
       });
       return;
     }
