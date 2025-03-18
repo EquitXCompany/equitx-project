@@ -7,6 +7,6 @@ import tailwind from '@astrojs/tailwind';
 // https://astro.build/config
 export default defineConfig({
   integrations: [react(), tailwind()],
-  site: 'https://equitxcompany.github.io',
-  base: '/equitx-project',
+  site: 'https://test.equitx.com',
+  base: '/',
 });
