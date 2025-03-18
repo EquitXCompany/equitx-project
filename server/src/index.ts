@@ -33,7 +33,7 @@ const CLIENTPORT = process.env.CLIENTPORT || 4321;
 
 // Middleware
 const corsOptions = {
-  origin: ['https://equitxcompany.github.io', 'http://localhost:' + CLIENTPORT],
+  origin: ['https://equitxcompany.github.io', 'https://test.equitx.com', 'http://localhost:' + CLIENTPORT],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
