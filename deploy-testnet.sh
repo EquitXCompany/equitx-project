@@ -43,7 +43,7 @@ deploy_xasset() {
 }
 
 # Deploy all assets
-assets=("BTC" "ETH" "USDT" "XRP" "SOL")
+assets=("BTC" "ETH" "USDT" "XRP" "SOL" "ADA" "DOT")
 
 for asset in "${assets[@]}"; do
     deploy_xasset $asset
