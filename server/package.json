@@ -9,6 +9,7 @@
   "scripts": {
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:run": "npm run typeorm migration:run -- -d src/ormconfig.ts",
+    "migration:generate": "npm run typeorm migration:generate -- -d src/ormconfig.ts",
     "migration:revert": "npm run typeorm migration:revert -- -d src/ormconfig.ts",
     "coldstart": "npm run migration:run && npm run start",
     "start": "node dist/src/index.js",
