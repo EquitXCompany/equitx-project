@@ -52,13 +52,7 @@ const contractClientMap = {
     rpcUrl,
     publicKey: undefined,
   }),
-
-  xFOO: new Client({
-    networkPassphrase,
-    contractId: contractMapping.xFOO,
-    rpcUrl,
-    publicKey: undefined,
-  }),} as const;
+} as const;
 
 // Get contract instance by symbol
 export const getContractBySymbol = (symbol: XAssetSymbol): XAssetContract => {
