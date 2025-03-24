@@ -68,7 +68,9 @@ function New() {
 
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));
-  const [ratio, setRatio] = useState(new BigNumber(0));
+  const [ratio, setRatio] = useState(new BigNumber(110));
+  // Our ratio is represented by a BigNumber, but we need the input to be a user-friendly type
+  const [fakeNum, setFakeNum] = useState(110);
   const decimalsXLM = 7;
   const decimalsAsset = 7;
   const stepValueXLM = `0.${'0'.repeat(decimalsXLM - 1)}1`;
@@ -79,6 +81,7 @@ function New() {
       setRatio(new BigNumber(0));
     } else {
       const newRatio = newCollateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(metadata.lastpriceAsset));
+      setFakeNum(newRatio.times(100).div(BASIS_POINTS).toNumber());
       setRatio(newRatio);
     }
   };
@@ -97,11 +100,25 @@ function New() {
 
   const handleRatioChange = (value: string) => {
     if (!metadata) return;
+    const valTo2Decimals = parseFloat(value).toFixed(2);
+    const newRatio = new BigNumber(valTo2Decimals).times(BASIS_POINTS).div(100);
+    setRatio(newRatio);
+    const newToLend = collateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(metadata.lastpriceAsset);
+    setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
+  };
+
+  const handleFakeNumChange = (value: string) => {
+    if (!metadata) return;
+    const newVal = Number(value);
+    setFakeNum(parseFloat(newVal.toFixed(2)));
     const newRatio = new BigNumber(value).times(BASIS_POINTS).div(100);
     setRatio(newRatio);
     const newToLend = collateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(metadata.lastpriceAsset);
     setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
   };
+
+  const displayRatio = ratio.isGreaterThan(0) ? ratio.times(100).div(BASIS_POINTS).toFixed(2) : 0;
+  const ratioBelowMinimum = ratio.isLessThan(minRatio);
 
   useEffect(() => {
     updateRatio(collateral, toLend);
@@ -116,7 +133,7 @@ function New() {
       <Typography variant="h4" gutterBottom>
         Open a new Collateralized Debt Position (CDP)
       </Typography>
-      <Form method="post">
+      <Form method="post" className="text-sm flex flex-col text-left">
         <input type="hidden" name="lender" value={account} />
         <Box sx={{ mt: 2 }}>
           <TextField
@@ -132,22 +149,42 @@ function New() {
             margin="normal"
           />
         </Box>
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 2 }} className="">
+          <label htmlFor="ratio" >Set the collateralization ratio (%)</label>
+          <input className="border-neutral-60" type="number"
+            value={fakeNum}
+            step=".01"
+            onChange={(e) => handleFakeNumChange(e.target.value)}
+          />
+          <span>Collateralization can only be to two decimal points</span>
+          <input className="border-neutral-60" type="number"
+            step=".01"
+            value={ratio.times(100).div(BASIS_POINTS).toNumber()}
+            onChange={(e) => handleRatioChange(e.target.value)}
+          />
           <TextField
             fullWidth
             label="Set collateralization ratio (%)"
             type="number"
-            value={ratio.times(100).div(BASIS_POINTS).toFixed(2)}
+            error={ratioBelowMinimum}
+            helperText={ratioBelowMinimum ? "Invalid ratio" : ""}
+            value={ratio.times(100).div(BASIS_POINTS)}
             onChange={(e) => handleRatioChange(e.target.value)}
             inputProps={{
               step: "0.01",
-              min: minRatio.times(100).div(BASIS_POINTS).toFixed(2),
+              min: minRatio.times(100).div(BASIS_POINTS),
             }}
             variant="outlined"
             margin="normal"
           />
         </Box>
         <Box sx={{ mt: 2 }}>
+          <label htmlFor="asset_lent" >Amount of {metadata.symbolAsset} you'll mint:</label>
+          <input
+            type="number"
+            name="asset_lent"
+            value={toLend.toFixed(decimalsAsset)}
+            onChange={(e) => handleToLendChange(e.target.value)} />
           <TextField
             fullWidth
             label={`Amount of ${metadata.symbolAsset} you'll mint:`}
@@ -168,7 +205,7 @@ function New() {
           />
         </Box>
         <Typography variant="body1" gutterBottom sx={{ mt: 2 }}>
-          Current collateralization ratio: {ratio.times(100).div(BASIS_POINTS).toFixed(2)}%
+          Current collateralization ratio: {displayRatio}%
           {ratio.isLessThan(minRatio) && (
             <Typography variant="body2" color="error">
               (Below minimum ratio of {new BigNumber(minRatio).times(100).div(BASIS_POINTS).toFixed(2)}%)
@@ -182,7 +219,7 @@ function New() {
           sx={{ mt: 3 }}
           disabled={ratio.isLessThan(minRatio) || !isSignedIn}
         >
-          Open CDP
+          Open CDP with ratio
         </Button>
       </Form>
     </Box>
