@@ -367,6 +367,8 @@ function StabilityPool() {
               value={stakeAmount}
               onChange={(e) => setStakeAmount(e.target.value)}
               fullWidth
+              error={stakeAmount === '' || new BigNumber(stakeAmount).isLessThanOrEqualTo(0)}
+              helperText={stakeAmount === '' || new BigNumber(stakeAmount).isLessThanOrEqualTo(0) ? "Please enter a valid amount" : ""}
               type="number"
               inputProps={{ step: '0.0000001' }}
               sx={{ mb: 2 }}
@@ -405,7 +407,7 @@ function StabilityPool() {
                   variant="contained"
                   onClick={handleStake}
                   fullWidth
-                  disabled={!isSignedIn || loading}
+                  disabled={!isSignedIn || loading || stakeAmount === '' || new BigNumber(stakeAmount).isLessThanOrEqualTo(0)}
                 >
                   {loading ? <CircularProgress size={24} /> : 'Stake'}
                 </Button>
