@@ -78,7 +78,7 @@ function New() {
     if (newToLend.isZero() || !metadata) {
       setRatio(new BigNumber(0));
     } else {
-      const newRatio = newCollateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(metadata.lastpriceAsset));
+      const newRatio = newCollateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(metadata.lastpriceAsset)).decimalPlaces(0);
       setRatio(newRatio);
     }
   };
@@ -188,7 +188,7 @@ function New() {
           sx={{ mt: 3 }}
           disabled={ratio.isLessThan(minRatio) || !isSignedIn}
         >
-          Open CDP with ratio
+          Open CDP
         </Button>
       </Form>
     </Box>
