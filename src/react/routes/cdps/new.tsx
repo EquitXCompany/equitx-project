@@ -69,8 +69,6 @@ function New() {
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));
   const [ratio, setRatio] = useState(new BigNumber(110));
-  // Our ratio is represented by a BigNumber, but we need the input to be a user-friendly type
-  const [fakeNum, setFakeNum] = useState(110);
   const decimalsXLM = 7;
   const decimalsAsset = 7;
   const stepValueXLM = `0.${'0'.repeat(decimalsXLM - 1)}1`;
@@ -81,7 +79,6 @@ function New() {
       setRatio(new BigNumber(0));
     } else {
       const newRatio = newCollateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(metadata.lastpriceAsset));
-      setFakeNum(newRatio.times(100).div(BASIS_POINTS).toNumber());
       setRatio(newRatio);
     }
   };
@@ -102,16 +99,6 @@ function New() {
     if (!metadata) return;
     const valTo2Decimals = parseFloat(value).toFixed(2);
     const newRatio = new BigNumber(valTo2Decimals).times(BASIS_POINTS).div(100);
-    setRatio(newRatio);
-    const newToLend = collateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(metadata.lastpriceAsset);
-    setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
-  };
-
-  const handleFakeNumChange = (value: string) => {
-    if (!metadata) return;
-    const newVal = Number(value);
-    setFakeNum(parseFloat(newVal.toFixed(2)));
-    const newRatio = new BigNumber(value).times(BASIS_POINTS).div(100);
     setRatio(newRatio);
     const newToLend = collateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(metadata.lastpriceAsset);
     setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
@@ -150,24 +137,12 @@ function New() {
           />
         </Box>
         <Box sx={{ mt: 2 }} className="">
-          <label htmlFor="ratio" >Set the collateralization ratio (%)</label>
-          <input className="border-neutral-60" type="number"
-            value={fakeNum}
-            step=".01"
-            onChange={(e) => handleFakeNumChange(e.target.value)}
-          />
-          <span>Collateralization can only be to two decimal points</span>
-          <input className="border-neutral-60" type="number"
-            step=".01"
-            value={ratio.times(100).div(BASIS_POINTS).toNumber()}
-            onChange={(e) => handleRatioChange(e.target.value)}
-          />
           <TextField
             fullWidth
             label="Set collateralization ratio (%)"
             type="number"
             error={ratioBelowMinimum}
-            helperText={ratioBelowMinimum ? "Invalid ratio" : ""}
+            helperText={ratioBelowMinimum ? "Ratio below minimum collateralization" : ""}
             value={ratio.times(100).div(BASIS_POINTS)}
             onChange={(e) => handleRatioChange(e.target.value)}
             inputProps={{
