@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { CDP, CDPStatus } from "../entity/CDP";
 import BigNumber from "bignumber.js";
 import dotenv from "dotenv";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { getLatestPriceData, getTotalXAsset, serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
 import { assetConfig } from "../config/AssetConfig";
 import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
@@ -68,7 +68,7 @@ interface RetroShadeLiquidation {
 
 async function determineAction(oldCDP: CDP | null, newCDP: CDP): Promise<CDPHistoryAction> {
   if (!oldCDP) return CDPHistoryAction.OPEN;
-  
+
   if (oldCDP.status !== newCDP.status) {
     if (newCDP.status === CDPStatus.Frozen) return CDPHistoryAction.FREEZE;
     if (newCDP.status === CDPStatus.Closed) return CDPHistoryAction.LIQUIDATE;
@@ -88,8 +88,8 @@ async function determineAction(oldCDP: CDP | null, newCDP: CDP): Promise<CDPHist
   }
 
   if (!oldXlm.isEqualTo(newXlm)) {
-    return newXlm.isGreaterThan(oldXlm) 
-      ? CDPHistoryAction.ADD_COLLATERAL 
+    return newXlm.isGreaterThan(oldXlm)
+      ? CDPHistoryAction.ADD_COLLATERAL
       : CDPHistoryAction.WITHDRAW_COLLATERAL;
   }
 
@@ -128,17 +128,17 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
       updated_at: new Date(cdp.timestamp * 1000),
       created_at: oldCDP ? oldCDP.created_at : new Date(cdp.timestamp * 1000),
     });
-      
+
     const action = await determineAction(oldCDP, newCDP);
-    
+
     await cdpHistoryService.createHistoryEntry(
-      newCDP.id, 
-      newCDP, 
-      action, 
-      oldCDP, 
+      newCDP.id,
+      newCDP,
+      action,
+      oldCDP,
       {
-        interestDelta: oldCDP ? 
-          new BigNumber(newCDP.interest_paid).minus(oldCDP.interest_paid || '0').toString() : 
+        interestDelta: oldCDP ?
+          new BigNumber(newCDP.interest_paid).minus(oldCDP.interest_paid || '0').toString() :
           '0',
         accruedInterest: newCDP.accrued_interest,
         interestPaid: newCDP.interest_paid
@@ -148,7 +148,7 @@ async function updateCDPsInDatabase(cdps: RetroShadeCDP[], assetSymbol: string):
 }
 
 async function processLiquidations(
-  liquidations: RetroShadeLiquidation[], 
+  liquidations: RetroShadeLiquidation[],
   assetSymbol: string
 ): Promise<void> {
   const assetService = await AssetService.create();
@@ -210,6 +210,12 @@ async function fetchCDPs(
 
     return Array.from(latestEntries.values()).sort((a, b) => a.timestamp - b.timestamp);
   } catch (error) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as AxiosError;
+      const errorMessage = `Error fetching CDPs: ${axiosError.response?.status} - ${axiosError.response?.statusText} - ${axiosError.response?.data}`
+      console.error(errorMessage);
+      return [];
+    }
     console.error("Error fetching CDPs:", error);
     throw error;
   }
@@ -226,11 +232,10 @@ async function fetchLiquidations(
 
     return data.sort((a: RetroShadeLiquidation, b: RetroShadeLiquidation) => a.timestamp - b.timestamp);
   } catch (error: unknown) {
-    const axiosError = error as import('axios').AxiosError;
+    const axiosError = error as AxiosError;
     const errorMessage = axiosError.response
-      ? `Failed to fetch liquidations: ${axiosError.response.status} - ${axiosError.response.statusText}`
+      ? `Failed to fetch liquidations: ${axiosError.response.status} - ${axiosError.response.statusText} - - ${axiosError.response.data}`
       : `Failed to fetch liquidations: ${axiosError.message || 'Unknown error'}`;
-    
     console.error(errorMessage);
     throw error;
   }
@@ -252,14 +257,14 @@ async function updateLastQueriedTimestamp(
 
 async function getWasmHashToLiquidityPoolMapping(): Promise<Map<string, Map<string, string>>> {
   const mapping = new Map<string, Map<string, string>>();
-  
+
   for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
     if (!mapping.has(assetDetails.wasm_hash)) {
       mapping.set(assetDetails.wasm_hash, new Map());
     }
     mapping.get(assetDetails.wasm_hash)!.set(assetDetails.pool_address, assetSymbol);
   }
-  
+
   return mapping;
 }
 
@@ -269,11 +274,11 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
     const wasmHashMapping = await getWasmHashToLiquidityPoolMapping();
 
     for (const [wasmHash, contractMapping] of wasmHashMapping) {
-      if(wasmHashToUpdate !== null && wasmHashToUpdate !== wasmHash){
+      if (wasmHashToUpdate !== null && wasmHashToUpdate !== wasmHash) {
         continue;
       }
       let nLiquidated = 0;
-      
+
       // Process CDPs
       const lastCDPTimestamp = await getLastQueriedTimestamp(wasmHash, TableType.CDP);
       const cdps = await fetchCDPs(`cdp${wasmHash}`, lastCDPTimestamp);
@@ -308,21 +313,21 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
             console.log(`Attempting to liquidate frozen CDP for lender: ${cdp.id}`);
             try {
               const totalXasset = await getTotalXAsset(cdp.contract_id);
-              if(totalXasset.isGreaterThan(0)){
-                const {result, status} = await serverAuthenticatedContractCall(
+              if (totalXasset.isGreaterThan(0)) {
+                const { result, status } = await serverAuthenticatedContractCall(
                   "liquidate_cdp",
                   { lender: cdp.id },
                   cdp.contract_id
                 );
-                if(result.value[2] === CDPStatus.Closed){
+                if (result.value[2] === CDPStatus.Closed) {
                   console.log("CDP has been closed");
                   nLiquidated++;
                 }
-                else{
-                  if(status === "SUCCESS"){
+                else {
+                  if (status === "SUCCESS") {
                     nLiquidated++;
                     console.log(`CDP has been partially liquidated, status is ${result.value[2]}`);
-                  } 
+                  }
                   else console.log("CDP liquidation failed");
                 }
               } else {
@@ -339,33 +344,37 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
         const newLastTimestamp = Math.max(...cdps.map((cdp) => cdp.timestamp));
         await updateLastQueriedTimestamp(wasmHash, TableType.CDP, newLastTimestamp);
       }
-      
+
       // Process Liquidations
       const lastLiquidationTimestamp = await getLastQueriedTimestamp(wasmHash, TableType.LIQUIDATION);
       const liquidations = await fetchLiquidations(`liquidation${wasmHash}`, lastLiquidationTimestamp);
-      
+
       for (const liquidation of liquidations) {
         const assetSymbol = contractMapping.get(liquidation.contract_id);
         if (!assetSymbol) {
           console.warn(`No asset found for contract ID ${liquidation.contract_id}`);
           continue;
         }
-        
+
         await processLiquidations([liquidation], assetSymbol);
       }
-      
+
       if (liquidations.length > 0) {
         const newLastTimestamp = Math.max(...liquidations.map((liq) => liq.timestamp));
         await updateLastQueriedTimestamp(wasmHash, TableType.LIQUIDATION, newLastTimestamp);
       }
 
-      if(nLiquidated > 0){
+      if (nLiquidated > 0) {
         console.log(`${nLiquidated} were liquidated, scheduling requery in 20s`);
         setTimeout(() => updateCDPs(wasmHash), 20000);
       }
     }
   } catch (error) {
-    console.error("Error updating CDPs:", error);
+    const axiosError = error as AxiosError;
+    const errorMessage = axiosError.response
+      ? `Error updating CDPs: ${axiosError.response.status} - ${axiosError.response.statusText} - ${axiosError.response.data}`
+      : `Error updating CDPs: ${axiosError.message || 'Unknown error'}`;
+    console.error(errorMessage);
   }
 }
 
