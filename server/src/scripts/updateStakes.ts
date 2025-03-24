@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { Staker } from "../entity/Staker";
 import dotenv from "dotenv";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { assetConfig } from "../config/AssetConfig";
 import { AssetService } from "../services/assetService";
 import { StakerService } from "../services/stakerService";
@@ -49,8 +49,12 @@ async function fetchStakes(
 
     return Array.from(latestEntries.values());
   } catch (error) {
-    console.error("Error fetching stakes:", error);
-    throw error;
+    const axiosError = error as AxiosError;
+    const errorMessage = axiosError.response
+      ? `Error fetching stakes: ${axiosError.response.status} - ${axiosError.response.statusText} - - ${axiosError.response.data}`
+      : `Error fetching stakes ${axiosError.message || 'Unknown error'}`;
+    console.error(errorMessage);
+    return [];
   }
 }
 import { StakerHistoryService } from "../services/stakerHistoryService";
@@ -194,7 +198,12 @@ async function updateStakes() {
       console.log(`Updated ${stakes.length} stakes for wasm hash ${wasmHash}`);
     }
   } catch (error) {
-    console.error("Error updating stakes:", error);
+    const axiosError = error as AxiosError;
+    const errorMessage = axiosError.response
+      ? `Error updating stakes: ${axiosError.response.status} - ${axiosError.response.statusText} - - ${axiosError.response.data}`
+      : `Error updating stakes ${axiosError.message || 'Unknown error'}`;
+    console.error(errorMessage);
+    throw error;
   }
 }
 
