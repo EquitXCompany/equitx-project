@@ -154,12 +154,6 @@ function New() {
           />
         </Box>
         <Box sx={{ mt: 2 }}>
-          <label htmlFor="asset_lent" >Amount of {metadata.symbolAsset} you'll mint:</label>
-          <input
-            type="number"
-            name="asset_lent"
-            value={toLend.toFixed(decimalsAsset)}
-            onChange={(e) => handleToLendChange(e.target.value)} />
           <TextField
             fullWidth
             label={`Amount of ${metadata.symbolAsset} you'll mint:`}
