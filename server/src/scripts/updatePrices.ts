@@ -26,7 +26,7 @@ async function checkAndFreezeCDPs(
   minimumCollateralizationRatio = minimumCollateralizationRatio / 1e4;
 
   if (!liquidityPool) {
-    throw new Error(`No liquidity pool found for ${asset}`);
+    throw new Error(`No liquidity pool found for ${asset} for check and freeze`);
   }
 
   const cdps = await cdpRepository.find({
@@ -84,14 +84,9 @@ async function updatePrices() {
     let XLMPriceUpdated = false;
     assets.forEach(async (asset, idx) => {
       const assetSymbol = asset.symbol;
-      const assetPoolAddress = asset.pool_address;
       // Special case for XLM as it has no pool address of its own
       if (assetSymbol === "XLM") {
         // We'll fill the XLM price on the first asset
-        return;
-      }
-      if (!assetPoolAddress) {
-        console.error(`No pool address found for ${assetSymbol}`);
         return;
       }
       const liquidityPool = await liquidityPoolService.findOne(asset.symbol);
@@ -102,7 +97,7 @@ async function updatePrices() {
       try {
         const { price: xlmPrice, timestamp: XLMtimestamp } = await getLatestPriceData(
           "XLM",
-          assetPoolAddress,
+          liquidityPool.pool_address,
         );
         if (!XLMPriceUpdated) {
           priceHistoryService.insert("XLM", xlmPrice, XLMtimestamp);
@@ -110,7 +105,7 @@ async function updatePrices() {
         }
         const { price: priceValue, timestamp } = await getLatestPriceData(
           assetSymbol,
-          assetPoolAddress
+          liquidityPool.pool_address
         );
         if (!priceValue) {
           console.error(`No price data found for ${assetSymbol}`);

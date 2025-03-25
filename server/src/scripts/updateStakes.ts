@@ -146,9 +146,13 @@ async function updateLastQueriedTimestamp(
 async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map<string, Map<string, string>>> {
   const mapping = new Map<string, Map<string, string>>();
   mapping.set(X_WASM_HASH, new Map());
-  const assets = await assetService.findAll();
+  const assets = await assetService.findAllWithPools();
   assets.forEach((asset: any) => {
-    mapping.get(X_WASM_HASH)!.set(asset.pool_address, asset.symbol);
+    if (!asset.liquidityPool) {
+      console.warn(`No pool address found for asset ${asset.symbol} in updateStakes`);
+      return;
+    }
+    mapping.get(X_WASM_HASH)!.set(asset.liquidityPool.pool_address, asset.symbol);
   });
 
   return mapping;
