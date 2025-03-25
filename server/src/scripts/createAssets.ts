@@ -41,7 +41,7 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
 
         console.log(`Created asset ${symbol} with associated tables`);
       } else {
-        console.log(`Asset ${symbol} already exists, skipping`);
+        console.log(`Asset ${symbol} already exists in database, skipping`);
       }
     }
     //create special XLM asset for tracking XLM price
