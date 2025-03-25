@@ -3,8 +3,7 @@ import { CDP, CDPStatus } from "../entity/CDP";
 import BigNumber from "bignumber.js";
 import dotenv from "dotenv";
 import axios, { AxiosError } from "axios";
-import { getLatestPriceData, getTotalXAsset, serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
-import { assetConfig } from "../config/AssetConfig";
+import { getTotalXAsset, serverAuthenticatedContractCall } from "../utils/serverContractHelpers";
 import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 import { TableType } from "../entity/LastQueriedTimestamp";
 import { CDPService } from "../services/cdpService";
@@ -13,7 +12,7 @@ import { AssetService } from "../services/assetService";
 import { CDPHistoryAction } from "../entity/CDPHistory";
 import { CDPHistoryService } from "../services/cdpHistoryService";
 import { LiquidationService } from "../services/liquidationService";
-import { DECIMALS_XLM } from "../config/constants";
+import { DECIMALS_XLM, X_WASM_HASH } from "../config/constants";
 
 dotenv.config();
 
@@ -255,23 +254,22 @@ async function updateLastQueriedTimestamp(
   await timestampService.updateTimestamp(wasmHash, tableType, timestamp);
 }
 
-async function getWasmHashToLiquidityPoolMapping(): Promise<Map<string, Map<string, string>>> {
+async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map<string, Map<string, string>>> {
   const mapping = new Map<string, Map<string, string>>();
-
-  for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
-    if (!mapping.has(assetDetails.wasm_hash)) {
-      mapping.set(assetDetails.wasm_hash, new Map());
-    }
-    mapping.get(assetDetails.wasm_hash)!.set(assetDetails.pool_address, assetSymbol);
-  }
+  mapping.set(X_WASM_HASH, new Map());
+  const assets = await assetService.findAll();
+  assets.forEach((asset: any) => {
+    mapping.get(X_WASM_HASH)!.set(asset.pool_address, asset.symbol);
+  });
 
   return mapping;
 }
 
 async function updateCDPs(wasmHashToUpdate: string | null = null) {
   try {
+    const assetService = await AssetService.create();
     const cdpRepository = AppDataSource.getRepository(CDP);
-    const wasmHashMapping = await getWasmHashToLiquidityPoolMapping();
+    const wasmHashMapping = await getWasmHashToLiquidityPoolMapping(assetService);
 
     for (const [wasmHash, contractMapping] of wasmHashMapping) {
       if (wasmHashToUpdate !== null && wasmHashToUpdate !== wasmHash) {
