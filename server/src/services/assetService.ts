@@ -20,6 +20,12 @@ export class AssetService {
     return this.assetRepository.find();
   }
 
+  async findAllWithPools(): Promise<Asset[]> {
+    return this.assetRepository.createQueryBuilder("asset")
+      .leftJoinAndSelect("asset.liquidityPool", "liquidityPool")
+      .getMany();
+  }
+
   async findOne(symbol: string): Promise<Asset | null> {
     return this.assetRepository.findOne({ where: { symbol } });
   }

@@ -9,7 +9,6 @@ import BigNumber from "bignumber.js";
 import { RISK_THRESHOLDS } from "../config/thresholds";
 import { LiquidityPool } from "../entity/LiquidityPool";
 import { HealthScoreService } from "./healthScoreService";
-import { assetConfig } from "../config/AssetConfig";
 
 const SECONDS_PER_YEAR = 31536000;
 
@@ -199,7 +198,7 @@ export class CDPMetricsService {
       .toString();
 
     // Calculate interest metrics
-    const totalOutstandingInterest = await this.calculateTotalOutstandingInterest(activeCDPs, assetConfig[asset.symbol].pool_address);
+    const totalOutstandingInterest = await this.calculateTotalOutstandingInterest(activeCDPs, liquidityPool.pool_address);
     const totalPaidInterest = this.calculateTotalPaidInterest(activeCDPs);
 
     const avgCollRatio = this.calculateCollateralRatio(activeCDPs);

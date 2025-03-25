@@ -34,10 +34,6 @@ export class Asset {
   @Column({ type: "numeric", precision: 30, scale: 0 }) 
   last_xlm_price!: string;
 
-  // The asset's pool contract address
-  @Column({ type: "varchar", length: 56 })
-  pool_address?: string;
-
   @OneToMany(() => CDP, (cdp) => cdp.asset)
   cdps!: CDP[];
 
