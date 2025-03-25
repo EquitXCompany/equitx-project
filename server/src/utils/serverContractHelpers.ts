@@ -4,6 +4,7 @@ import * as bip39 from "bip39";
 import { derivePath } from "ed25519-hd-key";
 import BigNumber from "bignumber.js";
 import { assetConfig } from "../config/AssetConfig";
+import { Client as ContractClient } from '@stellar/stellar-sdk/contract';
 
 // Reverse mapping from pool address to asset symbol
 const poolAddressToSymbol: Record<string, string> = Object.entries(
@@ -49,47 +50,6 @@ interface DataFeedClient {
   lastprice: (params: any) => Promise<any>;
 }
 
-async function getClientByPoolAddress(
-  poolAddress: string
-): Promise<XAssetClient | DataFeedClient> {
-  const symbol = poolAddressToSymbol[poolAddress];
-
-  if (!symbol) {
-    throw new Error(`No symbol found for pool address: ${poolAddress}`);
-  }
-
-  const module = await import(/* @vite-ignore */ symbol);
-  return new module.Client({
-    networkPassphrase:
-      process.env.SERVER_NETWORK_PASSPHRASE ??
-      "Test SDF Network ; September 2015",
-    contractId: poolAddress,
-    rpcUrl:
-      process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
-    publicKey,
-  });
-}
-
-async function getClient(
-  contractId: string,
-  clientType: "xasset" | "datafeed"
-): Promise<XAssetClient | DataFeedClient> {
-  if (clientType === "xasset") {
-    return await getClientByPoolAddress(contractId);
-  } else {
-    const Client = await import("data_feed");
-    return new Client.Client({
-      networkPassphrase:
-        process.env.SERVER_NETWORK_PASSPHRASE ??
-        "Test SDF Network ; September 2015",
-      contractId,
-      rpcUrl:
-        process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
-      publicKey,
-    }) as DataFeedClient;
-  }
-}
-
 export async function serverAuthenticatedContractCall(
   contractMethod: string,
   params: any,
@@ -97,12 +57,20 @@ export async function serverAuthenticatedContractCall(
   clientType: "xasset" | "datafeed" = "xasset"
 ) {
   let tx;
-  const client = await getClient(contractId, clientType);
+  const client = await ContractClient.from({
+    networkPassphrase:
+      process.env.SERVER_NETWORK_PASSPHRASE ??
+      "Test SDF Network ; September 2015",
+    contractId,
+    rpcUrl:
+      process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org",
+    publicKey,
+  });;
 
   let needsSign = true;
   // Type guard to check client type
   if (clientType === "xasset") {
-    const xassetClient = client as XAssetClient;
+    const xassetClient = client as unknown as XAssetClient;
     switch (contractMethod) {
       case "freeze_cdp":
         tx = await xassetClient.freeze_cdp(params);
@@ -142,7 +110,7 @@ export async function serverAuthenticatedContractCall(
         throw new Error(`Unsupported xasset method: ${contractMethod}`);
     }
   } else {
-    const datafeedClient = client as DataFeedClient;
+    const datafeedClient = client as unknown as DataFeedClient;
     switch (contractMethod) {
       case "lastprice":
         needsSign = false;
