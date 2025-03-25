@@ -4,12 +4,10 @@ import { AppDataSource } from "../ormconfig";
 import { AssetService } from "../services/assetService";
 import { PriceHistoryService } from "../services/priceHistoryService";
 import { LiquidityPoolService } from "../services/liquidityPoolService";
-import { assetConfig } from "../config/AssetConfig";
 import {
   getLatestPriceData,
   serverAuthenticatedContractCall,
 } from "../utils/serverContractHelpers";
-import { PriceHistory } from "../entity/PriceHistory";
 import { CDP, CDPStatus } from "../entity/CDP";
 import { Asset } from "entity/Asset";
 import { CDPHistoryService } from "../services/cdpHistoryService";
@@ -45,7 +43,6 @@ async function checkAndFreezeCDPs(
     console.log(`debt value is ${debtValue}, collateral value is ${collateralValue}`);
     console.log(`current ratio is ${currentRatio}`);
     console.log(`minimum collateralization ratio is ${minimumCollateralizationRatio}`);*/
-
     if (currentRatio.isLessThan(minimumCollateralizationRatio)) {
       console.log(
         `CDP ${
@@ -83,32 +80,43 @@ async function updatePrices() {
     const assetService = await AssetService.create();
     const priceHistoryService = await PriceHistoryService.create();
     const liquidityPoolService = await LiquidityPoolService.create();
-    let i = 0;
-    for (const [assetSymbol, assetDetails] of Object.entries(assetConfig)) {
-      const liquidityPool = await liquidityPoolService.findOne(assetSymbol);
-      if (!liquidityPool) {
-        console.error(`No liquidity pool found for ${assetSymbol}`);
-        continue;
+    const assets = await assetService.findAll();
+    let XLMPriceUpdated = false;
+    assets.forEach(async (asset, idx) => {
+      const assetSymbol = asset.symbol;
+      const assetPoolAddress = asset.pool_address;
+      // Special case for XLM as it has no pool address of its own
+      if (assetSymbol === "XLM") {
+        // We'll fill the XLM price on the first asset
+        return;
       }
-
+      if (!assetPoolAddress) {
+        console.error(`No pool address found for ${assetSymbol}`);
+        return;
+      }
+      const liquidityPool = await liquidityPoolService.findOne(asset.symbol);
+      if (!liquidityPool || liquidityPool == null) {
+        console.error(`No liquidity pool found for ${asset.symbol}`);
+        return;
+      }
       try {
-        const { price: xlmPrice } = await getLatestPriceData(
+        const { price: xlmPrice, timestamp: XLMtimestamp } = await getLatestPriceData(
           "XLM",
-          assetDetails.pool_address,
+          assetPoolAddress,
         );
+        if (!XLMPriceUpdated) {
+          priceHistoryService.insert("XLM", xlmPrice, XLMtimestamp);
+          XLMPriceUpdated = true;
+        }
         const { price: priceValue, timestamp } = await getLatestPriceData(
           assetSymbol,
-          assetDetails.pool_address
+          assetPoolAddress
         );
         if (!priceValue) {
           console.error(`No price data found for ${assetSymbol}`);
-          continue;
+          return;
         }
         priceHistoryService.insert(assetSymbol, priceValue, timestamp);
-        if(i === 0){
-          priceHistoryService.insert("XLM", xlmPrice, timestamp);
-          i++;
-        }
 
         const asset = await assetService.findOne(assetSymbol);
         if (asset) {
@@ -139,7 +147,7 @@ async function updatePrices() {
       } catch (error) {
         console.error(`Error updating price for ${assetSymbol}:`, error);
       }
-    }
+    });
   } catch (error) {
     console.error("Error in updatePrices:", error);
   }

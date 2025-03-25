@@ -28,6 +28,7 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
         asset = new Asset();
         asset.symbol = symbol;
         asset.feed_address = config.feed_address;
+        asset.pool_address = config.pool_address;
         asset.price = price.toString();
         asset.last_xlm_price= xlmPrice.toString();
         asset = await assetService.insert(asset);
