@@ -3,19 +3,7 @@ import { basicNodeSigner } from "@stellar/stellar-sdk/contract";
 import * as bip39 from "bip39";
 import { derivePath } from "ed25519-hd-key";
 import BigNumber from "bignumber.js";
-import { assetConfig } from "../config/AssetConfig";
 import { Client as ContractClient } from '@stellar/stellar-sdk/contract';
-
-// Reverse mapping from pool address to asset symbol
-const poolAddressToSymbol: Record<string, string> = Object.entries(
-  assetConfig
-).reduce(
-  (accumulator, [symbol, details]) => {
-    accumulator[details.pool_address] = symbol;
-    return accumulator;
-  },
-  {} as Record<string, string>
-);
 
 const serverSecretKey = process.env.SERVER_SECRET_KEY;
 
