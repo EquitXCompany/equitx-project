@@ -5,7 +5,11 @@ import * as os from "os";
 import simpleGit from "simple-git";
 import { assetConfig } from "../config/AssetConfig";
 import { spawnSync } from "child_process";
-import { SERVER_KEYPAIR } from "../utils/serverContractHelpers";
+import { getLatestPriceData, SERVER_KEYPAIR } from "../utils/serverContractHelpers";
+import { AssetService } from "../services/assetService";
+import { Asset } from "../entity/Asset";
+import { LiquidityPoolService } from "../services/liquidityPoolService";
+import { LiquidityPool } from "../entity/LiquidityPool";
 
 interface DeployAssetRequest {
   symbol: string;
@@ -53,117 +57,120 @@ const findPrebuiltContractsPath = (filename: string) => {
   );
 };
 
-const commitAndPushChanges = async (symbol: string) => {
-  try {
-    // Get the repo root that works in both Docker and local development
-    const repoRoot = determineRepoRoot();
+// const commitAndPushChanges = async (symbol: string) => {
+//   try {
+//     // Get the repo root that works in both Docker and local development
+//     const repoRoot = determineRepoRoot();
 
-    // Create SSH directory under the server directory
-    const sshDir = path.join(
-      process.cwd(), // This will be the server directory in both envs
-      ".ssh-" + Math.random().toString(36).substring(2, 10)
-    );
+//     // Create SSH directory under the server directory
+//     const sshDir = path.join(
+//       process.cwd(), // This will be the server directory in both envs
+//       ".ssh-" + Math.random().toString(36).substring(2, 10)
+//     );
 
-    fs.mkdirSync(sshDir, { recursive: true, mode: 0o700 });
+//     fs.mkdirSync(sshDir, { recursive: true, mode: 0o700 });
 
-    // Write the SSH key to a file
-    const keyPath = path.join(sshDir, "id_ed25519");
+//     // Write the SSH key to a file
+//     const keyPath = path.join(sshDir, "id_ed25519");
 
-    // Ensure the key has proper format with headers if they're missing
-    let sshKey = process.env.GITHUB_SSH_KEY || "";
-    // Check if the key contains literal \n characters but not actual newlines
-    // This would be the case if someone manually typed \n in the .env file
-    if (sshKey.includes("\\n") && !sshKey.includes("\n-----")) {
-      sshKey = sshKey.replace(/\\n/g, "\n");
-    }
+//     // Ensure the key has proper format with headers if they're missing
+//     let sshKey = process.env.GITHUB_SSH_KEY || "";
+//     // Check if the key contains literal \n characters but not actual newlines
+//     // This would be the case if someone manually typed \n in the .env file
+//     if (sshKey.includes("\\n") && !sshKey.includes("\n-----")) {
+//       sshKey = sshKey.replace(/\\n/g, "\n");
+//     }
 
-    if (!sshKey.includes("-----BEGIN") && !sshKey.includes("-----END")) {
-      // For OpenSSH format
-      sshKey = `-----BEGIN OPENSSH PRIVATE KEY-----\n${sshKey}\n-----END OPENSSH PRIVATE KEY-----`;
-    }
-    // Ensure there's a trailing newline
-    if (!sshKey.endsWith("\n")) {
-      sshKey += "\n";
-    }
+//     if (!sshKey.includes("-----BEGIN") && !sshKey.includes("-----END")) {
+//       // For OpenSSH format
+//       sshKey = `-----BEGIN OPENSSH PRIVATE KEY-----\n${sshKey}\n-----END OPENSSH PRIVATE KEY-----`;
+//     }
+//     // Ensure there's a trailing newline
+//     if (!sshKey.endsWith("\n")) {
+//       sshKey += "\n";
+//     }
 
-    fs.writeFileSync(keyPath, sshKey, { mode: 0o600 });
+//     fs.writeFileSync(keyPath, sshKey, { mode: 0o600 });
 
-    // Write known hosts
-    const knownHostsPath = path.join(sshDir, "known_hosts");
-    const githubKnownHosts =
-      process.env.GITHUB_KNOWN_HOSTS ||
-      "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==";
+//     // Write known hosts
+//     const knownHostsPath = path.join(sshDir, "known_hosts");
+//     const githubKnownHosts =
+//       process.env.GITHUB_KNOWN_HOSTS ||
+//       "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==";
 
-    fs.writeFileSync(knownHostsPath, githubKnownHosts, { mode: 0o600 });
+//     fs.writeFileSync(knownHostsPath, githubKnownHosts, { mode: 0o600 });
 
-    const git = simpleGit({
-      baseDir: repoRoot,
-    });
-    // Set environment variables for SSH
-    git.env({
-      GIT_SSH_COMMAND: `ssh -i ${keyPath} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${knownHostsPath} -o User=git -v`,
-    });
+//     const git = simpleGit({
+//       baseDir: repoRoot,
+//     });
+//     // Set environment variables for SSH
+//     git.env({
+//       GIT_SSH_COMMAND: `ssh -i ${keyPath} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${knownHostsPath} -o User=git -v`,
+//     });
 
-    await git.addConfig("user.name", "EquitX Deployment");
-    await git.addConfig("user.email", "equitx-bot@users.noreply.github.com");
+//     await git.addConfig("user.name", "EquitX Deployment");
+//     await git.addConfig("user.email", "equitx-bot@users.noreply.github.com");
 
-    // Ensure remote uses the correct SSH format
-    const remotes = await git.getRemotes(true);
-    const originUrl = remotes.find((r) => r.name === "origin")?.refs.fetch;
-    if (originUrl) {
-      if (!originUrl.startsWith("git@")) {
-        const repoPath = originUrl.includes("github.com/")
-          ? originUrl.split("github.com/")[1]
-          : originUrl.split("/").slice(-2).join("/").replace(".git", "") +
-            ".git";
-        await git.remote(["set-url", "origin", `git@github.com:${repoPath}`]);
-      }
-    }
+//     // Ensure remote uses the correct SSH format
+//     const remotes = await git.getRemotes(true);
+//     const originUrl = remotes.find((r) => r.name === "origin")?.refs.fetch;
+//     if (originUrl) {
+//       if (!originUrl.startsWith("git@")) {
+//         const repoPath = originUrl.includes("github.com/")
+//           ? originUrl.split("github.com/")[1]
+//           : originUrl.split("/").slice(-2).join("/").replace(".git", "") +
+//           ".git";
+//         await git.remote(["set-url", "origin", `git@github.com:${repoPath}`]);
+//       }
+//     }
 
-    await git.cwd(repoRoot).checkIsRepo();
+//     await git.cwd(repoRoot).checkIsRepo();
 
-    const status = await git.status();
+//     const status = await git.status();
 
-    if (status.modified.length === 0 && status.not_added.length === 0) {
-      console.log("No changes to commit");
-      return;
-    }
+//     if (status.modified.length === 0 && status.not_added.length === 0) {
+//       console.log("No changes to commit");
+//       return;
+//     }
 
-    const configFiles = [
-      "server/src/config/AssetConfig.ts",
-      "src/contracts/contractConfig.ts",
-      "src/contracts/util.ts",
-      "environments.toml",
-    ];
+//     const configFiles = [
+//       "server/src/config/AssetConfig.ts",
+//       "src/contracts/contractConfig.ts",
+//       "src/contracts/util.ts",
+//       "environments.toml",
+//     ];
 
-    await git.add(configFiles);
+//     await git.add(configFiles);
 
-    const commitMessage = `feat: add ${symbol} asset configuration`;
-    const commitResult = await git.commit(commitMessage);
-    console.log(`Changes committed: ${commitResult.commit}`);
+//     const commitMessage = `feat: add ${symbol} asset configuration`;
+//     const commitResult = await git.commit(commitMessage);
+//     console.log(`Changes committed: ${commitResult.commit}`);
 
-    await git.push("origin", "main");
-    console.log(`Successfully pushed ${symbol} config changes to GitHub`);
+//     await git.push("origin", "main");
+//     console.log(`Successfully pushed ${symbol} config changes to GitHub`);
 
-    // Improved cleanup to ensure all temporary files are removed
-    try {
-      fs.rmSync(sshDir, { recursive: true, force: true });
-      console.log("Successfully cleaned up temporary SSH directory");
-    } catch (err) {
-      console.warn("Failed to clean up temporary SSH files:", err);
-    }
-  } catch (error) {
-    console.error("Error in Git operations:", error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to update GitHub: ${error.message}`);
-    } else {
-      throw new Error("Failed to update GitHub: Unknown error");
-    }
-  }
-};
+//     // Improved cleanup to ensure all temporary files are removed
+//     try {
+//       fs.rmSync(sshDir, { recursive: true, force: true });
+//       console.log("Successfully cleaned up temporary SSH directory");
+//     } catch (err) {
+//       console.warn("Failed to clean up temporary SSH files:", err);
+//     }
+//   } catch (error) {
+//     console.error("Error in Git operations:", error);
+//     if (error instanceof Error) {
+//       throw new Error(`Failed to update GitHub: ${error.message}`);
+//     } else {
+//       throw new Error("Failed to update GitHub: Unknown error");
+//     }
+//   }
+// };
 
 // Deploy a new asset and update configs
 export const deployAsset: RequestHandler = async (req, res) => {
+  const assetService = await AssetService.create();
+  const liquidityPoolService = await LiquidityPoolService.create();
+
   try {
     const {
       symbol,
@@ -313,42 +320,61 @@ export const deployAsset: RequestHandler = async (req, res) => {
       );
     }
 
-    // Get all existing contract IDs
-    const configPath = path.resolve(
-      __dirname,
-      "../../../src/contracts/contractConfig.ts"
+    // TODO Add the asset to the assets table
+    console.log("Contract ID: ", contractId);
+    const { price } = await getLatestPriceData(
+      symbol,
+      contractId
     );
-
-    let configContent;
-    try {
-      configContent = fs.readFileSync(configPath, "utf8");
-    } catch (err) {
-      console.warn(
-        `Could not read ${configPath}, using just the new contract ID`
-      );
-      configContent = "";
+    const { price: xlmPrice } = await getLatestPriceData(
+      "XLM",
+      contractId
+    );
+    // Create Asset
+    const existingAsset = await assetService.findOne(`x${symbol}`);
+    console.log("Existing asset", existingAsset)
+    if (!existingAsset) {
+      console.log("Creating asset in database")
+      let asset = new Asset();
+      asset.symbol = `x${symbol}`;
+      asset.feed_address = feedAddress;
+      asset.price = price.toString();
+      asset.last_xlm_price = xlmPrice.toString();
+      asset = await assetService.insert(asset);
+      // Create LiquidityPool
+      const liquidityPool = new LiquidityPool();
+      liquidityPool.asset = asset;
+      liquidityPool.pool_address = contractId;
+      liquidityPool.minimum_collateralization_ratio = minCollateralRatio * 100;
+      await liquidityPoolService.insert(liquidityPool);
     }
+    // TODO Add a liquidity pool with the pool_address as contract di
+    // TODO kill contractConfig file
+    // TODO kill AssetConfig file
+    // TODO stop updating environments.toml file
 
-    const contractIds = [
-      ...configContent.matchAll(/x[A-Z]+:\s*"([A-Z0-9]+)"/g),
-    ].map((match) => match[1]);
-    contractIds.push(contractId);
-
+    // const liquidityPools = await liquidityPoolService.findAll()
+    // const contractIds = liquidityPools.map((lp) => lp.pool_address);
+    // console.log("DB contract IDs")
+    // console.log(contractIds)
     // Deploy to Mercury with Mercury-enabled build
     const mercuryArgs = [
       "mercury-cli",
-      "--key",
-      process.env.MERCURY_KEY!,
+      "--jwt",
+      process.env.RETROSHADE_API_TOKEN!,
       "--mainnet",
       isTestnet ? "false" : "true",
       "retroshade",
       "--project",
       "equitx",
-      ...contractIds.flatMap((id) => ["--contracts", id]),
+      "--contracts",
+      contractId,
       "--target",
       mercuryWasmPath,
     ];
 
+    console.log(mercuryArgs[0]);
+    console.log(mercuryArgs.slice(1));
     const mercuryResult = spawnSync(mercuryArgs[0], mercuryArgs.slice(1), {
       encoding: "utf8",
     });
@@ -359,6 +385,8 @@ export const deployAsset: RequestHandler = async (req, res) => {
       );
     }
 
+    console.log(mercuryResult)
+
     // Extract WASM hash from Mercury output
     const wasmHash = mercuryResult.stdout.match(/wasm hash: ([a-f0-9]+)/)?.[1];
     if (!wasmHash) {
@@ -366,57 +394,56 @@ export const deployAsset: RequestHandler = async (req, res) => {
     }
 
     // Keep track of update failures
-    const updateErrors = [];
+    // const updateErrors = [];
 
-    // Update AssetConfig.ts
-    try {
-      await updateAssetConfig(symbol, contractId, wasmHash, feedAddress);
-    } catch (err) {
-      updateErrors.push(`Failed to update AssetConfig.ts: ${err}`);
-    }
+    // // Update AssetConfig.ts
+    // try {
+    //   await updateAssetConfig(symbol, contractId, wasmHash, feedAddress);
+    // } catch (err) {
+    //   updateErrors.push(`Failed to update AssetConfig.ts: ${err}`);
+    // }
 
-    // Update frontend config if the file exists in the container
-    try {
-      await updateFrontendConfig(symbol, contractId);
-    } catch (err) {
-      updateErrors.push(`Failed to update frontend config: ${err}`);
-    }
+    // // Update frontend config if the file exists in the container
+    // try {
+    //   await updateFrontendConfig(symbol, contractId);
+    // } catch (err) {
+    //   updateErrors.push(`Failed to update frontend config: ${err}`);
+    // }
 
-    // Update environments.toml if it exists in the container
-    try {
-      await updateEnvironmentsToml(symbol, contractId);
-    } catch (err) {
-      updateErrors.push(`Failed to update environments.toml: ${err}`);
-    }
+    // // Update environments.toml if it exists in the container
+    // try {
+    //   await updateEnvironmentsToml(symbol, contractId);
+    // } catch (err) {
+    //   updateErrors.push(`Failed to update environments.toml: ${err}`);
+    // }
 
-    // Commit and push to github
-    let gitPushError = null;
-    try {
-      await commitAndPushChanges(symbol);
-    } catch (err) {
-      gitPushError = `Failed to commit changes to GitHub: ${err}`;
-      updateErrors.push(gitPushError);
-    }
+    // // Commit and push to github
+    // let gitPushError = null;
+    // try {
+    //   await commitAndPushChanges(symbol);
+    // } catch (err) {
+    //   gitPushError = `Failed to commit changes to GitHub: ${err}`;
+    //   updateErrors.push(gitPushError);
+    // }
 
-    // If there were update errors but deployment succeeded
-    if (updateErrors.length > 0) {
-      res.status(207).json({
-        success: true,
-        contractId,
-        wasmHash,
-        message:
-          "Contract deployed successfully but failed to update configurations",
-        errors: updateErrors,
-        details:
-          "Please manually update configurations with the provided contract ID and WASM hash",
-      });
-      return;
-    }
+    // // If there were update errors but deployment succeeded
+    // if (updateErrors.length > 0) {
+    //   res.status(207).json({
+    //     success: true,
+    //     contractId,
+    //     wasmHash,
+    //     message:
+    //       "Contract deployed successfully but failed to update configurations",
+    //     errors: updateErrors,
+    //     details:
+    //       "Please manually update configurations with the provided contract ID and WASM hash",
+    //   });
+    //   return;
+    // }
 
     res.status(200).json({
       success: true,
       contractId,
-      wasmHash,
       message: `Deployed x${symbol} contract successfully`,
     });
   } catch (error: any) {
