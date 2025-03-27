@@ -5,7 +5,6 @@ import { CDPService } from "../services/cdpService";
 import { CDPMetricsService } from "../services/cdpMetricsService";
 import { AssetService } from "../services/assetService";
 import { ProtocolStatsService } from "../services/protocolStatsService";
-import { assetConfig } from "../config/AssetConfig";
 
 async function calculateTVLMetrics() {
   const tvlService = await TVLService.create();
@@ -37,9 +36,9 @@ export async function calculateCDPMetrics() {
   const cdpMetricsService = await CDPMetricsService.create();
   const assetService = await AssetService.create();
 
-  for (const [assetSymbol, _assetDetails] of Object.entries(assetConfig)) {
-    const asset = await assetService.findOne(assetSymbol);
-    if(!asset) continue;
+  const assets = await assetService.findAllWithPools()
+  // For assets with liquidity pools (will filter out the special XLM asset)
+  assets.filter(asset => asset.liquidityPool != null).forEach(async asset => {
     try {
       await cdpMetricsService.updateForAsset(asset);
     } catch (error) {
@@ -48,7 +47,7 @@ export async function calculateCDPMetrics() {
         error
       );
     }
-  }
+  });
 }
 
 async function calculateProtocolStats() {
