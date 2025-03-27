@@ -353,10 +353,11 @@ export const deployAsset: RequestHandler = async (req, res) => {
     // TODO kill AssetConfig file
     // TODO stop updating environments.toml file
 
-    // const liquidityPools = await liquidityPoolService.findAll()
-    // const contractIds = liquidityPools.map((lp) => lp.pool_address);
-    // console.log("DB contract IDs")
-    // console.log(contractIds)
+    const liquidityPools = await liquidityPoolService.findAll()
+    const contractIds = liquidityPools.map((lp) => lp.pool_address);
+    console.log("DB contract IDs")
+    console.log(contractIds)
+    console.log("Includes contract ID: ", contractIds.includes(contractId))
     // Deploy to Mercury with Mercury-enabled build
     const mercuryArgs = [
       "mercury-cli",
@@ -367,8 +368,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
       "retroshade",
       "--project",
       "equitx",
-      "--contracts",
-      contractId,
+      ...contractIds.flatMap((id) => ["--contracts", id]),
       "--target",
       mercuryWasmPath,
     ];
