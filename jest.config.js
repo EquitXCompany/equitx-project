@@ -8,11 +8,12 @@ export default {
       'ts-jest',
       {
         useESM: true,
-      tsconfig: 'tsconfig.json'
+        tsconfig: 'tsconfig.json'
       }
     ]
   },
   moduleNameMapper: {
+    'constants': '<rootDir>/__mocks__/constantsMock.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     "\\.(css|less|scss|sass)$": "identity-obj-proxy"
   },

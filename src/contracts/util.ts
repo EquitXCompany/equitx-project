@@ -1,13 +1,11 @@
-export const rpcUrl =
-  import.meta.env.PUBLIC_RPC_URL ?? "http://localhost:8000/rpc";
-export const networkPassphrase =
-  import.meta.env.PUBLIC_NETWORK_PASSPHRASE ??
-  "Standalone Network ; February 2017";
-
+import { PUBLIC_RPC_URL, PUBLIC_NETWORK_PASSPHRASE } from "../constants";
 import { contractMapping, XAssetSymbol } from "./contractConfig";
 import { Client, Errors } from "xBTC";
 export type XAssetContract = Client;
 export const ContractErrors = Errors;
+
+const rpcUrl = PUBLIC_RPC_URL;
+const networkPassphrase = PUBLIC_NETWORK_PASSPHRASE;
 
 const contractClientMap = {
   xBTC: new Client({

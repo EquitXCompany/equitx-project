@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { PUBLIC_API_URL } from '../constants';
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000",
+  baseURL: PUBLIC_API_URL,
   headers: {
     'Content-Type': 'application/json',
   }
