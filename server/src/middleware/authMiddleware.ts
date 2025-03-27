@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { StrKey } from "@stellar/stellar-sdk";
-import { getAdminAddress } from "../utils/serverContractHelpers";
-import { assetConfig } from "../config/AssetConfig";
 import nacl from "tweetnacl";
-import crypto from "crypto";
+import { ADMIN_PUBLIC_KEY } from "../config/constants";
 
 // Middleware to authenticate admin users
 export const authenticateAdmin = async (
@@ -55,24 +53,15 @@ export const authenticateAdmin = async (
       return;
     }
 
-    try {
-      // Get the first asset symbol and its pool address from assetConfig
-      const firstAssetSymbol = Object.keys(assetConfig)[0];
-      const firstPoolAddress = assetConfig[firstAssetSymbol].pool_address;
-      const admin = await getAdminAddress(firstPoolAddress);
-
-      if (!admin || admin !== publicKey) {
-        res.status(403).json({ error: "Not authorized as admin" });
-        return;
-      }
-
+    // Check if the user is an admin, now that we have verified the signature
+    if (publicKey === ADMIN_PUBLIC_KEY) {
       // User is admin, continue
       next();
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      res.status(500).json({ error: "Failed to verify admin status" });
       return;
     }
+
+    res.status(403).json({ error: "Not authorized as admin" });
+    return;
   } catch (error: any) {
     console.error("Authentication error:", error);
     res.status(500).json({ error: error.message || "Authentication failed" });
