@@ -6,7 +6,7 @@ use loam_sdk::{
 use crate::{storage::Interest, Error, PriceData};
 
 #[loam_sdk::soroban_sdk::contracttype]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 /// Descriptions of these on page 5 of Indigo white paper
 pub enum CDPStatus {
     /// A CDP that is fully collateralized, with its CR value above the xAsset’s MCR. Open CDPs remain fully usable by their lenders.
