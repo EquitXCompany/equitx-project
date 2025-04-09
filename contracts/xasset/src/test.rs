@@ -1,12 +1,12 @@
 #![cfg(test)]
 extern crate std;
-use crate::{collateralized::CDPStatus, data_feed::Asset, Error, PriceData, SorobanContract__, SorobanContract__Client, Token, CDP};
+use crate::{collateralized::CDPStatus, SorobanContract__, SorobanContract__Client};
 
+use crate::data_feed::Client as DataFeedClient;
 // use crate::data_feed::DataFeed;
 
-use loam_sdk::soroban_sdk::{
-    testutils::Address as _, token, Address, Env, String, Symbol
-};
+use crate::data_feed::Asset;
+use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
 fn create_token_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let token = SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
@@ -19,6 +19,8 @@ fn create_token_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let symbol = String::from_str(e, "xUSD");
     let decimals = 7;
     let annual_interest_rate: u32 = 11_00; // 11% interest rate
+    let admin = Address::generate(&e);
+    token.admin_set(&admin);
 
     token.cdp_init(
         &xlm_sac,
@@ -29,7 +31,7 @@ fn create_token_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
         &name,
         &symbol,
         &decimals,
-        &annual_interest_rate
+        &annual_interest_rate,
     );
 
     token
@@ -43,7 +45,10 @@ fn test_token_initialization() {
     let token = create_token_contract(&e);
 
     assert_eq!(token.symbol(), String::from_str(&e, "xUSD"));
-    assert_eq!(token.name(), String::from_str(&e, "United States Dollar xAsset"));
+    assert_eq!(
+        token.name(),
+        String::from_str(&e, "United States Dollar xAsset")
+    );
     assert_eq!(token.decimals(), 7);
 }
 
@@ -52,19 +57,22 @@ fn test_cdp_operations() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let mut token = create_token_contract(&e);
+    let token = create_token_contract(&e);
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
-    // // Mock XLM price
-    // token.set_xlm_contract(&e.register_contract(None, DataFeed::default()));
-    // let xlm_price = 10_000_000_000_000;
-    // token.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
+    // Mock XLM price
+    let xlm_contract = token.xlm_contract();
+    let client = DataFeedClient::new(&e, &xlm_contract);
+    let xlm_price = 10_000_000_000_000;
+    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
 
-    // // Mock USDT price
-    // token.set_asset_contract(&e.register_contract(None, DataFeed::default()));
-    // let usdt_price = 100_000_000_000_000;
-    // token.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+    // Mock USDT price
+    let usdt_contract = token.asset_contract();
+    let client = DataFeedClient::new(&e, &usdt_contract);
+    let usdt_price = 100_000_000_000_000;
+
+    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
 
     // Open CDPs
     token.open_cdp(&alice, &1_700_000_000, &100_000_000);
@@ -118,7 +126,7 @@ fn test_allowances() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let mut token = create_token_contract(&e);
+    let token = create_token_contract(&e);
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
@@ -139,7 +147,7 @@ fn test_stability_pool() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let mut token = create_token_contract(&e);
+    let token = create_token_contract(&e);
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
@@ -173,7 +181,7 @@ fn test_liquidation() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let mut token = create_token_contract(&e);
+    let token = create_token_contract(&e);
     let alice = Address::generate(&e);
 
     // Open CDP for Alice
@@ -208,7 +216,7 @@ fn test_error_handling() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let mut token = create_token_contract(&e);
+    let token = create_token_contract(&e);
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
