@@ -6,12 +6,41 @@ use crate::data_feed::Client as DataFeedClient;
 // use crate::data_feed::DataFeed;
 
 use crate::data_feed::Asset;
-use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
+use loam_sdk::soroban_sdk::{contract, contractimpl, testutils::Address as _, Address, Env, String, Symbol};
+
+// TODO: Rust isn't resolving these macros
+// to make a mock for the xlm_contract and asset_contract
+
+// #[contract]
+// pub struct MockPriceFeed {
+//     last_price: i128,
+// }
+
+// #[contractimpl]
+// impl MockPriceFeed {
+//     pub fn new(last_price: i128) -> Self {
+//         Self { last_price }
+//     }
+// }
+
+// impl MockPriceFeed {
+//     pub fn get_last_price(&self) -> i128 {
+//         self.last_price
+//     }
+// }
+
+// fn create_mock_price_feed(e: &Env, last_price: i128) -> Address {
+//     let mock_contract = MockPriceFeed::new(last_price);
+//     let contract_id = e.register(MockPriceFeed, last_price);
+//     Address::from(contract_id)
+// }
 
 fn create_token_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let token = SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
     let xlm_sac = Address::generate(e);
+    // TODO: this needs to be a mock contract
     let xlm_contract = Address::generate(e);
+    // TODO: this needs to be a mock contract
     let asset_contract = Address::generate(e);
     let pegged_asset = Symbol::new(e, "USDT");
     let min_collat_ratio = 11000;
