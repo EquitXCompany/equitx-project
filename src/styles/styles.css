@@ -32,7 +32,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
   line-height: 1.6;
   margin: 0;
   padding: 0;
@@ -182,7 +182,7 @@ code {
   max-width: 1200px; 
   margin: 0 auto;
   padding: 2rem;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
 }
 
 .grid {
