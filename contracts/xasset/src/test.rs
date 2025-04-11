@@ -2,59 +2,41 @@
 extern crate std;
 use crate::{collateralized::CDPStatus, SorobanContract__, SorobanContract__Client};
 
-use crate::data_feed::Client as DataFeedClient;
-// use crate::data_feed::DataFeed;
-
 use crate::data_feed::Asset;
-use loam_sdk::soroban_sdk::{contract, contractimpl, testutils::Address as _, Address, Env, String, Symbol};
+use loam_sdk::soroban_sdk::token::StellarAssetClient;
+use loam_sdk::soroban_sdk::{contract, contractimpl, testutils::Address as _, Address, Env, String, Symbol, Vec};
+use crate::data_feed::{WASM as DataFeedWasm, Client as DataFeedClient};
 
-// TODO: Rust isn't resolving these macros
-// to make a mock for the xlm_contract and asset_contract
+fn create_token_contract<'a>(e: &Env, xlm_sac: &Address) -> SorobanContract__Client<'a> {
+    // Create the main token contract
+    let token = SorobanContract__Client::new(e, &e.register(SorobanContract__, {}));
+    
+    // Create admin address
+    let admin = Address::generate(&e);
+    token.admin_set(&admin);
+    
+    // Create data feed contract for price oracle
+    let datafeed = {
+        let contract = DataFeedClient::new(e, &e.register(DataFeedWasm, {}));
+        let asset_xlm = Asset::Other(Symbol::new(e, "XLM"));
+        let asset_xusd = Asset::Other(Symbol::new(e, "USDT"));
+        let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
+        contract.admin_set(&admin);
+        contract.sep40_init(&asset_vec, &asset_xusd, &14, &300);
+        contract
+    };
 
-// #[contract]
-// pub struct MockPriceFeed {
-//     last_price: i128,
-// }
-
-// #[contractimpl]
-// impl MockPriceFeed {
-//     pub fn new(last_price: i128) -> Self {
-//         Self { last_price }
-//     }
-// }
-
-// impl MockPriceFeed {
-//     pub fn get_last_price(&self) -> i128 {
-//         self.last_price
-//     }
-// }
-
-// fn create_mock_price_feed(e: &Env, last_price: i128) -> Address {
-//     let mock_contract = MockPriceFeed::new(last_price);
-//     let contract_id = e.register(MockPriceFeed, last_price);
-//     Address::from(contract_id)
-// }
-
-fn create_token_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
-    let token = SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
-    let xlm_sac = Address::generate(e);
-    // TODO: this needs to be a mock contract
-    let xlm_contract = Address::generate(e);
-    // TODO: this needs to be a mock contract
-    let asset_contract = Address::generate(e);
     let pegged_asset = Symbol::new(e, "USDT");
     let min_collat_ratio = 11000;
     let name = String::from_str(e, "United States Dollar xAsset");
     let symbol = String::from_str(e, "xUSD");
     let decimals = 7;
     let annual_interest_rate: u32 = 11_00; // 11% interest rate
-    let admin = Address::generate(&e);
-    token.admin_set(&admin);
 
     token.cdp_init(
         &xlm_sac,
-        &xlm_contract,
-        &asset_contract,
+        &datafeed.address,
+        &datafeed.address,
         &pegged_asset,
         &min_collat_ratio,
         &name,
@@ -71,7 +53,9 @@ fn test_token_initialization() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
 
     assert_eq!(token.symbol(), String::from_str(&e, "xUSD"));
     assert_eq!(
@@ -86,9 +70,15 @@ fn test_cdp_operations() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    // Create and get proper Stellar asset contract for XLM
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
+    let sac = StellarAssetClient::new(&e, &xlm_sac.address());
+    sac.mint(&alice.clone(), &200_0000000);
+    sac.mint(&bob.clone(), &200_0000000);
 
     // Mock XLM price
     let xlm_contract = token.xlm_contract();
@@ -133,7 +123,9 @@ fn test_token_transfers() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
@@ -155,7 +147,9 @@ fn test_allowances() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
@@ -176,7 +170,9 @@ fn test_stability_pool() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
@@ -210,7 +206,9 @@ fn test_liquidation() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
     let alice = Address::generate(&e);
 
     // Open CDP for Alice
@@ -245,7 +243,9 @@ fn test_error_handling() {
     let e = Env::default();
     e.mock_all_auths();
 
-    let token = create_token_contract(&e);
+    let xlm_admin = Address::generate(&e);
+    let xlm_sac = e.register_stellar_asset_contract_v2(xlm_admin);
+    let token = create_token_contract(&e, &xlm_sac.address());
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
