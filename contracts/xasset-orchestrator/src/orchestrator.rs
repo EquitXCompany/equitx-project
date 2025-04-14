@@ -6,7 +6,7 @@ use crate::{
 use loam_sdk::{
     loamstorage,
     soroban_sdk::{
-        self, contracttype, env, token, Address, BytesN, InstanceItem, IntoVal, Lazy, LoamKey,
+        self, contracttype, env, token, Address, BytesN, Env, InstanceItem, IntoVal, Lazy, LoamKey,
         PersistentMap, String, Symbol,
     },
     subcontract,
@@ -59,31 +59,27 @@ impl IsOrchestratorTrait for Storage {
         annual_interest_rate: u32,
     ) -> Result<(), Error> {
         let env = env();
-        let asset_contract = token::Client::new(&env, &asset_contract);
         let wasm_hash = self.wasm_hash.get().unwrap();
 
-        // Check if the asset contract is a valid asset contract
-        if asset_contract.symbol() != symbol {
-            return Err(Error::InvalidAssetContract);
-        }
-
         // Check if the asset contract is already deployed
-        if self.assets.has(symbol) {
+        if self.assets.has(symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
         }
 
         let deployed_contract = create_contract(env, &wasm_hash, symbol.clone());
-        // self.assets.set(symbol, asset_contract.address())?;
+        let client = xasset::Client::new(env, &deployed_contract.unwrap());
 
-        // // Initialize the asset contract
-        // asset_contract.initialize(
-        //     &pegged_asset,
-        //     &min_collat_ratio,
-        //     &name,
-        //     &symbol,
-        //     &decimals,
-        //     &annual_interest_rate,
-        // )?;
+        client.cdp_init(
+            &xlm_sac,
+            &xlm_contract,
+            &asset_contract,
+            &pegged_asset,
+            &min_collat_ratio,
+            &name,
+            &symbol,
+            &decimals,
+            &annual_interest_rate,
+        );
 
         Ok(())
     }
@@ -94,3 +90,19 @@ impl IsOrchestratorTrait for Storage {
         return Ok(self.assets.get(asset_symbol.clone()).unwrap());
     }
 }
+
+// fn deploy_and_init(
+//     owner: &Address,
+//     salt: impl IntoVal<Env, BytesN<32>>,
+//     wasm_hash: BytesN<32>,
+// ) -> Result<Address, Error> {
+//     // Deploy the contract using the installed Wasm code with given hash.
+//     let address = env()
+//         .deployer()
+//         .with_current_contract(salt.into_val(env()))
+//         .deploy_v2(wasm_hash, ());
+//     // Set the owner of the contract to the given owner.
+//     let client = xasset::Client::new(env(), &address);
+//     client.try_admin_set(owner).map_err(|_| Error::InitFailed)?;
+//     Ok(address)
+// }

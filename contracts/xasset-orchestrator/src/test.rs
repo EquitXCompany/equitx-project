@@ -1,65 +1,68 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::{SorobanContract__, SorobanContract__Client};
 use crate::token::xasset as token;
+use crate::{SorobanContract__, SorobanContract__Client};
 
 use loam_sdk::import_contract;
 use loam_sdk::soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation},
-    Address, BytesN, Env, String, Symbol, Vec, IntoVal,
+    Address, BytesN, Env, IntoVal, String, Symbol, Vec,
 };
 
 use crate::data_feed::Asset;
+use crate::data_feed::{Client as DataFeedClient, WASM as DataFeedWasm};
 use loam_sdk::soroban_sdk::token::StellarAssetClient;
-use crate::data_feed::{WASM as DataFeedWasm, Client as DataFeedClient};
 
+loam_sdk::import_contract!(xasset);
+loam_sdk::import_contract!(data_feed);
 
-fn create_token_contract<'a>(e: &Env, xlm_sac: &Address) -> SorobanContract__Client<'a> {
-    // Create the main token contract
-    let token = SorobanContract__Client::new(e, &e.register(SorobanContract__, {}));
-    
-    // Create admin address
+// fn create_token_contract<'a>(e: &Env, xlm_sac: &Address) -> SorobanContract__Client<'a> {
+//     // Create the main token contract
+//     let token = SorobanContract__Client::new(e, &e.register(SorobanContract__, {}));
+
+//     // Create admin address
+//     let admin = Address::generate(&e);
+//     token.admin_set(&admin);
+
+//     // Create data feed contract for price oracle
+//     let datafeed = {
+//         let contract = DataFeedClient::new(e, &e.register(DataFeedWasm, {}));
+//         let asset_xlm = Asset::Other(Symbol::new(e, "XLM"));
+//         let asset_xusd = Asset::Other(Symbol::new(e, "USDT"));
+//         let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
+//         contract.admin_set(&admin);
+//         contract.sep40_init(&asset_vec, &asset_xusd, &14, &300);
+//         contract
+//     };
+
+//     let pegged_asset = Symbol::new(e, "USDT");
+//     let min_collat_ratio = 11000;
+//     let name = String::from_str(e, "United States Dollar xAsset");
+//     let symbol = String::from_str(e, "xUSD");
+//     let decimals = 7;
+//     let annual_interest_rate: u32 = 11_00; // 11% interest rate
+
+//     token.cdp_init(
+//         &xlm_sac,
+//         &datafeed.address,
+//         &datafeed.address,
+//         &pegged_asset,
+//         &min_collat_ratio,
+//         &name,
+//         &symbol,
+//         &decimals,
+//         &annual_interest_rate,
+//     );
+
+//     token
+// }
+
+fn create_token_contract<'a>(e: &Env) -> token::Client<'a> {
     let admin = Address::generate(&e);
-    token.admin_set(&admin);
-    
-    // Create data feed contract for price oracle
-    let datafeed = {
-        let contract = DataFeedClient::new(e, &e.register(DataFeedWasm, {}));
-        let asset_xlm = Asset::Other(Symbol::new(e, "XLM"));
-        let asset_xusd = Asset::Other(Symbol::new(e, "USDT"));
-        let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
-        contract.admin_set(&admin);
-        contract.sep40_init(&asset_vec, &asset_xusd, &14, &300);
-        contract
-    };
-
-    let pegged_asset = Symbol::new(e, "USDT");
-    let min_collat_ratio = 11000;
-    let name = String::from_str(e, "United States Dollar xAsset");
-    let symbol = String::from_str(e, "xUSD");
-    let decimals = 7;
-    let annual_interest_rate: u32 = 11_00; // 11% interest rate
-
-    token.cdp_init(
-        &xlm_sac,
-        &datafeed.address,
-        &datafeed.address,
-        &pegged_asset,
-        &min_collat_ratio,
-        &name,
-        &symbol,
-        &decimals,
-        &annual_interest_rate,
-    );
-
-    token
-}
-
-fn create_token_contract<'a>(e: &Env, admin: &Address) -> token::Client<'a> {
     token::Client::new(
         e,
-        &e.register_stellar_asset_contract_v2(admin.clone())
+        &e.register_stellar_asset_contract_v2(admin)
             .address(),
     )
 }
