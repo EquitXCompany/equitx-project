@@ -19,13 +19,10 @@ pub struct Storage {
     /// and to get the asset symbol from the contract address.
     /// The key is the asset symbol, the value is the asset contract address.
     assets: PersistentMap<String, Address>,
-    /// The xasset wasm
-    wasm_hash: InstanceItem<BytesN<32>>,
 }
 
 #[subcontract]
 pub trait IsOrchestratorTrait {
-    fn initialize(&mut self, wasm_hash: BytesN<32>) -> Result<(), Error>;
     fn deploy_asset(
         &mut self,
         xlm_sac: Address,
@@ -42,10 +39,6 @@ pub trait IsOrchestratorTrait {
 }
 
 impl IsOrchestratorTrait for Storage {
-    fn initialize(&mut self, wasm_hash: BytesN<32>) -> Result<(), Error> {
-        self.wasm_hash.set(&wasm_hash);
-        Ok(())
-    }
     fn deploy_asset(
         &mut self,
         xlm_sac: Address,
@@ -59,16 +52,21 @@ impl IsOrchestratorTrait for Storage {
         annual_interest_rate: u32,
     ) -> Result<(), Error> {
         let env = env();
-        let wasm_hash = self.wasm_hash.get().unwrap();
-
         // Check if the asset contract is already deployed
         if self.assets.has(symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
         }
 
-        let deployed_contract = create_contract(env, &wasm_hash, symbol.clone());
-        let client = xasset::Client::new(env, &deployed_contract.unwrap());
+        // Upload the xasset wasm to prep for deploy
+        let wasm_hash = env.deployer().upload_contract_wasm(xasset::WASM);
 
+        // Deploy the contract, salting with the symbol
+        let deployed_contract = create_contract(env, &wasm_hash, symbol.clone());
+        
+        // Create a client instance for this contract so we can initialize it
+        let client = xasset::Client::new(env, &deployed_contract.as_ref().unwrap());
+
+        // Initialize the contract
         client.cdp_init(
             &xlm_sac,
             &xlm_contract,
@@ -80,6 +78,9 @@ impl IsOrchestratorTrait for Storage {
             &decimals,
             &annual_interest_rate,
         );
+
+        // Store the deployed contract address in the assets map
+        self.assets.set(symbol.clone(), &deployed_contract.unwrap());
 
         Ok(())
     }
