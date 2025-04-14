@@ -54,7 +54,7 @@ export default function Navbar() {
         },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, flexDirection: 'column' }}>
         {open && (
           isDarkMode ?
             <img src="/EQUITX-Logo-White-Horizontal.svg"></img> :
