@@ -1,85 +1,243 @@
-use crate::{error::Error, SorobanContract__Client as SorobanContractClient};
-use assert_matches::assert_matches;
-use loam_sdk::soroban_sdk::{
-    env, set_env,
-    testutils::{Address as _, BytesN as _},
-    to_string, Address, Bytes, BytesN, Env, IntoVal,
-};
+#![cfg(test)]
 extern crate std;
 
-loam_sdk::import_contract!(loam_registry);
-// The contract that will be deployed by the Publisher contract.
-// mod contract {
-//     use loam_sdk::soroban_sdk;
-//     soroban_sdk::contractimport!(file = "../../../../target/loam/loam_registry.wasm");
-// }
+use crate::{SorobanContract__, SorobanContract__Client};
+use crate::token::xasset as token;
 
-fn init() -> (SorobanContractClient<'static>, Address) {
-    set_env(Env::default());
-    let env = env();
-    let contract_id = Address::generate(env);
-    let client =
-        SorobanContractClient::new(env, &env.register_at(&contract_id, loam_registry::WASM, ()));
-    let address = Address::generate(env);
-    (client, address)
+use loam_sdk::import_contract;
+use loam_sdk::soroban_sdk::{
+    self, symbol_short,
+    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation},
+    Address, BytesN, Env, IntoVal,
+};
+
+fn create_token_contract<'a>(e: &Env, admin: &Address) -> token::Client<'a> {
+    token::Client::new(
+        e,
+        &e.register_stellar_asset_contract_v2(admin.clone())
+            .address(),
+    )
+}
+
+fn create_liqpool_contract<'a>(
+    e: &Env,
+    token_wasm_hash: &BytesN<32>,
+    token_a: &Address,
+    token_b: &Address,
+) -> SorobanContract__Client<'a> {
+    let liqpool = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
+    liqpool.initialize(token_wasm_hash, token_a, token_b);
+    liqpool
+}
+
+fn install_token_wasm(e: &Env) -> BytesN<32> {
+    import_contract!(xasset);
+    e.deployer().upload_contract_wasm(xasset::WASM)
+}
+
+#[allow(clippy::too_many_lines)]
+#[test]
+fn test() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let mut admin1 = Address::generate(&e);
+    let mut admin2 = Address::generate(&e);
+
+    let mut token1 = create_token_contract(&e, &admin1);
+    let mut token2 = create_token_contract(&e, &admin2);
+    if token2.address < token1.address {
+        std::mem::swap(&mut token1, &mut token2);
+        std::mem::swap(&mut admin1, &mut admin2);
+    }
+    let user1 = Address::generate(&e);
+    let liqpool = create_liqpool_contract(
+        &e,
+        &install_token_wasm(&e),
+        &token1.address,
+        &token2.address,
+    );
+
+    let token_share = token::Client::new(&e, &liqpool.share_id());
+
+    token1.mint(&user1, &1000);
+    assert_eq!(token1.balance(&user1), 1000);
+
+    token2.mint(&user1, &1000);
+    assert_eq!(token2.balance(&user1), 1000);
+
+    liqpool.deposit(&user1, &100, &100, &100, &100);
+    assert_eq!(
+        e.auths(),
+        std::vec![(
+            user1.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    liqpool.address.clone(),
+                    symbol_short!("deposit"),
+                    (&user1, 100_i128, 100_i128, 100_i128, 100_i128).into_val(&e)
+                )),
+                sub_invocations: std::vec![
+                    AuthorizedInvocation {
+                        function: AuthorizedFunction::Contract((
+                            token1.address.clone(),
+                            symbol_short!("transfer"),
+                            (&user1, &liqpool.address, 100_i128).into_val(&e)
+                        )),
+                        sub_invocations: std::vec![]
+                    },
+                    AuthorizedInvocation {
+                        function: AuthorizedFunction::Contract((
+                            token2.address.clone(),
+                            symbol_short!("transfer"),
+                            (&user1, &liqpool.address, 100_i128).into_val(&e)
+                        )),
+                        sub_invocations: std::vec![]
+                    }
+                ]
+            }
+        )]
+    );
+
+    assert_eq!(token_share.balance(&user1), 100);
+    assert_eq!(token_share.balance(&liqpool.address), 0);
+    assert_eq!(token1.balance(&user1), 900);
+    assert_eq!(token1.balance(&liqpool.address), 100);
+    assert_eq!(token2.balance(&user1), 900);
+    assert_eq!(token2.balance(&liqpool.address), 100);
+
+    liqpool.swap(&user1, &false, &49, &100);
+    assert_eq!(
+        e.auths(),
+        std::vec![(
+            user1.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    liqpool.address.clone(),
+                    symbol_short!("swap"),
+                    (&user1, false, 49_i128, 100_i128).into_val(&e)
+                )),
+                sub_invocations: std::vec![AuthorizedInvocation {
+                    function: AuthorizedFunction::Contract((
+                        token1.address.clone(),
+                        symbol_short!("transfer"),
+                        (&user1, &liqpool.address, 97_i128).into_val(&e)
+                    )),
+                    sub_invocations: std::vec![]
+                }]
+            }
+        )]
+    );
+
+    assert_eq!(token1.balance(&user1), 803);
+    assert_eq!(token1.balance(&liqpool.address), 197);
+    assert_eq!(token2.balance(&user1), 949);
+    assert_eq!(token2.balance(&liqpool.address), 51);
+
+    e.budget().reset_unlimited();
+    liqpool.withdraw(&user1, &100, &197, &51);
+
+    assert_eq!(
+        e.auths(),
+        std::vec![(
+            user1.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    liqpool.address.clone(),
+                    symbol_short!("withdraw"),
+                    (&user1, 100_i128, 197_i128, 51_i128).into_val(&e)
+                )),
+                sub_invocations: std::vec![AuthorizedInvocation {
+                    function: AuthorizedFunction::Contract((
+                        token_share.address.clone(),
+                        symbol_short!("transfer"),
+                        (&user1, &liqpool.address, 100_i128).into_val(&e)
+                    )),
+                    sub_invocations: std::vec![]
+                }]
+            }
+        )]
+    );
+
+    assert_eq!(token1.balance(&user1), 1000);
+    assert_eq!(token2.balance(&user1), 1000);
+    assert_eq!(token_share.balance(&user1), 0);
+    assert_eq!(token1.balance(&liqpool.address), 0);
+    assert_eq!(token2.balance(&liqpool.address), 0);
+    assert_eq!(token_share.balance(&liqpool.address), 0);
 }
 
 #[test]
-fn handle_error_cases() {
-    let (client, address) = &init();
-    let env = env();
+#[allow(clippy::should_panic_without_expect)]
+#[should_panic]
+fn deposit_amount_zero_should_panic() {
+    let e = Env::default();
+    e.mock_all_auths();
 
-    let name = &to_string("publisher");
-    assert_matches!(
-        client.try_fetch(name, &None).unwrap_err(),
-        Ok(Error::NoSuchVersion)
+    // Create contracts
+    let mut admin1 = Address::generate(&e);
+    let mut admin2 = Address::generate(&e);
+
+    let mut token_a = create_token_contract(&e, &admin1);
+    let mut token_b = create_token_contract(&e, &admin2);
+    if token_b.address < token_a.address {
+        std::mem::swap(&mut token_a, &mut token_b);
+        std::mem::swap(&mut admin1, &mut admin2);
+    }
+    let liqpool = create_liqpool_contract(
+        &e,
+        &install_token_wasm(&e),
+        &token_a.address,
+        &token_b.address,
     );
 
-    let wasm_hash = env.deployer().upload_contract_wasm(loam_registry::WASM);
+    // Create a user
+    let user1 = Address::generate(&e);
 
-    assert_matches!(
-        client.try_fetch(name, &None).unwrap_err(),
-        Ok(Error::NoSuchVersion)
-    );
+    token_a.mint(&user1, &1000);
+    assert_eq!(token_a.balance(&user1), 1000);
 
-    let bytes = Bytes::from_slice(env, loam_registry::WASM);
-    env.mock_all_auths();
-    client.publish(name, address, &bytes, &None, &None);
-    assert_eq!(client.fetch(name, &None).hash, wasm_hash);
+    token_b.mint(&user1, &1000);
+    assert_eq!(token_b.balance(&user1), 1000);
 
-    // let other_address = Address::generate(env);
-    // let res = client
-    //     .try_publish(name, &other_address, &bytes, &None, &None)
-    //     .unwrap_err();
-
-    // assert!(matches!(res, Ok(Error::AlreadyPublished)));
+    liqpool.deposit(&user1, &1, &0, &0, &0);
 }
 
 #[test]
-fn returns_most_recent_version() {
-    let (client, address) = &init();
-    let env = env();
-    let name = &to_string("publisher");
-    // client.register_name(address, name);
-    let bytes = Bytes::from_slice(env, loam_registry::WASM);
-    env.mock_all_auths();
-    client.publish(name, address, &bytes, &None, &None);
-    let fetched_hash = client.fetch(name, &None).hash;
-    let wasm_hash = env.deployer().upload_contract_wasm(loam_registry::WASM);
-    assert_eq!(fetched_hash, wasm_hash);
+#[allow(clippy::should_panic_without_expect)]
+#[should_panic]
+fn swap_reserve_one_nonzero_other_zero() {
+    let e = Env::default();
+    e.mock_all_auths();
 
-    let second_hash: BytesN<32> = BytesN::random(env);
-    client.publish_hash(name, address, &second_hash.into_val(env), &None, &None);
-    let res = client.fetch(name, &None).hash;
-    assert_eq!(res, second_hash);
+    // Create contracts
+    let mut admin1 = Address::generate(&e);
+    let mut admin2 = Address::generate(&e);
 
-    // let third_hash: BytesN<32> = BytesN::random(env);
-    // client.publish(name, &third_hash, &None, &None);
-    // let res = client.fetch(name, &None);
-    // assert_eq!(res, third_hash);
+    let mut token_a = create_token_contract(&e, &admin1);
+    let mut token_b = create_token_contract(&e, &admin2);
+    if token_b.address < token_a.address {
+        std::mem::swap(&mut token_a, &mut token_b);
+        std::mem::swap(&mut admin1, &mut admin2);
+    }
+    let liqpool = create_liqpool_contract(
+        &e,
+        &install_token_wasm(&e),
+        &token_a.address,
+        &token_b.address,
+    );
 
-    // let third_hash: BytesN<32> = BytesN::random(env);
-    // client.publish(name, &third_hash, &None, &None);
-    // let res = client.fetch(name, &None);
-    // assert_eq!(res, third_hash);
+    // Create a user
+    let user1 = Address::generate(&e);
+
+    token_a.mint(&user1, &1000);
+    assert_eq!(token_a.balance(&user1), 1000);
+
+    token_b.mint(&user1, &1000);
+    assert_eq!(token_b.balance(&user1), 1000);
+
+    // Try to get to a situation where the reserves are 1 and 0.
+    // It shouldn't be possible.
+    token_b.transfer(&user1, &liqpool.address, &1);
+    liqpool.swap(&user1, &false, &1, &1);
 }

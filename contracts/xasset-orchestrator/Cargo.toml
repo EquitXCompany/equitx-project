@@ -1,10 +1,8 @@
 [package]
-name = "xasset-orchestrator"
-description = "Manages and deploys xasset contracts. Based on loam-registry."
-version = "0.1.0"
-authors = ["Willem Wyndham <willem@ahalabs.dev>", "Pam Selle <pam@ahalabs.dev"]
+name = "orchestrator"
+version = "0.0.0"
+authors = ["Aha Labs <help@ahalabs.dev>"]
 license = "Apache-2.0"
-rust-version = "1.69"
 edition = "2021"
 publish = false
 
@@ -13,14 +11,10 @@ crate-type = ["cdylib"]
 doctest = false
 
 [dependencies]
-loam-sdk = { workspace = true }
+loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
 loam-subcontract-core = { workspace = true }
+num-integer = { version = "0.1.45", default-features = false, features = ["i128"] }
 xasset = { path = "../xasset" }
-
-
-[dev_dependencies]
-loam-sdk = { workspace = true, features = ["soroban-sdk-testutils"] }
-assert_matches = "1.5.0"
 
 [package.metadata.loam]
 contract = true
