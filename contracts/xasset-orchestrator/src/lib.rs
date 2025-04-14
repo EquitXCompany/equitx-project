@@ -1,29 +1,26 @@
 #![no_std]
-use loam_sdk::soroban_sdk;
+
+use loam_sdk::derive_contract;
+use loam_sdk::soroban_sdk::{Address, BytesN};
 use loam_subcontract_core::{admin::Admin, Core};
 
-use registry::{
-    contract::Contract as Contract_, wasm::Wasm, Claimable, Deployable, DevDeployable,
-    Publishable,
-};
-
 pub mod error;
-pub mod metadata;
-pub mod registry;
-pub mod util;
-pub mod version;
+mod liquidity_pool;
+pub mod token;
+use crate::error::Error;
+pub use liquidity_pool::*;
+pub mod orchestrator;
+pub use orchestrator::IsOrchestratorTrait;
 
-use error::Error;
-use version::Version;
-
-#[loam_sdk::derive_contract(
-    Core(Admin),
-    Publishable(Wasm),
-    Deployable(Contract_),
-    Claimable(Contract_),
-    DevDeployable(Contract_)
-)]
+#[derive_contract(Core(Admin), IsOrchestratorTrait(Storage))]
 pub struct Contract;
 
-#[cfg(test)]
+impl Contract {
+    pub(crate) fn require_auth() {
+        Contract::admin_get()
+            .expect("No admin! Call 'admin_set' first.")
+            .require_auth();
+    }
+}
+
 mod test;
