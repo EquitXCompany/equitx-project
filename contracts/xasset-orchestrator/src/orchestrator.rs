@@ -1,6 +1,7 @@
 use crate::{
     error::Error,
     token::{create_contract, xasset},
+    Contract,
 };
 use loam_sdk::{
     loamstorage,
@@ -71,8 +72,7 @@ impl IsOrchestratorTrait for Storage {
             return Err(Error::AssetAlreadyDeployed);
         }
 
-        let deployed_contract = create_contract(env, &wasm_hash, symbol);
-        deployed_contract.
+        let deployed_contract = create_contract(env, &wasm_hash, symbol.clone());
         // self.assets.set(symbol, asset_contract.address())?;
 
         // // Initialize the asset contract
@@ -88,10 +88,9 @@ impl IsOrchestratorTrait for Storage {
         Ok(())
     }
     fn get_asset_contract(&self, asset_symbol: String) -> Result<Address, Error> {
-        let asset_symbol_clone = asset_symbol.clone();
-        if !self.assets.has(asset_symbol) {
+        if !self.assets.has(asset_symbol.clone()) {
             return Err(Error::NoSuchAsset);
         }
-        return Ok(self.assets.get(asset_symbol_clone).unwrap());
+        return Ok(self.assets.get(asset_symbol.clone()).unwrap());
     }
 }
