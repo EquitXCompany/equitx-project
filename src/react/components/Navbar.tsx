@@ -11,6 +11,7 @@ import {
   Box,
   Typography,
   Divider,
+  SvgIcon,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -54,7 +55,11 @@ export default function Navbar() {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
-        {open && <Typography variant="h6">EquitX</Typography>}
+        {open && (
+          isDarkMode ?
+            <img src="/EQUITX-Logo-White-Horizontal.svg"></img> :
+            <img src="/EQUITX-Logo-Black-Horizontal.svg"></img>
+        )}
         <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>
           {open ? <ChevronLeftIcon /> : <MenuIcon />}
         </IconButton>
