@@ -111,6 +111,13 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
         },
       },
     },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          fontFamily: '"Helvetica"',
+        }
+      },
+    },
     MuiTypography: {
       styleOverrides: {
         root: {
@@ -150,7 +157,7 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
     },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Instrument Sans", "Roboto", "Helvetica", "Arial", sans-serif',
     button: {
       textTransform: 'none',
     },
