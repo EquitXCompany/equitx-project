@@ -5,7 +5,6 @@ use loam_sdk::soroban_sdk::{Address, BytesN, Symbol, String};
 use loam_subcontract_core::{admin::Admin, Core};
 
 pub mod error;
-pub mod token;
 use crate::error::Error;
 pub mod orchestrator;
 pub use orchestrator::*;
