@@ -2,8 +2,7 @@ use crate::{error::Error, Contract};
 use loam_sdk::{
     loamstorage,
     soroban_sdk::{
-        self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, Lazy, LoamKey, PersistentMap, String,
-        Symbol,
+        self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, Lazy, LoamKey, PersistentMap, String, Symbol
     },
     subcontract,
 };
@@ -11,6 +10,9 @@ use loam_subcontract_core::Core;
 
 #[loamstorage]
 pub struct Storage {
+    /// XLM SAC contract address; initialized and then passed
+    /// to deployed xasset contracts
+    xlm_sac: InstanceItem<Address>,
     /// A map of deployed asset contracts to their asset symbol.
     /// This is used to check if a contract is a valid asset contract
     /// and to get the asset symbol from the contract address.
@@ -20,6 +22,7 @@ pub struct Storage {
 
 #[subcontract]
 pub trait IsOrchestratorTrait {
+    fn init(&mut self, xlm_sac: Address) -> Result<(), Error>;
     fn deploy_asset_contract(
         &mut self,
         xlm_sac: Address,
@@ -36,9 +39,14 @@ pub trait IsOrchestratorTrait {
 }
 
 impl IsOrchestratorTrait for Storage {
+    fn init(&mut self, xlm_sac: Address) -> Result<(), Error> {
+        self.xlm_sac.set(&xlm_sac);
+        Ok(())
+    }
+
     fn deploy_asset_contract(
         &mut self,
-        xlm_sac: Address,
+        _xlm_sac: Address,
         xlm_contract: Address,
         asset_contract: Address,
         pegged_asset: Symbol,
@@ -49,6 +57,7 @@ impl IsOrchestratorTrait for Storage {
         annual_interest_rate: u32,
     ) -> Result<Address, Error> {
         let env = env();
+        Contract::require_auth();
         // Check if the asset contract is already deployed
         if self.assets.has(symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
@@ -60,14 +69,13 @@ impl IsOrchestratorTrait for Storage {
         // Deploy the contract, salting with the symbol
         let deployed_contract = create_contract(env, &wasm_hash, symbol.clone());
 
-        let contract_address = deployed_contract
-            .map_err(|_| Error::InitFailed)?;
+        let contract_address = deployed_contract.map_err(|_| Error::InitFailed)?;
         // Create a client instance for this contract so we can initialize it
         let client = xasset::Client::new(env, &contract_address);
 
         // Initialize the contract
         client.cdp_init(
-            &xlm_sac,
+            &self.xlm_sac.get().unwrap(),
             &xlm_contract,
             &asset_contract,
             &pegged_asset,
