@@ -16,6 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: stellar/quickstart@main
+      with:
+          tag: testing
     - uses: actions/cache@v3
       with:
           path: |
@@ -26,7 +29,6 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - run: rustup target add wasm32-unknown-unknown
-    - uses: stellar/stellar-cli@v22.6.0
     - name: Install cargo-binstall
       uses: cargo-bins/cargo-binstall@v1.12.3
     - name: Install loam
