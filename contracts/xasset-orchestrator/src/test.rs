@@ -9,7 +9,7 @@ fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let orchestrator = SorobanContract__Client::new(&e, &e.register(SorobanContract__, ()));
     let admin: Address = Address::generate(&e);
     let _ = orchestrator.try_admin_set(&admin);
-    orchestrator.init(&Address::generate(&e));
+    orchestrator.init(&Address::generate(&e), &Address::generate(&e));
     orchestrator
 }
 
@@ -26,8 +26,6 @@ fn test_orchestrator() {
 
     // Initialize the orchestrator with the data feed contract address
     let try_deploy_result = orchestrator.try_deploy_asset_contract(
-        &test_address,
-        &test_address,
         &test_address,
         &Symbol::new(&e, "XLM"),
         &100,
@@ -47,8 +45,6 @@ fn test_orchestrator() {
 
     // deploy_asset_contract with an invalid (existing) asset symbol
     let result = orchestrator.try_deploy_asset_contract(
-        &test_address,
-        &test_address,
         &test_address,
         &Symbol::new(&e, "XLM"),
         &100,
