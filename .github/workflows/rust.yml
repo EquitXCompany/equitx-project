@@ -16,7 +16,27 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/cache@v3
+      with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - run: rustup target add wasm32-unknown-unknown
+    - run: mkdir -p /tmp/loam && \
+        cd /tmp/loam && \
+        wget --no-check-certificate https://github.com/loambuild/loam/releases/download/loam-cli-v0.14.4/loam-cli-v0.14.4-x86_64-unknown-linux-gnu.tar.gz && \
+        tar xzf loam-cli-v0.14.4-x86_64-unknown-linux-gnu.tar.gz && \
+        mv loam /usr/local/bin/ && \
+        chmod +x /usr/local/bin/loam && \
+        cd /app && \
+        rm -rf /tmp/loam
     - name: Build
       run: cargo build --verbose
+    - name: Build clients with Loam
+      run: loam build --build-clients
     - name: Run tests
       run: cargo test --verbose
