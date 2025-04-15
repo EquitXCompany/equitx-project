@@ -24,7 +24,7 @@ fn test_orchestrator() {
     // Create an orchestrator contract
     let orchestrator = create_orchestrator_contract(&e);
 
-    // Initialize the orchestrator with the data feed contract address
+    // Initialize the orchestrator with the test contract address
     let try_deploy_result = orchestrator.try_deploy_asset_contract(
         &test_address,
         &Symbol::new(&e, "XLM"),
