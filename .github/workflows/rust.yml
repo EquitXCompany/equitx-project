@@ -33,6 +33,6 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Build clients with Loam
-      run: loam build --build-clients
+      run: LOAM_ENV=development loam build --build-clients
     - name: Run tests
       run: cargo test --verbose
