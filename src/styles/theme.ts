@@ -1,5 +1,12 @@
 import { createTheme } from '@mui/material/styles';
 
+const black = "#000000";
+const white = "#ffffff";
+const darkGray = "#1A1C21";
+const gray = "#707070";
+const mediumGray = "#AEAEAE";
+const lightGray = "#F3F4F6";
+
 const getTheme = (mode: 'light' | 'dark') => createTheme({
   palette: {
     mode,
@@ -14,12 +21,12 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
       dark: '#7c3aed',
     },
     background: {
-      default: mode === 'dark' ? '#111827' : '#ffffff',
-      paper: mode === 'dark' ? '#1f2937' : '#f3f4f6',
+      default: mode === 'dark' ? black : white,
+      paper: mode === 'dark' ? darkGray : lightGray,
     },
     text: {
-      primary: mode === 'dark' ? '#f3f4f6' : '#111827',
-      secondary: mode === 'dark' ? '#9ca3af' : '#4b5563',
+      primary: mode === 'dark' ? lightGray : darkGray,
+      secondary: mode === 'dark' ? gray : darkGray,
     },
     error: {
       main: '#ef4444',
@@ -39,26 +46,38 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
       styleOverrides: {
         root: {
           '& .MuiInputBase-input': {
-            color: mode === 'dark' ? '#f3f4f6' : '#111827',
+            color: mode === 'dark' ? lightGray : darkGray,
           },
           '& .MuiInputLabel-root': {
-            color: mode === 'dark' ? '#9ca3af' : '#4b5563',
+            color: mode === 'dark' ? gray : darkGray,
             background: 'transparent',
             fontSize: 16,
           },
           '& .MuiInputLabel-shrink': {
-            background: mode === 'dark' ? '#1f2937' : '#f3f4f6',
+            background: mode === 'dark' ? darkGray : lightGray,
             padding: '0 4px',
           },
           '& .MuiOutlinedInput-root': {
             '& fieldset': {
-              borderColor: mode === 'dark' ? '#374151' : '#d1d5db',
+              borderColor: mode === 'dark' ? darkGray : lightGray,
             },
             '&:hover fieldset': {
               borderColor: '#3b82f6',
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#3b82f6',
+              borderColor: '#f3f4f6',
+            },
+          },
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: mode === 'dark' ? white : lightGray,
+            '&:hover': {
+              backgroundColor: mode === 'dark' ? mediumGray : 'rgba(0, 0, 0, 0.1)',
             },
           },
         },
@@ -83,13 +102,13 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff', // Solid colors with no transparency
           backgroundImage: 'none',
-          boxShadow: mode === 'dark' 
-            ? '0 1px 3px rgb(0, 0, 0)'
-            : '0 1px 3px rgb(0, 0, 0, 0.10)',
+          boxShadow:
+            mode === 'dark'
+              ? '0 1px 3px rgb(0, 0, 0)'
+              : '0 1px 3px rgb(0, 0, 0, 0.10)',
           '&.MuiPaper-root': {
-            backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+            backgroundColor: mode === 'dark' ? darkGray : white,
           },
         },
       },
@@ -98,10 +117,11 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          boxShadow: mode === 'dark'
-            ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
-            : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          backgroundColor: mode === 'dark' ? '#1f2937' : '#f3f4f6',
+          boxShadow:
+            mode === 'dark'
+              ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
+              : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          backgroundColor: mode === 'dark' ? darkGray : lightGray,
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
@@ -121,35 +141,35 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
     MuiTypography: {
       styleOverrides: {
         root: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
         },
         h1: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
           marginBottom: '1rem',
           fontWeight: 600,
         },
         h2: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
           marginBottom: '1rem',
           fontWeight: 600,
         },
         h3: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
           marginBottom: '1rem',
           fontWeight: 600,
         },
         h4: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
           marginBottom: '1rem',
           fontWeight: 600,
         },
         h5: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
           marginBottom: '1rem',
           fontWeight: 600,
         },
         h6: {
-          color: mode === 'dark' ? '#f3f4f6' : '#111827',
+          color: mode === 'dark' ? lightGray : darkGray,
           marginBottom: '1rem',
           fontWeight: 600,
         },
@@ -166,3 +186,4 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
 
 export const lightTheme = getTheme('light');
 export const darkTheme = getTheme('dark');
+ 
