@@ -24,7 +24,7 @@ STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 1
 set_min_collat_ratio --to 15000
 """
 
-[development]
+[testing]
 accounts = ["equitx"]
 
 [testing.network]
