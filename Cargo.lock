@@ -980,7 +980,6 @@ dependencies = [
  "data-feed",
  "loam-sdk",
  "loam-subcontract-core",
- "num-integer",
  "xasset",
 ]
 
