@@ -35,11 +35,8 @@ const router = createHashRouter([
           sx={{
             flexGrow: 1,
             height: "100vh",
-            overflow: "auto",
-            backgroundColor: (theme) =>
-              theme.palette.mode === "light"
-                ? theme.palette.grey[100]
-                : theme.palette.grey[900],
+            overflowY: "visible",
+            overflowX: "auto",            
           }}
         >
           <Outlet />

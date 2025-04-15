@@ -253,10 +253,9 @@ export const TVLChart = ({
   return (
     <Paper
       sx={{
-        p: 2,
-        borderRadius: 2,
+        color: theme.palette.background.default,
         bgcolor: theme.palette.background.paper,
-        boxShadow: theme.shadows[1],
+        boxShadow: theme.shadows[0],
       }}
     >
       {showTitle && (
