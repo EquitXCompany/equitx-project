@@ -2,7 +2,8 @@ use crate::{error::Error, Contract};
 use loam_sdk::{
     loamstorage,
     soroban_sdk::{
-        self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, Lazy, LoamKey, PersistentMap, String, Symbol
+        self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, Lazy, LoamKey,
+        PersistentMap, String, Symbol,
     },
     subcontract,
 };
@@ -36,6 +37,19 @@ pub trait IsOrchestratorTrait {
         annual_interest_rate: u32,
     ) -> Result<Address, Error>;
     fn get_asset_contract(&self, asset_symbol: String) -> Result<Address, Error>;
+    // Manually set an asset symbol to an existing contract address
+    fn set_asset_contract(
+        &mut self,
+        asset_symbol: String,
+        asset_contract: Address,
+    ) -> Result<(), Error>;
+    // Manually set an existing asset symbol to an existing contract address. Dangerous!
+    // This should only be used when needing to update an existing symbol's contract.
+    fn set_existing_asset_contract(
+        &mut self,
+        asset_symbol: String,
+        asset_contract: Address,
+    ) -> Result<(), Error>;
 }
 
 impl IsOrchestratorTrait for Storage {
@@ -97,6 +111,29 @@ impl IsOrchestratorTrait for Storage {
             return Err(Error::NoSuchAsset);
         }
         return Ok(self.assets.get(asset_symbol.clone()).unwrap());
+    }
+
+    fn set_asset_contract(
+        &mut self,
+        asset_symbol: String,
+        asset_contract: Address,
+    ) -> Result<(), Error> {
+        Contract::require_auth();
+        if self.assets.has(asset_symbol.clone()) {
+            return Err(Error::AssetAlreadyDeployed);
+        }
+        self.assets.set(asset_symbol.clone(), &asset_contract);
+        Ok(())
+    }
+
+    fn set_existing_asset_contract(
+        &mut self,
+        asset_symbol: String,
+        asset_contract: Address,
+    ) -> Result<(), Error> {
+        Contract::require_auth();
+        self.assets.set(asset_symbol.clone(), &asset_contract);
+        Ok(())
     }
 }
 
