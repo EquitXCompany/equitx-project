@@ -14,6 +14,9 @@ pub struct Storage {
     /// XLM SAC contract address; initialized and then passed
     /// to deployed xasset contracts
     xlm_sac: InstanceItem<Address>,
+    /// XLM oracle contract, initialized and then passed
+    /// to deployed xasset contracts
+    xlm_contract: InstanceItem<Address>,
     /// A map of deployed asset contracts to their asset symbol.
     /// This is used to check if a contract is a valid asset contract
     /// and to get the asset symbol from the contract address.
@@ -23,11 +26,9 @@ pub struct Storage {
 
 #[subcontract]
 pub trait IsOrchestratorTrait {
-    fn init(&mut self, xlm_sac: Address) -> Result<(), Error>;
+    fn init(&mut self, xlm_sac: Address, xlm_contract: Address) -> Result<(), Error>;
     fn deploy_asset_contract(
         &mut self,
-        xlm_sac: Address,
-        xlm_contract: Address,
         asset_contract: Address,
         pegged_asset: Symbol,
         min_collat_ratio: u32,
@@ -53,15 +54,15 @@ pub trait IsOrchestratorTrait {
 }
 
 impl IsOrchestratorTrait for Storage {
-    fn init(&mut self, xlm_sac: Address) -> Result<(), Error> {
+    fn init(&mut self, xlm_sac: Address, xlm_contract: Address) -> Result<(), Error> {
+        Contract::require_auth();
         self.xlm_sac.set(&xlm_sac);
+        self.xlm_contract.set(&xlm_contract);
         Ok(())
     }
 
     fn deploy_asset_contract(
         &mut self,
-        _xlm_sac: Address,
-        xlm_contract: Address,
         asset_contract: Address,
         pegged_asset: Symbol,
         min_collat_ratio: u32,
@@ -90,7 +91,7 @@ impl IsOrchestratorTrait for Storage {
         // Initialize the contract
         client.cdp_init(
             &self.xlm_sac.get().unwrap(),
-            &xlm_contract,
+            &&self.xlm_contract.get().unwrap(),
             &asset_contract,
             &pegged_asset,
             &min_collat_ratio,
