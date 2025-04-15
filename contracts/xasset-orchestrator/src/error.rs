@@ -4,8 +4,8 @@ use loam_sdk::soroban_sdk::{self, contracterror};
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Error {
-    AssetAlreadyDeployed = 1,
+    InitFailed = 1,
     InvalidAssetContract = 2,
-    NoSuchAsset = 3,
-    InitFailed = 4,
+    AssetAlreadyDeployed = 3,
+    NoSuchAsset = 4,
 }
