@@ -9,7 +9,6 @@ import {
   ListItemText,
   IconButton,
   Box,
-  Typography,
   Divider,
 } from '@mui/material';
 import {
@@ -53,8 +52,12 @@ export default function Navbar() {
         },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
-        {open && <Typography variant="h6">EquitX</Typography>}
+      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, flexDirection: 'column' }}>
+        {open && (
+          isDarkMode ?
+            <img src="/EQUITX-Logo-White-Horizontal.svg"></img> :
+            <img src="/EQUITX-Logo-Black-Horizontal.svg"></img>
+        )}
         <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>
           {open ? <ChevronLeftIcon /> : <MenuIcon />}
         </IconButton>
