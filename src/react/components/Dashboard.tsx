@@ -12,6 +12,7 @@ import {
   TableRow,
   Alert,
   CircularProgress,
+  useTheme,
 } from "@mui/material";
 
 import { useLatestProtocolStats, useProtocolStatsHistory } from "../hooks/useProtocolStats";
@@ -26,6 +27,8 @@ import { Link } from "react-router-dom";
 const assetSymbols = Object.keys(contractMapping) as XAssetSymbol[];
 
 export default function Dashboard() {
+  const theme = useTheme();
+  
   const dateParams = useMemo(() => ({
     start_time: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     end_time: new Date().toISOString(),
@@ -101,7 +104,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ p: 3, minHeight: "100vh" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: theme.palette.background.default }}>
       {/* Top Metrics Grid */}
       <Grid container spacing={3} mb={4}>
         {topMetrics.map((metric, index) => (
@@ -117,7 +120,7 @@ export default function Dashboard() {
       </Grid>
 
       {/* TVL Chart */}
-      <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", mb: 4 }}>
+      <Paper component={Box} sx={{ p: 2, mb:2 }}>
         {historyError ? (
           <Alert severity="error">Failed to load TVL history data</Alert>
         ) : (
@@ -130,9 +133,9 @@ export default function Dashboard() {
       </Paper>
 
       {/* CDP Table */}
-      <TableContainer component={Paper} sx={{ bgcolor: "rgba(0, 0, 0, 0.2)" }}>
+      <TableContainer component={Paper} sx={{ border: 5, borderColor: theme.palette.background.paper, borderRadius: 10 }}>
         <Table>
-          <TableHead>
+          <TableHead sx={{ borderBottom: 1, borderColor: theme.palette.text.secondary }}>
             <TableRow>
               <TableCell>Asset</TableCell>
               <TableCell>Total Minted</TableCell>
@@ -191,7 +194,7 @@ export default function Dashboard() {
             left: 0,
             right: 0,
             bottom: 0,
-            bgcolor: "rgba(0, 0, 0, 0.5)",
+            bgcolor: theme.palette.background.default,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
