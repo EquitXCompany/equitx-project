@@ -24,6 +24,19 @@ STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 1
 set_min_collat_ratio --to 15000
 """
 
+[development]
+accounts = ["equitx"]
+
+[testing.network]
+rpc-url = "http://localhost:8000/rpc"
+network-passphrase = "Standalone Network ; February 2017"
+
+[testing.contracts.data_feed]
+client = true
+
+[testing.contracts.xasset]
+client = true
+
 [staging]
 accounts = ["equitx"]
 
