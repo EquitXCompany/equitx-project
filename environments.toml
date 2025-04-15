@@ -24,6 +24,13 @@ STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 1
 set_min_collat_ratio --to 15000
 """
 
+[development.contracts.orchestrator]
+client = true
+init = """
+admin_set --new-admin equitx
+init --xlm_sac "$(stellar contract id asset --asset native)"
+"""
+
 [testing]
 accounts = ["equitx"]
 
@@ -53,3 +60,4 @@ xBTC = { id = "CBWK5672TCVFL4234VTR5RHTZADDKDL7XL65AWNGRSUTBDFZP6Z6FKGG" }
 xADA = { id = "CBSMJE4IND3AWUH2H4ZOEUGUIQMZGFFY6ZNQUI3JRAQDZTFF5ZVSEDJH" }
 data_feed = { id = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63" }
 xDOT = { id = "CCQNGUYXIKYL273QU7GMVZRYFEDATP6QK2JRBLSUFF2S35KIFO6HAWFT" }
+# orchestrator = { id = "Deployed ID" }
