@@ -1,11 +1,9 @@
 use crate::{error::Error, Contract};
 use loam_sdk::{
-    loamstorage,
-    soroban_sdk::{
+    import_contract, loamstorage, soroban_sdk::{
         self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, Lazy, LoamKey,
         PersistentMap, String, Symbol,
-    },
-    subcontract,
+    }, subcontract
 };
 use loam_subcontract_core::Core;
 
@@ -138,12 +136,7 @@ impl IsOrchestratorTrait for Storage {
     }
 }
 
-pub mod xasset {
-    use loam_sdk::soroban_sdk;
-    loam_sdk::soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/xasset.wasm",
-    );
-}
+import_contract!(xasset);
 
 pub fn create_contract(
     e: &Env,
