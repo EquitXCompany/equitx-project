@@ -6,10 +6,10 @@ use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env};
 use loam_sdk::soroban_sdk::{String, Symbol};
 
 fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
-    let orchestrator = SorobanContract__Client::new(&e, &e.register(SorobanContract__, ()));
-    let admin: Address = Address::generate(&e);
+    let orchestrator = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
+    let admin: Address = Address::generate(e);
     let _ = orchestrator.try_admin_set(&admin);
-    orchestrator.init(&Address::generate(&e), &Address::generate(&e));
+    orchestrator.init(&Address::generate(e), &Address::generate(e));
     orchestrator
 }
 
@@ -70,7 +70,7 @@ fn test_orchestrator() {
     let new_symbol = String::from_str(&e, "XEUR");
     let new_address: Address = Address::generate(&e);
 
-    let _ = orchestrator.set_asset_contract(&new_symbol, &new_address);
+    orchestrator.set_asset_contract(&new_symbol, &new_address);
     let updated_result = orchestrator.try_get_asset_contract(&new_symbol);
     assert!(updated_result.is_ok());
     assert_eq!(updated_result.unwrap().unwrap(), new_address);
@@ -78,7 +78,7 @@ fn test_orchestrator() {
     // set an existing symbol to a different contract address
     let existing_symbol = String::from_str(&e, "XUSD");
     let existing_address = Address::generate(&e);
-    let _ = orchestrator.set_existing_asset_contract(&existing_symbol, &existing_address);
+    orchestrator.set_existing_asset_contract(&existing_symbol, &existing_address);
     let existing_updated_result = orchestrator.try_get_asset_contract(&existing_symbol);
     assert!(existing_updated_result.is_ok());
     assert_eq!(existing_updated_result.unwrap().unwrap(), existing_address);
