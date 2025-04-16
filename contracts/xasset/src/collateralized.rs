@@ -23,7 +23,7 @@ pub enum CDPStatus {
 #[loam_sdk::soroban_sdk::contracttype]
 #[derive(Clone)]
 /// Collateralized Debt Position for a specific account
-pub struct CDP {
+pub struct CDPContract {
     pub lender: Address,
     pub xlm_deposited: i128,
     pub asset_lent: i128,
@@ -78,7 +78,7 @@ pub trait IsCollateralized {
     ) -> Result<(), Error>;
 
     /// Retrieves the CDP information for a specific lender
-    fn cdp(&self, lender: Address) -> Result<CDP, Error>;
+    fn cdp(&self, lender: Address) -> Result<CDPContract, Error>;
 
     /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
     /// A frozen CDP is no longer usable or interactable by its former owner.
@@ -117,7 +117,7 @@ pub trait IsCollateralized {
     fn get_accrued_interest(&self, lender: Address) -> Result<Interest, Error>;
     
     /// Pay the interest on a CDP
-    fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDP, Error>;
+    fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDPContract, Error>;
 }
 
 #[subcontract]
