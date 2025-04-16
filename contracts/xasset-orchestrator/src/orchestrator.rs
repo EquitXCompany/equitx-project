@@ -27,6 +27,7 @@ pub struct Storage {
 #[subcontract]
 pub trait IsOrchestratorTrait {
     fn init(&mut self, xlm_sac: Address, xlm_contract: Address) -> Result<(), Error>;
+    #[allow(clippy::too_many_arguments)]
     fn deploy_asset_contract(
         &mut self,
         asset_contract: Address,
@@ -61,6 +62,7 @@ impl IsOrchestratorTrait for Storage {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn deploy_asset_contract(
         &mut self,
         asset_contract: Address,
@@ -91,7 +93,7 @@ impl IsOrchestratorTrait for Storage {
         // Initialize the contract
         client.cdp_init(
             &self.xlm_sac.get().unwrap(),
-            &&self.xlm_contract.get().unwrap(),
+            &self.xlm_contract.get().unwrap(),
             &asset_contract,
             &pegged_asset,
             &min_collat_ratio,
@@ -111,7 +113,7 @@ impl IsOrchestratorTrait for Storage {
         if !self.assets.has(asset_symbol.clone()) {
             return Err(Error::NoSuchAsset);
         }
-        return Ok(self.assets.get(asset_symbol.clone()).unwrap());
+        Ok(self.assets.get(asset_symbol.clone()).unwrap())
     }
 
     fn set_asset_contract(

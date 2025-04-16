@@ -137,6 +137,7 @@ pub struct Token {
 }
 
 impl Token {
+    #[allow(clippy::too_many_arguments)]
     pub fn init(
         xlm_sac: Address,
         xlm_contract: Address,
