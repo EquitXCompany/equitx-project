@@ -11,12 +11,11 @@ import {
   Box,
   Divider,
 } from '@mui/material';
+import Chevron from './common/Chevron';
 import {
-  Menu as MenuIcon,
   Dashboard as DashboardIcon,
   AccountBalance as CDPIcon,
   Pool as PoolIcon,
-  ChevronLeft as ChevronLeftIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   AdminPanelSettings as AdminIcon,
@@ -47,19 +46,14 @@ export default function Navbar() {
         flexShrink: 0,
         '& .MuiDrawer-paper': {
           width: open ? drawerWidth : 64,
-          transition: 'width 0.2s',
+          transition: 'width 0.3s ease',
           overflowX: 'hidden',
         },
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', p: 2, flexDirection: 'column' }}>
-        {open && (
-          isDarkMode ?
-            <img src="/EQUITX-Logo-White-Horizontal.svg"></img> :
-            <img src="/EQUITX-Logo-Black-Horizontal.svg"></img>
-        )}
         <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>
-          {open ? <ChevronLeftIcon /> : <MenuIcon />}
+          <Chevron open={open} onClick={handleDrawerToggle} isDarkMode={isDarkMode}/>
         </IconButton>
       </Box>
       <Divider />
