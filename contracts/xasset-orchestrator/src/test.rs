@@ -54,10 +54,7 @@ fn test_orchestrator() {
         &100,
     );
     assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::AssetAlreadyDeployed
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::AssetAlreadyDeployed);
 
     // get_asset_contract with a valid asset symbol
     let valid_symbol = String::from_str(&e, "XUSD");
