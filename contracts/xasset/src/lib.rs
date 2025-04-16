@@ -1,5 +1,5 @@
 #![no_std]
-use collateralized::{CDPAdmin, Collateralized, CDP, CDPStatus};
+use collateralized::{CDPAdmin, Collateralized, CDPContract, CDPStatus};
 use loam_sdk::{
     derive_contract,
     soroban_sdk::{self, Address, String, Symbol, Vec},
