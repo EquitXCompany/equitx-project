@@ -67,7 +67,6 @@ export default function AdminPanel() {
 
   const [deploymentResult, setDeploymentResult] = useState<{
     contractId: string;
-    wasmHash: string;
     txHash: string;
     partialSuccess: boolean;
     configErrors: string[];
@@ -146,7 +145,6 @@ export default function AdminPanel() {
       
       setDeploymentResult({
         contractId: deployResponse.contractId,
-        wasmHash: deployResponse.wasmHash,
         txHash: deployResponse.message,
         configErrors: deployResponse.errors || [],
         partialSuccess: deployResponse.errors?.length > 0,
@@ -467,11 +465,6 @@ export default function AdminPanel() {
                   <Typography variant="body2">
                     Contract ID: {deploymentResult.contractId}
                   </Typography>
-                  {deploymentResult.wasmHash && (
-                    <Typography variant="body2">
-                      WASM Hash: {deploymentResult.wasmHash}
-                    </Typography>
-                  )}
                   <Typography variant="body2">
                     Transaction: {deploymentResult.txHash}
                   </Typography>
