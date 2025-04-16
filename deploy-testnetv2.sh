@@ -48,6 +48,7 @@ fi
 # Remove backup environments.toml file
 rm environments.toml.bak
 LOAM_ENV=staging loam build --build-clients
+npm run install:contracts
 echo ""
 
 echo "Deployed orchestrator contract with id $contract_id"
