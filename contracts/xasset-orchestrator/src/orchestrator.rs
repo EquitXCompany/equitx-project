@@ -7,6 +7,8 @@ use loam_sdk::{
 };
 use loam_subcontract_core::Core;
 
+import_contract!(xasset);
+
 #[loamstorage]
 pub struct Storage {
     /// XLM SAC contract address; initialized and then passed
@@ -135,8 +137,6 @@ impl IsOrchestratorTrait for Storage {
         Ok(())
     }
 }
-
-import_contract!(xasset);
 
 pub fn create_contract(
     e: &Env,
