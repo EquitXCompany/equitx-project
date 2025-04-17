@@ -159,10 +159,10 @@ impl IsOrchestratorTrait for Storage {
 pub fn create_contract(
     e: &Env,
     token_wasm_hash: &BytesN<32>,
-    asset_symbol: &String,
+    asset_symbol: String,
 ) -> Result<Address, Error> {
     let mut salt = Bytes::new(e);
-    salt.append(asset_symbol.to_xdr(e));
+    salt.append(&asset_symbol.to_xdr(e));
     // owner is the admin of this orchestrator contract
     // TODO; in the future, the orchestrator (C... address) should own and administer all asset contracts
     let owner = Contract::admin_get().expect("No admin! Call 'admin_set' first.");
