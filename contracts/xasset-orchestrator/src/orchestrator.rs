@@ -129,10 +129,7 @@ impl IsOrchestratorTrait for Storage {
     }
 
     fn get_asset_contract(&self, asset_symbol: String) -> Result<Address, Error> {
-        if !self.assets.has(asset_symbol.clone()) {
-            return Err(Error::NoSuchAsset);
-        }
-        Ok(self.assets.get(asset_symbol.clone()).unwrap())
+        self.assets.get(asset_symbol).ok_or(Error::NoSuchAsset)
     }
 
     fn set_asset_contract(
