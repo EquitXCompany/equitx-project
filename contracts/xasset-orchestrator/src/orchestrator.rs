@@ -151,7 +151,7 @@ impl IsOrchestratorTrait for Storage {
         asset_contract: Address,
     ) -> Result<(), Error> {
         Contract::require_auth();
-        self.assets.set(asset_symbol.clone(), &asset_contract);
+        self.assets.set(asset_symbol, &asset_contract);
         Ok(())
     }
 }
