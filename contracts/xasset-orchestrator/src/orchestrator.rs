@@ -13,6 +13,8 @@ import_contract!(xasset);
 
 #[loamstorage]
 pub struct Storage {
+    /// Wasm hash of the xasset contract
+    wasm_hash: InstanceItem<BytesN<32>>,
     /// XLM SAC contract address; initialized and then passed
     /// to deployed xasset contracts
     xlm_sac: InstanceItem<Address>,
@@ -28,7 +30,12 @@ pub struct Storage {
 
 #[subcontract]
 pub trait IsOrchestratorTrait {
-    fn init(&mut self, xlm_sac: Address, xlm_contract: Address) -> Result<(), Error>;
+    fn init(
+        &mut self,
+        xlm_sac: Address,
+        xlm_contract: Address,
+        xasset_wasm_hash: BytesN<32>,
+    ) -> Result<(), Error>;
     #[allow(clippy::too_many_arguments)]
     fn deploy_asset_contract(
         &mut self,
@@ -57,10 +64,16 @@ pub trait IsOrchestratorTrait {
 }
 
 impl IsOrchestratorTrait for Storage {
-    fn init(&mut self, xlm_sac: Address, xlm_contract: Address) -> Result<(), Error> {
+    fn init(
+        &mut self,
+        xlm_sac: Address,
+        xlm_contract: Address,
+        xasset_wasm_hash: BytesN<32>,
+    ) -> Result<(), Error> {
         Contract::require_auth();
         self.xlm_sac.set(&xlm_sac);
         self.xlm_contract.set(&xlm_contract);
+        self.wasm_hash.set(&xasset_wasm_hash);
         Ok(())
     }
 
@@ -82,13 +95,17 @@ impl IsOrchestratorTrait for Storage {
             return Err(Error::AssetAlreadyDeployed);
         }
 
-        // Upload the xasset wasm to prep for deploy
-        let wasm_hash = env.deployer().upload_contract_wasm(xasset::WASM);
+        let wasm_hash = match self.wasm_hash.get() {
+            Some(inner) => inner,
+            None => {
+                return Err(Error::ContractNotInitalized);
+            }
+        };
 
         // Deploy the contract, salting with the symbol
         let deployed_contract = create_contract(env, &wasm_hash, symbol.clone());
 
-        let contract_address = deployed_contract.map_err(|_| Error::InitFailed)?;
+        let contract_address = deployed_contract.map_err(|_| Error::XAssetDeployFailed)?;
         // Create a client instance for this contract so we can initialize it
         let client = xasset::Client::new(env, &contract_address);
 
@@ -160,6 +177,6 @@ pub fn create_contract(
     // Set the owner of the contract to this orchestrator
     let _ = xasset::Client::new(e, &address)
         .try_admin_set(&owner)
-        .map_err(|_| Error::InitFailed)?;
+        .map_err(|_| Error::AssetAdminSetFailed)?;
     Ok(address)
 }
