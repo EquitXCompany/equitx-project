@@ -14,52 +14,52 @@ import_contract!(xasset);
 #[loamstorage]
 pub struct Storage {
     /// Wasm hash of the xasset contract
-    wasm_hash: InstanceItem<BytesN<32>>,
+    wasm_hash: InstanceItem<loam_sdk::soroban_sdk::BytesN<32>>,
     /// XLM SAC contract address; initialized and then passed
     /// to deployed xasset contracts
-    xlm_sac: InstanceItem<Address>,
+    xlm_sac: InstanceItem<loam_sdk::soroban_sdk::Address>,
     /// XLM oracle contract, initialized and then passed
     /// to deployed xasset contracts
-    xlm_contract: InstanceItem<Address>,
+    xlm_contract: InstanceItem<loam_sdk::soroban_sdk::Address>,
     /// A map of deployed asset contracts to their asset symbol.
     /// This is used to check if a contract is a valid asset contract
     /// and to get the asset symbol from the contract address.
     /// The key is the asset symbol, the value is the asset contract address.
-    assets: PersistentMap<String, Address>,
+    assets: PersistentMap<loam_sdk::soroban_sdk::String, loam_sdk::soroban_sdk::Address>,
 }
 
 #[subcontract]
 pub trait IsOrchestratorTrait {
     fn init(
         &mut self,
-        xlm_sac: Address,
-        xlm_contract: Address,
-        xasset_wasm_hash: BytesN<32>,
+        xlm_sac: loam_sdk::soroban_sdk::Address,
+        xlm_contract: loam_sdk::soroban_sdk::Address,
+        xasset_wasm_hash: loam_sdk::soroban_sdk::BytesN<32>,
     ) -> Result<(), Error>;
     #[allow(clippy::too_many_arguments)]
     fn deploy_asset_contract(
         &mut self,
-        asset_contract: Address,
-        pegged_asset: Symbol,
+        asset_contract: loam_sdk::soroban_sdk::Address,
+        pegged_asset: loam_sdk::soroban_sdk::Symbol,
         min_collat_ratio: u32,
-        name: String,
-        symbol: String,
+        name: loam_sdk::soroban_sdk::String,
+        symbol: loam_sdk::soroban_sdk::String,
         decimals: u32,
         annual_interest_rate: u32,
-    ) -> Result<Address, Error>;
-    fn get_asset_contract(&self, asset_symbol: String) -> Result<Address, Error>;
+    ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
+    fn get_asset_contract(&self, asset_symbol: loam_sdk::soroban_sdk::String) -> Result<loam_sdk::soroban_sdk::Address, Error>;
     // Manually set an asset symbol to an existing contract address
     fn set_asset_contract(
         &mut self,
-        asset_symbol: String,
-        asset_contract: Address,
+        asset_symbol: loam_sdk::soroban_sdk::String,
+        asset_contract: loam_sdk::soroban_sdk::Address,
     ) -> Result<(), Error>;
     // Manually set an existing asset symbol to an existing contract address. Dangerous!
     // This should only be used when needing to update an existing symbol's contract.
     fn set_existing_asset_contract(
         &mut self,
-        asset_symbol: String,
-        asset_contract: Address,
+        asset_symbol: loam_sdk::soroban_sdk::String,
+        asset_contract: loam_sdk::soroban_sdk::Address,
     ) -> Result<(), Error>;
 }
 
