@@ -123,7 +123,7 @@ impl IsOrchestratorTrait for Storage {
         );
 
         // Store the deployed contract address in the assets map
-        self.assets.set(symbol.clone(), &contract_address);
+        self.assets.set(symbol, &contract_address);
 
         Ok(contract_address)
     }
