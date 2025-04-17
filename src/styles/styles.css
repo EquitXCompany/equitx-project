@@ -268,4 +268,11 @@ code {
   tr:nth-child(even) { background-color: var(--color-background-light) !important; }
 }
 
-
+.brand-chevron {
+  width: '13px';
+  height: '24px';
+  object-fit: 'contain';
+}
+.brand-chevron:hover {
+  background-color: none;
+}

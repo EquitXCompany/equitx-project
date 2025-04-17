@@ -36,7 +36,7 @@ const router = createHashRouter([
             flexGrow: 1,
             height: "100vh",
             overflowY: "visible",
-            overflowX: "auto",            
+            overflowX: "auto",
           }}
         >
           <Outlet />
