@@ -10,11 +10,12 @@ import errorElement from "./routes/error";
 import StabilityPool from "./routes/stabilityPool";
 import Navbar from "./components/Navbar";
 import { Box } from "@mui/material";
-import  ViewHeader from "./components/ViewHeader";
+import ViewHeader from "./components/ViewHeader";
 import Dashboard from "./components/Dashboard";
 import CDPStats from "./components/CDPStats";
 import StabilityPoolStats from "./components/StabilityPoolStats";
 import AdminPanel from "./components/AdminPanel";
+import { ContractMappingProvider } from "../contexts/ContractMappingContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,19 +31,21 @@ const router = createHashRouter([
     path: "/",
     element: (
       <Box sx={{ display: "flex" }}>
-        <Navbar />
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            width: "$(window).innerWidth() + 'px'",
-            height: "$(window).innerHeight() + 'px'",
-            overflow: "auto",
-          }}
-        >
-          <ViewHeader />
-          <Outlet />
-        </Box>
+        <ContractMappingProvider>
+          <Navbar />
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              width: "$(window).innerWidth() + 'px'",
+              height: "$(window).innerHeight() + 'px'",
+              overflow: "auto",
+            }}
+          >
+            <ViewHeader />
+            <Outlet />
+          </Box>
+        </ContractMappingProvider>
       </Box>
     ),
     errorElement,
