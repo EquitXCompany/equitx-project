@@ -10,12 +10,12 @@ html {
   /* Light theme */
   --color-background-light: #ffffff;
   --color-surface-light: #f3f4f6;
-  --color-text-primary-light: #111827;
+  --color-text-primary-light: #1A1C21;
   --color-text-secondary-light: #4b5563;
-  --color-header-light: #111827;
+  --color-header-light: #1A1C21;
 
   /* Dark theme */
-  --color-background-dark: #111827;
+  --color-background-dark: #000;
   --color-surface-dark: #1f2937;
   --color-text-primary-dark: #f3f4f6;
   --color-text-secondary-dark: #9ca3af;
@@ -24,7 +24,7 @@ html {
   /* Brand colors */
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
-  --color-primary-dark: #2563eb;
+  --color-primary-dark: #1A1C21;
   --color-secondary: #8b5cf6;
   --color-success: #10b981;
   --color-error: #ef4444;
@@ -233,3 +233,39 @@ code {
 * {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+[data-theme="dark"] .MuiButtonBase-root.Mui-selected {
+  .MuiListItemIcon-root {
+    .MuiSvgIcon-root {
+      color: var(--color-text-primary-light) !important;
+    }
+  }
+  .MuiListItemText-root {
+    .MuiTypography-root {
+      color: var(--color-text-primary-light) !important;
+    }
+  }
+}
+
+[data-theme="dark"] .MuiBox-root {
+  .MuiPaper-root.MuiBox-root {
+    background-color: var(--color-background-dark) !important;
+    .MuiPaper-root {
+      background-color: var(--color-background-dark) !important;
+    }
+  }
+}
+
+[data-theme="dark"] .MuiTable-root {
+  tr:nth-child(odd) { background-color: var(--color-primary-dark) !important; }
+  tr:nth-child(even) { background-color: var(--color-background-dark) !important; }
+  .MuiTableCell-root {
+    border: none;
+  }
+}
+[data-theme="light"] .MuiTable-root {
+  tr:nth-child(odd) { background-color: var(--color-surface-light) !important; }
+  tr:nth-child(even) { background-color: var(--color-background-light) !important; }
+}
+
+
