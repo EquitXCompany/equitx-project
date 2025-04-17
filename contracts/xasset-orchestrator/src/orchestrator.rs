@@ -141,7 +141,7 @@ impl IsOrchestratorTrait for Storage {
         if self.assets.has(asset_symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
         }
-        self.assets.set(asset_symbol.clone(), &asset_contract);
+        self.assets.set(asset_symbol, &asset_contract);
         Ok(())
     }
 
