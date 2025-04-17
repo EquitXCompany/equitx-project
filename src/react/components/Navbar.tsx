@@ -77,6 +77,21 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
+        {isSignedIn && (
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              to="/admin"
+              selected={location.pathname === '/admin'}
+            >
+              <ListItemIcon>
+                <AdminIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Admin" />}
+            </ListItemButton>
+          </ListItem>
+        )}
+
         <ListItem disablePadding>
           <ListItemButton
             component={Link}
@@ -103,20 +118,18 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
-        {isSignedIn && (
-        <ListItem disablePadding>
+        {open && Object.keys(contractMapping).map((symbol) => (
+          <ListItem key={symbol} disablePadding>
             <ListItemButton
               component={Link}
-              to="/admin"
-              selected={location.pathname === '/admin'}
+              to={`/cdps/${symbol}`}
+              selected={location.pathname === `/cdps/${symbol}`}
+              sx={{ pl: 4 }}
             >
-              <ListItemIcon>
-                <AdminIcon />
-              </ListItemIcon>
-              {open && <ListItemText primary="Admin" />}
+              <ListItemText primary={symbol} />
             </ListItemButton>
           </ListItem>
-        )}
+        ))}
 
         <ListItem disablePadding>
           <ListItemButton
@@ -142,19 +155,6 @@ export default function Navbar() {
             {open && <ListItemText primary={`${isDarkMode ? 'Light' : 'Dark'} Mode`} />}
           </ListItemButton>
         </ListItem>
-
-        {open && Object.keys(contractMapping).map((symbol) => (
-          <ListItem key={symbol} disablePadding>
-            <ListItemButton
-              component={Link}
-              to={`/cdps/${symbol}`}
-              selected={location.pathname === `/cdps/${symbol}`}
-              sx={{ pl: 4 }}
-            >
-              <ListItemText primary={symbol} />
-            </ListItemButton>
-          </ListItem>
-        ))}
       </List>
     </Drawer>
   );
