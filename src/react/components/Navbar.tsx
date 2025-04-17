@@ -21,9 +21,9 @@ import {
   AdminPanelSettings as AdminIcon,
   Feedback as FeedbackIcon,
 } from '@mui/icons-material';
-import { contractMapping } from '../../contracts/contractConfig';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useWallet } from '../../wallet';
+import { useContractMapping } from '../../contexts/ContractMappingContext';
 
 const drawerWidth = 240;
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIw31uG19BYszyMnKeDfRo4-UnbKAkHxQWBhpYvtdFEr-F-g/viewform?usp=dialog';
@@ -33,6 +33,7 @@ export default function Navbar() {
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
   const { isSignedIn } = useWallet();
+  const contractMapping = useContractMapping();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -53,7 +54,7 @@ export default function Navbar() {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', p: 2, flexDirection: 'column' }}>
         <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>
-          <Chevron open={open} onClick={handleDrawerToggle} isDarkMode={isDarkMode}/>
+          <Chevron open={open} onClick={handleDrawerToggle} isDarkMode={isDarkMode} />
         </IconButton>
       </Box>
       <Divider />
@@ -112,7 +113,7 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
-        {open && Object.keys(contractMapping).map((symbol) => (
+        {open && contractMapping && Object.keys(contractMapping).map((symbol) => (
           <ListItem key={symbol} disablePadding>
             <ListItemButton
               component={Link}
