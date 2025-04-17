@@ -14,6 +14,7 @@ import Dashboard from "./components/Dashboard";
 import CDPStats from "./components/CDPStats";
 import StabilityPoolStats from "./components/StabilityPoolStats";
 import AdminPanel from "./components/AdminPanel";
+import { ContractMappingProvider } from "../contexts/ContractMappingContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,18 +30,20 @@ const router = createHashRouter([
     path: "/",
     element: (
       <Box sx={{ display: "flex" }}>
-        <Navbar />
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            height: "100vh",
-            overflowY: "visible",
-            overflowX: "auto",            
-          }}
-        >
-          <Outlet />
-        </Box>
+        <ContractMappingProvider>
+          <Navbar />
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              height: "100vh",
+              overflowY: "visible",
+              overflowX: "auto",
+            }}
+          >
+            <Outlet />
+          </Box>
+        </ContractMappingProvider>
       </Box>
     ),
     errorElement,
