@@ -1,15 +1,20 @@
 #![cfg(test)]
+
 use crate::error::Error;
 use crate::{SorobanContract__, SorobanContract__Client};
 
-use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env};
+use loam_sdk::import_contract;
+use loam_sdk::soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
 use loam_sdk::soroban_sdk::{String, Symbol};
+
+import_contract!(xasset);
 
 fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let orchestrator = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
     let admin: Address = Address::generate(e);
     let _ = orchestrator.try_admin_set(&admin);
-    orchestrator.init(&Address::generate(e), &Address::generate(e));
+    let wasm_hash: BytesN<32> = e.deployer().upload_contract_wasm(xasset::WASM);
+    orchestrator.init(&Address::generate(e), &Address::generate(e), &wasm_hash);
     orchestrator
 }
 
