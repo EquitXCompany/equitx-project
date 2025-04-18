@@ -2,16 +2,14 @@ import Icon from '@mui/material/Icon';
 
 type ChevronProps = {
   open: boolean;
-  onClick: () => void;
   isDarkMode: boolean;
 }
 
 export default function Chevron(props: ChevronProps) {
-  const { open, onClick, isDarkMode } = props;
+  const { open, isDarkMode } = props;
 
   return (
     <Icon
-      onClick={onClick}
       sx={{
         transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
         transition: 'transform 0.3s ease',
@@ -23,11 +21,11 @@ export default function Chevron(props: ChevronProps) {
       { isDarkMode ? 
         (<img
             className="brand-chevron"
-            src='../../../../public/EQUITX-Chevron-White.svg'
+            src='/EQUITX-Chevron-White.svg'
           />
         ) : (<img
             className="brand-chevron"
-            src='../../../../public/EQUITX-Chevron-Black.svg'
+            src='/EQUITX-Chevron-Black.svg'
           />
         )}
     </Icon>

@@ -1,6 +1,5 @@
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { Box, Typography, Grid, Paper, Container, Button } from '@mui/material';
-import AddressDisplay from '../../components/cdp/AddressDisplay';
 import Connect from "../../components/connect";
 import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
 import BigNumber from "bignumber.js";
@@ -32,8 +31,7 @@ function Root() {
   if (error) return <div>An error occurred: {error.message}</div>;
   if (!stabilityData) return <div>No data available</div>;
 
-
-  const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset, contractId } = stabilityData;
+  const { lastpriceXLM, lastpriceAsset, min_ratio, symbolAsset } = stabilityData;
 
   const handleStabilityPoolClick = () => {
     navigate(`/stability-pool/${assetSymbol}`);
@@ -44,9 +42,6 @@ function Root() {
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           XLM↔{symbolAsset} Pool
-        </Typography>
-        <Typography variant="h5" component="h4" gutterBottom>
-          <AddressDisplay address={contractId} />
         </Typography>
         <Button
           variant="contained"

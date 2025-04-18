@@ -10,6 +10,7 @@ import errorElement from "./routes/error";
 import StabilityPool from "./routes/stabilityPool";
 import Navbar from "./components/Navbar";
 import { Box } from "@mui/material";
+import  ViewHeader from "./components/ViewHeader";
 import Dashboard from "./components/Dashboard";
 import CDPStats from "./components/CDPStats";
 import StabilityPoolStats from "./components/StabilityPoolStats";
@@ -34,11 +35,12 @@ const router = createHashRouter([
           component="main"
           sx={{
             flexGrow: 1,
-            height: "100vh",
-            overflowY: "visible",
-            overflowX: "auto",
+            width: "$(window).innerWidth() + 'px'",
+            height: "$(window).innerHeight() + 'px'",
+            overflow: "auto",
           }}
         >
+          <ViewHeader />
           <Outlet />
         </Box>
       </Box>

@@ -5,12 +5,10 @@ import BigNumber from "bignumber.js";
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import { CDPDisplay } from "../../components/cdp/CDPDisplay";
-import AddressDisplay from "../../components/cdp/AddressDisplay";
 import { useContractCdp } from "../../hooks/useCdps";
 import { 
   Button, 
   TextField, 
-  Typography, 
   Box, 
   Container, 
   Grid, 
@@ -137,9 +135,6 @@ function Edit() {
         <MuiLink component={RouterLink} to={`/cdps/${assetSymbol}/${lender}`} sx={{ display: 'block', mb: 2 }}>
           ← Back to CDP Details
         </MuiLink>
-        <Typography variant="h4" gutterBottom>
-          Edit CDP for <AddressDisplay address={lender} />
-        </Typography>
 
         <Snackbar open={!!message} autoHideDuration={6000} onClose={() => setMessage(null)}>
           <Alert severity={message?.type || "info"} onClose={() => setMessage(null)}>
