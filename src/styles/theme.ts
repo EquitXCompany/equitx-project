@@ -107,7 +107,7 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
             mode === 'dark'
               ? '0 1px 3px rgb(0, 0, 0)'
               : '0 1px 3px rgb(0, 0, 0, 0.10)',
-          '&.MuiPaper-root': {
+          '&.MuiPaper-elevation0': {
             backgroundColor: mode === 'dark' ? darkGray : white,
           },
         },
