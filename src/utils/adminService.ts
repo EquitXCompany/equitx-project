@@ -1,6 +1,7 @@
 import axios from "axios";
 import { apiClient } from "./apiClient";
 import { getAddress, signMessage } from "@stellar/freighter-api";
+import { useQueryClient } from "react-query";
 
 export interface DeployAssetParams {
   symbol: string;
@@ -75,6 +76,7 @@ const getAuthorizationHeader = async () => {
 export const deployAsset = async (
   params: DeployAssetParams
 ): Promise<DeployAssetResponse> => {
+  const queryClient = useQueryClient();
   try {
     const authHeader = await getAuthorizationHeader();
 
@@ -88,6 +90,9 @@ export const deployAsset = async (
         timeout: 120000,
       }
     );
+
+    // Invalidate the contract mapping query to refresh the list of assets
+    queryClient.invalidateQueries("contractMapping");
 
     return response.data;
   } catch (error) {
