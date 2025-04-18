@@ -7,7 +7,7 @@ use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 use crate::storage::{Allowance, CDPInternal, Interest};
 use crate::{collateralized::CDPStatus, data_feed, storage::Txn, Error};
 use crate::{
-    collateralized::{IsCDPAdmin, IsCollateralized, CDP},
+    collateralized::{IsCDPAdmin, IsCollateralized, CDPContract},
     PriceData,
 };
 use crate::{
@@ -137,6 +137,7 @@ pub struct Token {
 }
 
 impl Token {
+    #[allow(clippy::too_many_arguments)]
     pub fn init(
         xlm_sac: Address,
         xlm_contract: Address,
@@ -416,7 +417,7 @@ impl IsCollateralized for Token {
         let xlm_decimals = self.decimals_xlm_feed()?;
         let xasset_price = self.lastprice_asset()?;
         let xasset_decimals = self.decimals_asset_feed()?;
-        let CDP {
+        let CDPContract {
             collateralization_ratio,
             ..
         } = self.decorate(
@@ -459,7 +460,7 @@ impl IsCollateralized for Token {
         Ok(())
     }
 
-    fn cdp(&self, lender: Address) -> Result<CDP, Error> {
+    fn cdp(&self, lender: Address) -> Result<CDPContract, Error> {
         let cdp = self.cdps.get(lender.clone()).ok_or(Error::CDPNotFound)?;
         let xlm_price = self.lastprice_xlm()?;
         let xlm_decimals = self.decimals_xlm_feed()?;
@@ -626,7 +627,7 @@ impl IsCollateralized for Token {
         Ok(interest)
     }
     
-    fn pay_interest(&mut self, lender: Address, amount_in_xasset: i128) -> Result<CDP, Error> {
+    fn pay_interest(&mut self, lender: Address, amount_in_xasset: i128) -> Result<CDPContract, Error> {
         lender.require_auth();
         
         // Check if CDP exists
@@ -1095,7 +1096,7 @@ impl Token {
         xlm_decimals: u32,
         xasset_price: i128,
         xasset_decimals: u32,
-    ) -> CDP {
+    ) -> CDPContract {
         // Update accrued interest first
         let (interest, last_interest_time) = self.get_updated_accrued_interest(&cdp)
             .unwrap_or_default();
@@ -1110,7 +1111,7 @@ impl Token {
             interest.amount,
         );
         
-        CDP {
+        CDPContract {
             lender,
             xlm_deposited: cdp.xlm_deposited,
             asset_lent: cdp.asset_lent,
@@ -1130,7 +1131,7 @@ impl Token {
         }
     }
 
-    fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDP) {
+    fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDPContract) {
         #[cfg(feature = "mercury")]
         crate::index_types::CDP {
             id: lender.clone(),

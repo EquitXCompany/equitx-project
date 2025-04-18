@@ -34,7 +34,7 @@ jobs:
       uses: cargo-bins/cargo-binstall@v1.12.3
     - name: Install loam
       run: cargo binstall loam-cli
-    - name: Build clients with Loam
+    - name: Build & build clients with Loam
       run: LOAM_ENV=testing loam build --build-clients
     - name: Cargo build
       run: cargo build --verbose

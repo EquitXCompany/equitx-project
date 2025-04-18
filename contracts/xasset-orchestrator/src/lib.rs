@@ -1,14 +1,14 @@
 #![no_std]
+
 use loam_sdk::derive_contract;
 use loam_subcontract_core::{admin::Admin, Core};
 
-pub mod cdp;
-pub mod landscape;
+pub mod error;
+use crate::error::Error;
+pub mod orchestrator;
+pub use orchestrator::*;
 
-#[derive_contract(
-    Core(Admin),
-    // Sep40(DataFeed),
-)]
+#[derive_contract(Core(Admin), OrchestratorTrait(Storage))]
 pub struct Contract;
 
 impl Contract {
@@ -18,3 +18,5 @@ impl Contract {
             .require_auth();
     }
 }
+
+mod test;

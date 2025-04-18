@@ -1,6 +1,5 @@
 [package]
-name = "equitx-landscape"
-description = "Keeps track of all EquitX contracts and allows deploying new ones"
+name = "orchestrator"
 version = "0.0.0"
 authors = ["Aha Labs <help@ahalabs.dev>"]
 license = "Apache-2.0"
@@ -14,10 +13,7 @@ doctest = false
 [dependencies]
 loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
 loam-subcontract-core = { workspace = true }
-
-
-[dev-dependencies]
-loam-sdk = { workspace = true, features = ["soroban-sdk-testutils"] }
+xasset = { path = "../xasset" }
 
 [package.metadata.loam]
 contract = true
