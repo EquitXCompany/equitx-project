@@ -10,10 +10,12 @@ loam build
 # Deploy and initialize contracts for each asset
 DATAFEED="CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63"
 
+echo "Uploading xasset contract..."
+xasset_wasm_hash=$(stellar contract upload --wasm target/loam/xasset.wasm --source equitxtestnet)
 echo "Deploying orchestrator contract..."
 contract_id=$(stellar contract deploy --wasm target/loam/orchestrator.wasm --source equitxtestnet)
 stellar contract invoke --id $contract_id -- admin_set --new-admin equitxtestnet
-stellar contract invoke --id $contract_id -- init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED"
+stellar contract invoke --id $contract_id -- init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --xasset_wasm_hash "$xasset_wasm_hash"
 
 # Declare a regular array to store asset-to-contract mappings
 asset_contract_map=()
@@ -33,16 +35,15 @@ deploy_xasset() {
 assets=("BTC" "ETH" "USDT" "XRP" "SOL" "ADA" "DOT")
 
 for asset in "${assets[@]}"; do
-    deploy_xasset $asset
+    deploy_xasset "$asset"
 done
 
 # Update environments.toml to point to the deployed orchestrator
 if grep -q "^orchestrator = { id = " environments.toml; then
-    sed -i.bak "s/orchestrator = { id = \"[^\"]*\"/orchestrator = { id = \"$contract_id\"/" environments.toml
+    sed -i.bak "s/orchestrator = { id = \"[^\"]*\" }/orchestrator = { id = \"$contract_id\" }/" environments.toml
 else
     sed -i.bak "/\[staging\.contracts\]/a\\
-orchestrator = { id = \"$contract_id\" }\\
-" environments.toml
+orchestrator = { id = \"$contract_id\" }" environments.toml
 fi
 
 # Remove backup environments.toml file
