@@ -28,6 +28,7 @@ export const MetricCard = ({
 
   return (
     <Paper 
+      className='metric-card-paper-root'
       sx={{ 
         display: 'flex',
         flexDirection: 'column',
@@ -35,12 +36,11 @@ export const MetricCard = ({
         alignItems: 'center',
         p: 2, 
         height: '100%', 
-        bgcolor: 'rgba(0, 0, 0, 0.2)',
         borderRadius: '20px',
         transition: 'transform 0.2s',
         '&:hover': {
           transform: 'translateY(-2px)'
-        }
+        },
       }}
     >
 
@@ -78,7 +78,8 @@ export const MetricCard = ({
             variant="caption"
             sx={{
               color: isPositiveChange ? 'success.main' : 'error.main',
-              fontWeight: 500
+              fontWeight: 500,
+              fontSize: 18
             }}
           >
             {formattedChange}%
@@ -95,7 +96,8 @@ export const MetricCard = ({
             sx={{ 
               mt: '10px',
               mb: 1,
-              fontWeight: 500
+              fontWeight: 800,
+              fontSize: 38
             }}
           >
             {value}

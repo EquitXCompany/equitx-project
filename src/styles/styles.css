@@ -234,6 +234,15 @@ code {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.metric-card-grid {
+  padding: 20px;
+  background-color: #1A1C21;
+}
+
+[data-theme="dark"] .metric-card-paper-root {
+  background-color: #000;
+}
+
 [data-theme="dark"] .metric-card-container {
   background-color: #1A1C21;
 }
