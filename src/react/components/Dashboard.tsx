@@ -106,7 +106,13 @@ export default function Dashboard() {
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: theme.palette.background.default }}>
       {/* Top Metrics Grid */}
-      <Grid container spacing={3} mb={4} className="metric-card-grid">
+      <Grid container spacing={3} mb={4} className="metric-card-grid" id="metric-cards"
+        sx={{
+          margin: 0,
+          width: 1,
+          gap: '20px'
+        }}
+      >
         {topMetrics.map((metric, index) => (
           <Grid item xs={12} md={3} key={index} className="metric-card-container">
             <MetricCard

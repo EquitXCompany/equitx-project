@@ -49,19 +49,19 @@ export const MetricCard = ({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            bgcolor: isPositiveChange 
-              ? 'rgba(45, 192, 113, 0.15)' 
-              : 'rgba(255, 72, 66, 0.15)',
-            px: 1,
-            py: 0.5,
-            borderRadius: '15px'
+            bgcolor: isPositiveChange
+              ? '#648153'
+              : '#D46565',
+            px: 2,
+            py: 1.25,
+            borderRadius: '25px'
           }}
         >
           {isPositiveChange ? (
             <TrendingUp 
               sx={{ 
                 fontSize: 16, 
-                color: 'success.main',
+                color: 'white',
                 mr: 0.5 
               }} 
             />
@@ -69,7 +69,7 @@ export const MetricCard = ({
             <TrendingDown 
               sx={{ 
                 fontSize: 16, 
-                color: 'error.main',
+                color: 'white',
                 mr: 0.5 
               }} 
             />
@@ -77,7 +77,7 @@ export const MetricCard = ({
           <Typography
             variant="caption"
             sx={{
-              color: isPositiveChange ? 'success.main' : 'error.main',
+              color: 'black',
               fontWeight: 500,
               fontSize: 18
             }}
