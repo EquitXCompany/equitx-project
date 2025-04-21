@@ -56,7 +56,7 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
       asset.price = xlmPrice.toString();
       asset.last_xlm_price= xlmPrice.toString();
       asset = await assetService.insert(asset);
-      console.log(`Created asset special XLM asset`);
+      console.log(`Created special XLM asset`);
     }
   } catch (error) {
     console.error("Error creating assets:", error);

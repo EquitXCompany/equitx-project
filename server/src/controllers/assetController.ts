@@ -31,7 +31,6 @@ export class AssetController {
       const contractMapping = assets.reduce((acc, asset) => {
         if (asset.liquidityPool) {
           acc[asset.symbol] = asset.liquidityPool.pool_address;
-        } else {
         }
         return acc;
       }, {} as Record<string, string>);
