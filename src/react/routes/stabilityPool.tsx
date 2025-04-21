@@ -7,7 +7,6 @@ import { useWallet } from '../../wallet';
 import { ContractErrors } from '../../contracts/util';
 import { authenticatedContractCall, unwrapResult } from '../../utils/contractHelpers';
 import Alert from '@mui/material/Alert';
-import AddressDisplay from '../components/cdp/AddressDisplay';
 import { useXAssetContract } from '../hooks/useXAssetContract';
 import ErrorMessage from '../components/errorMessage';
 
@@ -223,16 +222,12 @@ function StabilityPool() {
     );
   }
 
-  const contractId = contractMapping[assetSymbol as XAssetSymbol];
   return (
     <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
       <MuiLink component={RouterLink} to={`/`} sx={{ display: 'block', mb: 2 }}>
         ← Back to Home
       </MuiLink>
       <Typography variant="h5" gutterBottom>Stability Pool</Typography>
-      <Typography>
-        <AddressDisplay address={contractId ? contractId : ''} />
-      </Typography>
       <Grid container spacing={3} sx={{ mt: 2 }}>
         <Grid item xs={12} sm={6}>
           <Paper elevation={3} sx={{ p: 2 }}>

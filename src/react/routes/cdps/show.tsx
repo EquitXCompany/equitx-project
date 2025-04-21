@@ -1,6 +1,5 @@
 import { useParams, Link } from "react-router-dom";
 import { CDPDisplay } from "../../components/cdp/CDPDisplay";
-import AddressDisplay from "../../components/cdp/AddressDisplay";
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
 import { useContractCdp } from "../../hooks/useCdps";
 import ErrorMessage from "../../components/errorMessage";
@@ -29,7 +28,6 @@ function Show() {
   return (
     <>
       <Link to={`/cdps/${assetSymbol}`} className="back-link">← Back to List</Link>
-      <h2>CDP for <AddressDisplay address={lender} /></h2>
       {cdp && (
         <>
           <CDPDisplay

@@ -53,7 +53,7 @@ export default function Navbar() {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', p: 2, flexDirection: 'column' }}>
         <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>
-          <Chevron open={open} onClick={handleDrawerToggle} isDarkMode={isDarkMode}/>
+          <Chevron open={open} isDarkMode={isDarkMode}/>
         </IconButton>
       </Box>
       <Divider />

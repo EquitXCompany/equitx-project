@@ -7,9 +7,7 @@ export default function Connect() {
 
   if (isSignedIn && account) {
     return (
-      <p style={{ textAlign: "center" }}>
-        Connected as <AddressDisplay address={account} />
-      </p>
+        <AddressDisplay address={account} />
     );
   }
   if (networkPassphrase !== import.meta.env.PUBLIC_NETWORK_PASSPHRASE) {
@@ -22,8 +20,12 @@ export default function Connect() {
   }
   return (
     <div style={{ textAlign: "center" }}>
-      <button type="button" onClick={() => setAllowed()}>
-        Connect Freighter Wallet
+      <button
+        className="connect-button"
+        type="button"
+        onClick={() => setAllowed()}
+      >
+        Connect Wallet
       </button>
     </div>
   );
