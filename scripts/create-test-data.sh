@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Declare a plain array to hold contract data
+XASSET_CONTRACT_IDS=()
+
+# Function to parse the plain text file into a key-value structure
+load_contract_ids() {
+    local file_path="$1"
+    while IFS=: read -r key value; do
+        XASSET_CONTRACT_IDS+=("$key:$value")
+    done < "$file_path"
+}
+
+# Source the existing contracts file
+load_contract_ids "$(dirname "$0")/existing_contracts.txt"
+
 # Function to generate a random user name
 generate_random_user() {
     echo "user_$(openssl rand -hex 4)"
@@ -13,7 +27,6 @@ get_contract_value() {
         --network-passphrase "Test SDF Network ; September 2015" \
         --id "$contract_id" -- "$method" | grep -o '"price":"[^"]*"' | cut -d'"' -f4
 }
-
 
 # Function to get asset price
 get_asset_price() {
@@ -45,7 +58,7 @@ open_cdp_and_maybe_stake() {
     echo "Processing user: $user for contract: $contract_id"
 
     # Generate Stellar keys for the user
-    stellar keys generate "$user"
+    stellar keys generate "$user" --fund
 
     # Open CDP
     stellar contract invoke --rpc-url https://soroban-testnet.stellar.org \
@@ -74,16 +87,6 @@ open_cdp_and_maybe_stake() {
     echo "------------------------"
 }
 
-# Read contract IDs from environments.toml
-declare -A CONTRACT_IDS
-while IFS='=' read -r key value; do
-    if [[ $key =~ ^x[A-Z]+ ]]; then
-        # Updated pattern to extract only the contract ID
-        contract_id=$(echo "$value" | grep -o '"[A-Z0-9]\{56\}"' | tr -d '"')
-        CONTRACT_IDS["$key"]=$contract_id
-    fi
-done < <(grep '^x[A-Z]\+ = { id = ' environments.toml)
-
 # Main execution
 echo "Creating test data for xasset contracts"
 echo "------------------------"
@@ -92,9 +95,9 @@ echo "------------------------"
 USERS_PER_CONTRACT=5
 
 # Process each contract
-for contract_name in "${!CONTRACT_IDS[@]}"; do
-    contract_id="${CONTRACT_IDS[$contract_name]}"
-    
+for entry in "${XASSET_CONTRACT_IDS[@]}"; do
+    contract_name="${entry%%:*}"
+    contract_id="${entry##*:}"
     echo "Processing contract: $contract_name ($contract_id)"
     
     # Get minimum CR and prices
@@ -135,8 +138,9 @@ echo "------------------------"
 # Number of near-liquidation CDPs per contract
 RISKY_CDPS_PER_CONTRACT=3
 
-for contract_name in "${!CONTRACT_IDS[@]}"; do
-    contract_id="${CONTRACT_IDS[$contract_name]}"
+for entry in "${XASSET_CONTRACT_IDS[@]}"; do
+    contract_name="${entry%%:*}"
+    contract_id="${entry##*:}"
     
     echo "Processing risky CDPs for contract: $contract_name ($contract_id)"
     

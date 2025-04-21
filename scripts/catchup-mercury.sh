@@ -1,27 +1,26 @@
 #!/bin/bash
 
-# Get the directory where the script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Load environment variables from the parent directory
+source "$(dirname "$0")/../.env"
 
-# Load environment variables
-source "$SCRIPT_DIR/.env"
-
-# Read contract IDs from contractConfig.ts
-CONFIG_FILE="$SCRIPT_DIR/src/contracts/contractConfig.ts"
-
-# Build contracts array for mercury-cli
+# Declare a plain array to hold contract data
 declare -a contract_args=()
-while IFS= read -r line; do
-    if [[ $line =~ x[A-Z]+:[[:space:]]*\"([A-Z0-9]+)\" ]]; then
-        contract_id="${BASH_REMATCH[1]}"
-        contract_args+=("--contracts" "$contract_id")
-    fi
-done < <(grep -E "x[A-Z]+: \"[A-Z0-9]+\"" "$CONFIG_FILE")
+
+# Function to parse the plain text file into a key-value structure
+load_contract_ids() {
+    local file_path="$1"
+    while IFS=: read -r key value; do
+        contract_args+=("--contracts" "$value")
+    done < "$file_path"
+}
+
+# Source the existing contracts file
+load_contract_ids "$(dirname "$0")/existing_contracts.txt"
 
 # Construct and execute the catchup command
 cmd=(
     mercury-cli
-    --key "$MERCURY_KEY"
+    --jwt "$MERCURY_JWT"
     --local false
     --mainnet false
     catchup
@@ -33,4 +32,4 @@ cmd=(
 echo "Running catchup command: ${cmd[*]}"
 "${cmd[@]}"
 
-echo "Catchup complete."
+echo "Catchup request complete."
