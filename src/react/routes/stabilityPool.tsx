@@ -33,8 +33,17 @@ const parseErrorMessage = (error: any): string => {
 
 
 function StabilityPool() {
-  console.log("opening")
   const { assetSymbol } = useParams();
+  if (!assetSymbol) {
+    return (
+      <ErrorMessage
+
+        title="Error: No Asset Selected"
+        message="Please select an asset from the home page to view its stability pool."
+      />
+    );
+  }
+
   const contractMapping = useContractMapping();
   console.log("contractMapping", contractMapping)
   const { account, isSignedIn } = useWallet();
@@ -50,7 +59,7 @@ function StabilityPool() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const xasset = getContractBySymbol(assetSymbol || "", contractMapping);
+  const xasset = getContractBySymbol(assetSymbol, contractMapping);
 
   const fetchData = async () => {
     setLoading(true);
@@ -99,7 +108,7 @@ function StabilityPool() {
 
   useEffect(() => {
     fetchData();
-  }, [xasset, account, isSignedIn]);
+  }, [account, isSignedIn]);
 
 
 
@@ -210,7 +219,7 @@ function StabilityPool() {
     return (
       <ErrorMessage
         title="Error: No Asset Selected"
-        message="Please select an asset from the home page to view its stability pool."
+        message="Please select an asset to view its stability pool."
       />
     );
   }
