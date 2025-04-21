@@ -8,10 +8,9 @@ import { apiClient } from "../../utils/apiClient";
 import BigNumber from "bignumber.js";
 import { unwrapResult } from "../../utils/contractHelpers";
 import { i128, u32, u64 } from "@stellar/stellar-sdk/contract";
-import { useXAssetContract, useXAssetContractsForAll } from "./useXAssetContract";
-import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import { Asset, useAssets } from "./useAssets";
 import { useMemo } from "react";
+import { getContractBySymbol } from "../../contracts/util";
 
 export type ContractCDPStatus =
   | { tag: "Open"; values: void }
@@ -169,19 +168,20 @@ const commonQueryOptions = {
 };
 
 export function useContractCdp(
-  assetSymbol: XAssetSymbol,
+  assetSymbol: string,
+  contractMapping: Record<string, string>,
   lender: string,
   options?: Omit<
     UseQueryOptions<ContractCDP | null, Error>,
     "queryKey" | "queryFn"
   >
 ): UseQueryResult<ContractCDP | null, Error> {
-  const { contract, loading } = useXAssetContract(assetSymbol);
+  const contract = getContractBySymbol(assetSymbol, contractMapping);
 
   return useQuery<ContractCDP | null, Error, ContractCDP | null>(
     ["contract-cdp", assetSymbol, lender],
     async () => {
-      if (loading || !contract) {
+      if (!contract) {
         throw new Error("Contract is not available");
       }
 
@@ -199,7 +199,7 @@ export function useContractCdp(
       }
     },
     {
-      enabled: !loading && !!lender,
+      enabled: !!lender,
       ...commonQueryOptions,
       ...options,
     }
@@ -209,10 +209,15 @@ export function useContractCdp(
 
 export function useContractCdpForAllAssets(
   lender: string,
+  contractMapping: Record<string, string>,
   options?: Omit<UseQueryOptions<ContractCDP | null, Error>, "queryKey" | "queryFn">
-): UseQueryResult<Record<XAssetSymbol, ContractCDP | null>, Error> {
-  const assets = Object.keys(contractMapping) as XAssetSymbol[];
-  const contracts = useXAssetContractsForAll(assets);
+): UseQueryResult<Record<string, ContractCDP | null>, Error> {
+  const assets = Object.keys(contractMapping);
+  let contracts: Record<string, any> = {};
+  assets.forEach((asset) => {
+    const contract = getContractBySymbol(asset, contractMapping);
+    contracts[asset] = contract;
+  });
   
   const results = useQueries<UseQueryOptions<ContractCDP | null, Error>[]>(
     assets.map((asset) => ({
@@ -247,30 +252,31 @@ export function useContractCdpForAllAssets(
   const data = results.every(result => result.data !== undefined)
     ? Object.fromEntries(
         results.map((result, index) => [assets[index], result.data])
-      ) as Record<XAssetSymbol, ContractCDP | null>
+      ) as Record<string, ContractCDP | null>
     : undefined;
 
   return {
     data,
     isLoading,
     error,
-  } as UseQueryResult<Record<XAssetSymbol, ContractCDP | null>, Error>;
+  } as UseQueryResult<Record<string, ContractCDP | null>, Error>;
 }
 
 export function useAllContractCdps(
-  assetSymbol: XAssetSymbol,
+  assetSymbol: string,
   lenders: string[],
+  contractMapping: Record<string, string>,
   options?: Omit<
     UseQueryOptions<Record<string, ContractCDP>, Error>,
     "queryKey" | "queryFn"
   >
 ): UseQueryResult<Record<string, ContractCDP>, Error> {
-  const { contract, loading } = useXAssetContract(assetSymbol);
+  const contract = getContractBySymbol(assetSymbol, contractMapping);
 
   return useQuery<Record<string, ContractCDP>, Error>(
     ["contract-cdps", assetSymbol, lenders],
     async () => {
-      if (loading || !contract) {
+      if (!contract) {
         throw new Error("Contract is not available");
       }
 
@@ -299,7 +305,7 @@ export function useAllContractCdps(
       return Object.fromEntries(cdps.filter(([_, cdp]) => cdp !== null));
     },
     {
-      enabled: lenders.length > 0 && !loading,
+      enabled: lenders.length > 0,
       ...commonQueryOptions,
       ...options,
     }
@@ -328,7 +334,8 @@ export function convertContractCDPtoClientCDP(
 }
 
 export function useMergedCdps(
-  assetSymbol: XAssetSymbol,
+  assetSymbol: string,
+  contractMapping: Record<string, string>,
   userAddress?: string,
   options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">
 ) {
@@ -339,7 +346,7 @@ export function useMergedCdps(
     staleTime: 300000,
   });
 
-  const contractCDPQuery = useContractCdp(assetSymbol, userAddress ?? "", {
+  const contractCDPQuery = useContractCdp(assetSymbol, contractMapping, userAddress ?? "", {
     enabled: !!userAddress,
     staleTime: 300000,
   });

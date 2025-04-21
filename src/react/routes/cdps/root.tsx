@@ -4,16 +4,17 @@ import Connect from "../../components/connect";
 import { useStabilityPoolMetadata } from '../../hooks/useStabilityPoolMetadata';
 import BigNumber from "bignumber.js";
 import { BASIS_POINTS } from "../../../constants";
-import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
 import ErrorMessage from "../../components/errorMessage";
 import PriceHistoryChart from '../../components/charts/PriceHistoryChart';
 import { useLatestCdpMetrics } from "../../hooks/useCdpMetrics";
 import { formatCurrency } from "../../../utils/formatters";
 import { useLatestTVLMetrics } from "../../hooks/useTvlMetrics";
+import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
 function Root() {
-  const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
+  const { assetSymbol } = useParams();
   const navigate = useNavigate();
+  const contractMapping = useContractMapping();
 
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     return (
@@ -25,7 +26,7 @@ function Root() {
   }
   const { data: assetMetrics, error: assetMetricsError, isLoading: assetMetricsLoading } = useLatestCdpMetrics(assetSymbol);
   const { data: tvlMetrics, error: tvlMetricsError, isLoading: tvlMetricsLoading } = useLatestTVLMetrics(assetSymbol);
-  const { data: stabilityData, error, isLoading } = useStabilityPoolMetadata(assetSymbol);
+  const { data: stabilityData, error, isLoading } = useStabilityPoolMetadata(assetSymbol, contractMapping);
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>An error occurred: {error.message}</div>;

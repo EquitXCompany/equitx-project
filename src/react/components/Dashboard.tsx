@@ -21,14 +21,14 @@ import { useLatestTVLMetrics } from "../hooks/useTvlMetrics";
 import { MetricCard } from "./common/MetricCard";
 import { TVLChart } from "./charts/TVLChart";
 import { formatCurrency } from "../../utils/formatters";
-import { contractMapping, type XAssetSymbol } from "../../contracts/contractConfig";
 import { Link } from "react-router-dom";
-
-const assetSymbols = Object.keys(contractMapping) as XAssetSymbol[];
+import { useContractMapping } from "../../contexts/ContractMappingContext";
 
 export default function Dashboard() {
   const theme = useTheme();
-  
+  const contractMapping = useContractMapping();
+  const assetSymbols = Object.keys(contractMapping);
+
   const dateParams = useMemo(() => ({
     start_time: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     end_time: new Date().toISOString(),

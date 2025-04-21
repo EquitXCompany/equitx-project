@@ -3,10 +3,11 @@ import { CDPDisplay } from "../../components/cdp/CDPDisplay";
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
 import { useContractCdp } from "../../hooks/useCdps";
 import ErrorMessage from "../../components/errorMessage";
-import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
+import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
 function Show() {
-  const { assetSymbol, lender } = useParams() as { assetSymbol: XAssetSymbol, lender: string };
+  const { assetSymbol, lender } = useParams();
+  const contractMapping = useContractMapping();
 
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     return (
@@ -17,8 +18,17 @@ function Show() {
     );
   }
 
-  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata(assetSymbol);
-  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(assetSymbol, lender);
+  if (!lender) {
+    return (
+      <ErrorMessage
+        title="Error: No Lender Address Provided"
+        message="Please provide a valid lender address to view the CDP."
+      />
+    );
+  }
+
+  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata(assetSymbol, contractMapping);
+  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(assetSymbol, contractMapping, lender);
   const decimals = 7; // FIXME: get from xasset (to be implemented as part of ft)
 
   if (isLoadingMetadata || isLoadingCdp || !metadata) {

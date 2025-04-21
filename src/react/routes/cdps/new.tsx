@@ -7,39 +7,21 @@ import BigNumber from 'bignumber.js';
 import { BASIS_POINTS } from "../../../constants";
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
-import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
 import ErrorMessage from "../../components/errorMessage";
 import { getContractBySymbol } from "../../../contracts/util";
+import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
-type LoaderData = {
-  minRatio: BigNumber;
-};
-
-export const loader: LoaderFunction = async ({ params }) => {
-  const assetSymbol = params.assetSymbol as XAssetSymbol;
-
-  if (!assetSymbol || !contractMapping[assetSymbol]) {
-    throw new Error("Invalid asset symbol");
-  }
-
-  const contractClient = getContractBySymbol(assetSymbol);
-
-  return {
-    minRatio: await contractClient
-      .minimum_collateralization_ratio()
-      .then((t: { result: number }) => new BigNumber(t.result)),
-  };
-};
 
 export const action: ActionFunction = async ({ request, params }) => {
-  const assetSymbol = params.assetSymbol as XAssetSymbol;
+  const formData = Object.fromEntries(await request.formData());
+  const assetSymbol = params.assetSymbol;
+  const contractMapping = JSON.parse(formData.contractMapping as string); // Parse contractMapping from hidden input
 
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     throw new Error("Invalid asset symbol");
   }
 
-  const contractClient = await getContractBySymbol(assetSymbol);
-  const formData = Object.fromEntries(await request.formData());
+  const contractClient = await getContractBySymbol(assetSymbol, contractMapping);
   const decimalsXLM = 7;
   const decimalsAsset = 7;
   const cdp = {
@@ -52,10 +34,10 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 function New() {
-  const { assetSymbol } = useParams() as { assetSymbol: XAssetSymbol };
+  const { assetSymbol } = useParams();
   const { account, isSignedIn } = useWallet();
-  const { minRatio } = useLoaderData() as Awaited<LoaderData>;
-  const { data: metadata, isLoading } = useStabilityPoolMetadata(assetSymbol);
+  const [minRatio, setMinRatio] = useState(new BigNumber(0));
+  const contractMapping = useContractMapping();
 
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     return (
@@ -66,6 +48,7 @@ function New() {
     );
   }
 
+  const { data: metadata, isLoading } = useStabilityPoolMetadata(assetSymbol, contractMapping);
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));
   const [ratio, setRatio] = useState(new BigNumber(110));
@@ -73,6 +56,18 @@ function New() {
   const decimalsAsset = 7;
   const stepValueXLM = `0.${'0'.repeat(decimalsXLM - 1)}1`;
   const stepValueAsset = `0.${'0'.repeat(decimalsAsset - 1)}1`;
+
+  useEffect(() => {
+    const contractClient = getContractBySymbol(assetSymbol, contractMapping);
+    const fetchMinRatio = async () => {
+      const newMinRatio = await contractClient
+        .minimum_collateralization_ratio()
+        .then((t: { result: number }) => new BigNumber(t.result));
+      setMinRatio(newMinRatio);
+    };
+    fetchMinRatio();
+  }, [assetSymbol, contractMapping]);
+
 
   const updateRatio = (newCollateral: BigNumber, newToLend: BigNumber) => {
     if (newToLend.isZero() || !metadata) {
@@ -122,6 +117,7 @@ function New() {
       </Typography>
       <Form method="post" className="text-sm flex flex-col text-left">
         <input type="hidden" name="lender" value={account} />
+        <input type="hidden" name="contractMapping" value={JSON.stringify(contractMapping)} />
         <Box sx={{ mt: 2 }}>
           <TextField
             fullWidth

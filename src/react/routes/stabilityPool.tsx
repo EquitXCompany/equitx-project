@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Typography, Button, Paper, Grid, TextField, Snackbar, CircularProgress, type AlertProps, Link as MuiLink } from '@mui/material';
-import { contractMapping, XAssetSymbol } from '../../contracts/contractConfig';
 import BigNumber from 'bignumber.js';
 import { useWallet } from '../../wallet';
-import { ContractErrors } from '../../contracts/util';
+import { ContractErrors, getContractBySymbol } from '../../contracts/util';
 import { authenticatedContractCall, unwrapResult } from '../../utils/contractHelpers';
 import Alert from '@mui/material/Alert';
-import { useXAssetContract } from '../hooks/useXAssetContract';
 import ErrorMessage from '../components/errorMessage';
+import { useContractMapping } from '../../contexts/ContractMappingContext';
 
 const PRODUCT_CONSTANT_DECIMALS = 9;
 const PRODUCT_CONSTANT = Math.pow(10, PRODUCT_CONSTANT_DECIMALS);
@@ -33,7 +32,10 @@ const parseErrorMessage = (error: any): string => {
 
 
 function StabilityPool() {
+  console.log("opening")
   const { assetSymbol } = useParams();
+  const contractMapping = useContractMapping();
+  console.log("contractMapping", contractMapping)
   const { account, isSignedIn } = useWallet();
   const [totalXAsset, setTotalXAsset] = useState<BigNumber>(new BigNumber(0));
   const [totalCollateral, setTotalCollateral] = useState<BigNumber>(new BigNumber(0));
@@ -47,8 +49,7 @@ function StabilityPool() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  const { contract: xasset } = useXAssetContract(assetSymbol as XAssetSymbol);
+  const xasset = getContractBySymbol(assetSymbol || "", contractMapping);
 
   const fetchData = async () => {
     setLoading(true);
@@ -213,7 +214,7 @@ function StabilityPool() {
     );
   }
   
-  if (!contractMapping[assetSymbol as XAssetSymbol]) {
+  if (!contractMapping[assetSymbol]) {
     return (
       <ErrorMessage
         title="Error: Invalid Asset"

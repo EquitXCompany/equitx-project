@@ -5,12 +5,12 @@ import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
 import { BarChart } from "./charts/BarChart";
 import BigNumber from "bignumber.js";
 import { formatCurrency, generateAssetColors } from "../../utils/formatters";
-import { XAssetSymbol } from "../../contracts/contractConfig";
+import { useContractMapping } from "../../contexts/ContractMappingContext";
 
 export const LiquidationsHistory = () => {
   const { data: liquidations, isLoading: isLiquidationsLoading } =
     useLiquidations();
-  const { data: stabilityPoolData } = useAllStabilityPoolMetadata();
+  const { data: stabilityPoolData } = useAllStabilityPoolMetadata(useContractMapping());
 
   const metrics = useMemo(() => {
     if (!liquidations || !stabilityPoolData) return null;
@@ -18,13 +18,13 @@ export const LiquidationsHistory = () => {
     // Initialize assetTotals dynamically
     const assetTotals = Object.keys(stabilityPoolData).reduce(
       (acc, asset) => {
-        acc[asset as XAssetSymbol] = {
+        acc[asset] = {
           xlm: new BigNumber(0),
           usd: new BigNumber(0),
         };
         return acc;
       },
-      {} as Record<XAssetSymbol, { xlm: BigNumber; usd: BigNumber }>
+      {} as Record<string, { xlm: BigNumber; usd: BigNumber }>
     );
 
     let largestLiquidation = { xlm: new BigNumber(0), usd: new BigNumber(0) };
@@ -44,10 +44,11 @@ export const LiquidationsHistory = () => {
           usd: new BigNumber(0),
         };
       }
-      assetTotals[liquidation.asset].xlm =
-        assetTotals[liquidation.asset].xlm.plus(xlmAmount);
-      assetTotals[liquidation.asset].usd =
-        assetTotals[liquidation.asset].usd.plus(usdAmount);
+
+      const operatingAsset = assetTotals[liquidation.asset];
+      if (!operatingAsset) return;
+      operatingAsset.xlm = operatingAsset.xlm.plus(xlmAmount);
+      operatingAsset.usd = operatingAsset.usd.plus(usdAmount);
 
       // Update largest liquidation
       if (xlmAmount.isGreaterThan(largestLiquidation.xlm)) {
@@ -99,7 +100,7 @@ export const LiquidationsHistory = () => {
   const assetColors = useMemo(() => {
     if (!stabilityPoolData) return {};
     return generateAssetColors(
-      Object.keys(stabilityPoolData) as XAssetSymbol[]
+      Object.keys(stabilityPoolData)
     );
   }, [stabilityPoolData]);
 
@@ -179,7 +180,7 @@ export const LiquidationsHistory = () => {
 
       <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", borderRadius: 2 }}>
         <Box height={330}>
-          Liquidations Over Time 
+          Liquidations Over Time
           <BarChart
             data={chartData}
             xAxis={{
@@ -191,7 +192,7 @@ export const LiquidationsHistory = () => {
               label: asset.substring(1), // Remove 'x' prefix
               valueFormatter: (value: number) =>
                 `${formatCurrency(value, 0, 2, "XLM")}`,
-              color: assetColors[asset as XAssetSymbol] || "",
+              color: assetColors[asset] || "",
             }))}
           />
         </Box>
