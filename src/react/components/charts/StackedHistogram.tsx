@@ -11,7 +11,6 @@ import { BarChart } from "@mui/x-charts/BarChart";
 import { ChartsAxisContentProps } from "@mui/x-charts";
 import { useState } from "react";
 import BigNumber from "bignumber.js";
-import { XAssetSymbol } from "../../../contracts/contractConfig";
 import { formatCurrency, generateAssetColors } from "../../../utils/formatters";
 
 interface HistogramData {
@@ -22,7 +21,7 @@ interface HistogramData {
 }
 
 interface StackedHistogramProps {
-  data: Record<XAssetSymbol, HistogramData>;
+  data: Record<string, HistogramData>;
   isLoading?: boolean;
   yAxisFormatter?: (value: number) => string;
   tooltipFormatter?: (value: number) => string;
@@ -37,7 +36,7 @@ export function StackedHistogram({
   tooltipFormatter = (value: number) => formatCurrency(value, 0) + " XLM",
 }: StackedHistogramProps) {
   const theme = useTheme();
-  const assets = Object.keys(data) as XAssetSymbol[];
+  const assets = Object.keys(data)
   if (assets.length === 0) return;
   const firstAsset = assets[0]!;
   const baseBucketSize = data[firstAsset]?.bucketSize ?? 1;

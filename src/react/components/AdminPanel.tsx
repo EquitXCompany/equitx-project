@@ -25,9 +25,9 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import { deployAsset } from "../../utils/adminService";
-import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import { useWallet } from "../../wallet";
 import { getContractBySymbol } from "../../contracts/util";
+import { useContractMapping } from "../../contexts/ContractMappingContext";
 import { authenticatedContractCall } from "../../utils/contractHelpers";
 import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
 
@@ -43,14 +43,16 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const contractMapping = useContractMapping();
+
   const {
     data: allPoolMetadata,
     isLoading: metadataLoading,
     refetch: refetchMetadata,
-  } = useAllStabilityPoolMetadata();
+  } = useAllStabilityPoolMetadata(contractMapping);
   // Asset editing state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentAsset, setCurrentAsset] = useState<XAssetSymbol | null>(null);
+  const [currentAsset, setCurrentAsset] = useState<string | null>(null);
   const [newMinRatio, setNewMinRatio] = useState<number>(0);
   const [newInterestRate, setNewInterestRate] = useState<number>(0);
   const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
@@ -83,8 +85,8 @@ export default function AdminPanel() {
   const checkAdminStatus = async () => {
     try {
       setLoading(true);
-      const firstAsset = Object.keys(contractMapping)[0] as XAssetSymbol;
-      const contract = getContractBySymbol(firstAsset);
+      const firstAsset = Object.keys(contractMapping)[0] || "";
+      const contract = getContractBySymbol(firstAsset, contractMapping);
       const adminResult = await contract.admin_get({});
       const admin = adminResult.result;
       const isAdmin = Boolean(admin && admin === account);
@@ -177,7 +179,7 @@ export default function AdminPanel() {
   };
 
   // Handle opening the edit dialog for a specific asset
-  const handleEditAsset = (symbol: XAssetSymbol) => {
+  const handleEditAsset = (symbol: string) => {
     setCurrentAsset(symbol);
 
     if (allPoolMetadata && allPoolMetadata[symbol]) {
@@ -199,7 +201,7 @@ export default function AdminPanel() {
     setUpdateError(null);
 
     try {
-      const contract = getContractBySymbol(currentAsset);
+      const contract = getContractBySymbol(currentAsset, contractMapping);
       const contractValue = Math.round(newMinRatio * 100);
       const result = await authenticatedContractCall(
         contract.set_min_collat_ratio,
@@ -233,7 +235,7 @@ export default function AdminPanel() {
     setUpdateError(null);
 
     try {
-      const contract = getContractBySymbol(currentAsset);
+      const contract = getContractBySymbol(currentAsset, contractMapping);
       const contractValue = Math.round(newInterestRate * 100);
       const result = await authenticatedContractCall(
         contract.set_interest_rate,
@@ -547,7 +549,7 @@ export default function AdminPanel() {
             <TableBody>
               {Object.entries(contractMapping).map(([symbol, contractId]) => {
                 const metadata = allPoolMetadata
-                  ? allPoolMetadata[symbol as XAssetSymbol]
+                  ? allPoolMetadata[symbol]
                   : undefined;
 
                 return (
@@ -588,7 +590,7 @@ export default function AdminPanel() {
                         <IconButton
                           color="primary"
                           onClick={() =>
-                            handleEditAsset(symbol as XAssetSymbol)
+                            handleEditAsset(symbol)
                           }
                           size="small"
                         >

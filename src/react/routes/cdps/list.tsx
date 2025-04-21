@@ -8,16 +8,14 @@ import { getStatusColor } from "../../../utils/contractHelpers";
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
 import { useParams } from "react-router-dom";
 import ErrorMessage from "../../components/errorMessage";
-import {
-  contractMapping,
-  XAssetSymbol,
-} from "../../../contracts/contractConfig";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
 function List() {
   const { assetSymbol } = useParams();
   const { account } = useWallet();
   const { isDarkMode } = useTheme();
+  const contractMapping = useContractMapping();
 
   if (!assetSymbol) {
     return (
@@ -28,7 +26,7 @@ function List() {
     );
   }
 
-  if (!contractMapping[assetSymbol as XAssetSymbol]) {
+  if (!contractMapping[assetSymbol]) {
     return (
       <ErrorMessage
         title="Error: Invalid Asset"
@@ -41,12 +39,12 @@ function List() {
     data: cdps,
     isLoading: cdpsLoading,
     error: cdpsError,
-  } = useMergedCdps(assetSymbol as XAssetSymbol, account);
+  } = useMergedCdps(assetSymbol, contractMapping, account);
   const {
     data: stabilityData,
     isLoading: stabilityLoading,
     error: stabilityError,
-  } = useStabilityPoolMetadata(assetSymbol as XAssetSymbol);
+  } = useStabilityPoolMetadata(assetSymbol, contractMapping);
 
   if (cdpsLoading || stabilityLoading) return <div>Loading...</div>;
   if (cdpsError || stabilityError)

@@ -1,5 +1,4 @@
 import BigNumber from "bignumber.js";
-import { XAssetSymbol } from "../../contracts/contractConfig";
 
 export interface TimestampRange {
   start_time?: string;
@@ -7,7 +6,7 @@ export interface TimestampRange {
 }
 
 export interface CDPMetricsData {
-  asset: XAssetSymbol;
+  asset: string;
   totalCDPs: number;
   totalXLMLocked: BigNumber;
   interestMetrics: {
@@ -36,7 +35,7 @@ export interface CDPMetricsData {
 
 export interface LiquidationData {
   cdpId: string;
-  asset: XAssetSymbol;
+  asset: string;
   collateralLiquidated: BigNumber;
   collateralLiquidatedUsd: BigNumber;
   principalRepaid: BigNumber;
@@ -75,7 +74,7 @@ export interface ProtocolStatsData {
 }
 
 export interface TVLMetricsData {
-  asset: XAssetSymbol;
+  asset: string;
   totalXlmLocked: BigNumber;
   totalXassetsMinted: BigNumber;
   totalXassetsStaked: BigNumber;
@@ -116,7 +115,7 @@ export interface UserMetricsData {
 }
 
 export interface UtilizationMetricsData {
-  asset: XAssetSymbol;
+  asset: string;
   dailyActiveUsers: number;
   dailyTransactions: number;
   dailyXlmVolume: BigNumber;
@@ -135,7 +134,7 @@ export interface CDPHistoryData {
   accruedInterest: BigNumber;
   interestPaid: BigNumber;
   action: string; // Enum as string
-  asset: XAssetSymbol;
+  asset: string;
   originalCdpId: string;
   timestamp: Date;
 }

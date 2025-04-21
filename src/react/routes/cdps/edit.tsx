@@ -19,9 +19,9 @@ import {
   Link as MuiLink
 } from "@mui/material";
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
-import { contractMapping, XAssetSymbol } from "../../../contracts/contractConfig";
 import ErrorMessage from "../../components/errorMessage";
 import { getContractBySymbol } from "../../../contracts/util";
+import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
 interface ActionData {
   message: string;
@@ -35,13 +35,14 @@ export const action: ActionFunction = async ({ request, params }) => {
   const action = formData.get("action");
   const lender = formData.get("lender") as string;
   const amount = new BigNumber(formData.get("amount") as string).times(10 ** 7).toFixed(0);
-  const assetSymbol = params.assetSymbol as XAssetSymbol;
-  
+  const assetSymbol = params.assetSymbol;
+  const contractMapping = JSON.parse(formData.get("contractMapping") as string); // Parse contractMapping from hidden input
+
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     throw new Error("Invalid asset symbol");
   }
 
-  const contractClient = getContractBySymbol(assetSymbol);
+  const contractClient = await getContractBySymbol(assetSymbol, contractMapping);
 
   let tx;
   switch (action) {
@@ -79,7 +80,8 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 function Edit() {
-  const { assetSymbol, lender } = useParams() as { lender: string, assetSymbol: XAssetSymbol};
+  const { assetSymbol, lender } = useParams() as { lender: string, assetSymbol: string};
+  const contractMapping = useContractMapping();
 
   if (!assetSymbol) {
     return (
@@ -90,7 +92,7 @@ function Edit() {
     );
   }
   
-  if (!contractMapping[assetSymbol as XAssetSymbol]) {
+  if (!contractMapping[assetSymbol]) {
     return (
       <ErrorMessage
         title="Error: Invalid Asset"
@@ -98,8 +100,8 @@ function Edit() {
       />
     );
   }
-  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(assetSymbol, lender);
-  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata(assetSymbol);
+  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(assetSymbol, contractMapping, lender);
+  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata(assetSymbol, contractMapping);
   const { account, isSignedIn } = useWallet();
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -162,6 +164,7 @@ function Edit() {
             {isOwner && (
               <Form method="post">
                 <input type="hidden" name="lender" value={lender} />
+                <input type="hidden" name="contractMapping" value={JSON.stringify(contractMapping)} />
                 <TextField
                   fullWidth
                   label="Amount"
@@ -207,6 +210,7 @@ function Edit() {
               <Box mt={2}>
                 <Form method="post">
                   <input type="hidden" name="lender" value={lender} />
+                  <input type="hidden" name="contractMapping" value={JSON.stringify(contractMapping)} />
                   <Button fullWidth variant="contained" color="error" type="submit" name="action" value="liquidate" disabled={!isSignedIn}>
                     Liquidate CDP
                   </Button>
@@ -217,6 +221,7 @@ function Edit() {
               <Box mt={2}>
                 <Form method="post">
                   <input type="hidden" name="lender" value={lender} />
+                  <input type="hidden" name="contractMapping" value={JSON.stringify(contractMapping)} />
                   <Button fullWidth variant="contained" color="error" type="submit" name="action" value="freeze" disabled={!isSignedIn}>
                     Freeze CDP
                   </Button>

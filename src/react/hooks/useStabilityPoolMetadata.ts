@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import BigNumber from 'bignumber.js';
 import { getContractBySymbol } from '../../contracts/util';
-import { contractMapping, type XAssetSymbol } from '../../contracts/contractConfig';
 import { ErrorMessage, i128, Result } from '@stellar/stellar-sdk/contract';
 
 type lastPriceResult = {result: Result<{price: i128}, ErrorMessage>};
@@ -10,12 +9,12 @@ export interface StabilityPoolMetadata {
   lastpriceXLM: BigNumber;
   lastpriceAsset: BigNumber;
   min_ratio: number;
-  symbolAsset: XAssetSymbol;
+  symbolAsset: string;
   contractId: string;
   interestRate: number;
 }
 
-export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
+export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: Record<string, string>) {
   const [data, setData] = useState<StabilityPoolMetadata | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +22,7 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const contract = getContractBySymbol(assetSymbol);
+        const contract = getContractBySymbol(assetSymbol, contractMapping);
         
         const tx = await contract.minimum_collateralization_ratio();
         const interestRate = await contract.get_interest_rate();
@@ -65,10 +64,10 @@ export function useStabilityPoolMetadata(assetSymbol: XAssetSymbol) {
 }
 
 type AllStabilityPoolMetadata = {
-  [key in XAssetSymbol]?: StabilityPoolMetadata;
+  [key in string]?: StabilityPoolMetadata;
 };
 
-export function useAllStabilityPoolMetadata() {
+export function useAllStabilityPoolMetadata(contractMapping: Record<string, string>) {
   const [allData, setAllData] = useState<AllStabilityPoolMetadata>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -81,8 +80,8 @@ export function useAllStabilityPoolMetadata() {
     try {
       const results = await Promise.all(
         Object.keys(contractMapping).map(async (symbol) => {
-          const assetSymbol = symbol as XAssetSymbol;
-          const contract = getContractBySymbol(assetSymbol);
+          const assetSymbol = symbol;
+          const contract = getContractBySymbol(assetSymbol, contractMapping);
 
           const [minRatio, xlmPrice, assetPrice, interestRate] = await Promise.all([
             contract.minimum_collateralization_ratio(),
