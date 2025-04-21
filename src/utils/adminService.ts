@@ -77,7 +77,6 @@ const getAuthorizationHeader = async () => {
 export const deployAsset = async (
   params: DeployAssetParams
 ): Promise<DeployAssetResponse> => {
-  const queryClient = useQueryClient();
   try {
     // Get authentication header first as it is a buggy call and avoids deploying a contract
     // and being unable to call the server
@@ -91,8 +90,8 @@ export const deployAsset = async (
       asset_contract: params.feedAddress,
       pegged_asset: params.symbol,
       decimals: params.decimals,
-      min_collat_ratio: params.minCollateralRatio,
-      annual_interest_rate: params.annualInterestRate,
+      min_collat_ratio: params.minCollateralRatio * 100,
+      annual_interest_rate: params.annualInterestRate * 100,
     });
 
     const contractId = result.value;
@@ -117,15 +116,12 @@ export const deployAsset = async (
       }
     );
 
-    // Invalidate the contract mapping query to refresh the list of assets
-    queryClient.invalidateQueries("contractMapping");
-
     return response.data;
   } catch (error) {
     if ((error as Error).message.includes("Transaction simulation failed")) {
       const err = (error as Error).message;
       if (err.includes("Contract, #3")) {
-        throw new Error(`x${params.symbol} contract already exists.`);
+        throw new Error(`x${params.symbol} contract already exists in the orchestrator.`);
       }
       const msg = (error as Error).message.split("\n")[0];
       throw new Error(msg);
@@ -136,3 +132,16 @@ export const deployAsset = async (
     throw error;
   }
 };
+
+export const useDeployAsset = (params: DeployAssetParams) => {
+  const queryClient = useQueryClient();
+  return {
+    mutate: async () => {
+      const response = await deployAsset(params);
+      if (response.success) {
+        queryClient.invalidateQueries("contractMapping");
+      }
+      return response;
+    },
+  };
+}

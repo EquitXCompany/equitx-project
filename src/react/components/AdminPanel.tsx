@@ -24,7 +24,7 @@ import {
   IconButton,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import { deployAsset } from "../../utils/adminService";
+import { useDeployAsset } from "../../utils/adminService";
 import { useWallet } from "../../wallet";
 import { getContractBySymbol } from "../../contracts/util";
 import { useContractMapping } from "../../contexts/ContractMappingContext";
@@ -66,6 +66,7 @@ export default function AdminPanel() {
     annualInterestRate: 1,
     feedAddress: DATAFEED_ADDRESS, // Initialize with default feed address
   });
+  const deployNewAsset = useDeployAsset(newAsset)
 
   const [deploymentResult, setDeploymentResult] = useState<{
     contractId: string;
@@ -136,15 +137,8 @@ export default function AdminPanel() {
     setSuccess(null);
 
     try {
-      const deployResponse = await deployAsset({
-        symbol: newAsset.symbol,
-        name: newAsset.name,
-        decimals: newAsset.decimals,
-        minCollateralRatio: newAsset.minCollateralRatio,
-        annualInterestRate: newAsset.annualInterestRate,
-        feedAddress: newAsset.feedAddress, // Pass the feed address to the API
-      });
-      
+      const deployResponse = await deployNewAsset.mutate();
+
       setDeploymentResult({
         contractId: deployResponse.contractId,
         txHash: deployResponse.message,
@@ -158,6 +152,7 @@ export default function AdminPanel() {
       } else {
         setSuccess(`Contract for x${newAsset.symbol} deployed successfully!`);
       }
+      refetchMetadata();
       setActiveStep(3);
     } catch (err: any) {
       console.error("Contract deployment failed:", err);
@@ -455,13 +450,13 @@ export default function AdminPanel() {
               </Paper>
 
               {deploymentResult && (
-                <Alert 
-                  severity={deploymentResult.partialSuccess ? "warning" : "success"} 
+                <Alert
+                  severity={deploymentResult.partialSuccess ? "warning" : "success"}
                   sx={{ mb: 3 }}
                 >
                   <Typography variant="body1" fontWeight="bold">
-                    {deploymentResult.partialSuccess 
-                      ? "Contract deployed with configuration issues" 
+                    {deploymentResult.partialSuccess
+                      ? "Contract deployed with configuration issues"
                       : "Contract deployed successfully!"}
                   </Typography>
                   <Typography variant="body2">
@@ -470,7 +465,7 @@ export default function AdminPanel() {
                   <Typography variant="body2">
                     Transaction: {deploymentResult.txHash}
                   </Typography>
-                  
+
                   {deploymentResult.partialSuccess && (
                     <>
                       <Typography variant="body2" color="error" sx={{ mt: 1 }}>
