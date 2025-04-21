@@ -113,7 +113,7 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
-        {open && contractMapping && Object.keys(contractMapping).map((symbol) => (
+        {open && contractMapping && Object.keys(contractMapping).sort().map((symbol) => (
           <ListItem key={symbol} disablePadding>
             <ListItemButton
               component={Link}
