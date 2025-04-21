@@ -78,8 +78,8 @@ export const MetricCard = ({
             variant="caption"
             sx={{
               color: 'black',
-              fontWeight: 500,
-              fontSize: 18
+              fontWeight: 600,
+              fontSize: 16
             }}
           >
             {formattedChange}%
@@ -97,7 +97,7 @@ export const MetricCard = ({
               mt: '10px',
               mb: 1,
               fontWeight: 800,
-              fontSize: 38
+              fontSize: 34
             }}
           >
             {value}
