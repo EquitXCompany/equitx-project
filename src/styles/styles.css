@@ -230,8 +230,49 @@ code {
   }
 }
 
+@media (min-width: 900px) {
+  #metric-cards {
+    flex-wrap: nowrap;
+  }
+}
+
+#metric-cards > .MuiGrid-item { 
+  padding: 0;
+}
+
+[data-theme="dark"] #metric-cards > .MuiGrid-item { 
+  border-color: white;
+}
+
 * {
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.metric-card-grid {
+  padding: 20px;
+  background-color: var(--color-surface-light);
+  border-radius: 20px;
+}
+
+[data-theme="dark"] .metric-card-grid {
+  background-color: #1A1C21;
+}
+
+.metric-card-paper-root {
+  border: 1px black solid;
+}
+
+[data-theme="dark"] .metric-card-paper-root {
+  background-color: #000;
+  border-color: white;
+}
+
+.metric-card-container {
+  border-radius: 20px;
+}
+
+[data-theme="dark"] .metric-card-container {
+  background-color: #1A1C21;
 }
 
 [data-theme="dark"] .MuiButtonBase-root.Mui-selected {
