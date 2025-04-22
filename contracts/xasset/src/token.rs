@@ -584,7 +584,6 @@ impl IsCollateralized for Token {
     }
 
     fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
-        lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
     
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
