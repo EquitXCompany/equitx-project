@@ -74,6 +74,11 @@ const router = createHashRouter([
         errorElement,
       },
       {
+        path: "portfolio",
+        element: <CDPStats />,
+        errorElement,
+      },
+      {
         path: "admin",
         element: <AdminPanel />,
         errorElement,
