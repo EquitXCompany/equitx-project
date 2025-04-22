@@ -13,7 +13,6 @@ export class MercuryWasm1745268105339 implements MigrationInterface {
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "liquidity_pools" DROP COLUMN "mercury_wasm_hash"`);
-        await queryRunner.query(`ALTER TABLE "liquidity_pools" ADD CONSTRAINT "fk_0e9c01f404f36d69a66360da963" FOREIGN KEY ("asset_id") REFERENCES "asset"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
     }
 
 }

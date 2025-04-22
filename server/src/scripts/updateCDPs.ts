@@ -276,7 +276,6 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
     const assetService = await AssetService.create();
     const cdpRepository = AppDataSource.getRepository(CDP);
     const wasmHashMapping = await getWasmHashToLiquidityPoolMapping(assetService);
-    console.log(wasmHashMapping);
 
     for (const [wasmHash, contractMapping] of wasmHashMapping) {
       if (wasmHashToUpdate !== null && wasmHashToUpdate !== wasmHash) {
