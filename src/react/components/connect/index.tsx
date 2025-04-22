@@ -1,5 +1,6 @@
 import { useWallet } from "../../../wallet";
 import AddressDisplay from "../cdp/AddressDisplay";
+import ErrorToolTip from "../errorMessage/ErrorTooltip";
 import { setAllowed } from "@stellar/freighter-api";
 
 export default function Connect() {
@@ -12,10 +13,9 @@ export default function Connect() {
   }
   if (networkPassphrase !== import.meta.env.PUBLIC_NETWORK_PASSPHRASE) {
     return (
-      <p style={{ textAlign: "center", color: "#b33" }}>
-        Wrong Freighter network selected. Select network with passphrase "
-        {import.meta.env.PUBLIC_NETWORK_PASSPHRASE}".
-      </p>
+      <ErrorToolTip
+        errorMessage={`Wrong Freighter network selected.\n Select network with passphrase:\n "${import.meta.env.PUBLIC_NETWORK_PASSPHRASE}".`}
+      />
     );
   }
   return (
