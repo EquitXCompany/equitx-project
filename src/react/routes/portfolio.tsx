@@ -28,7 +28,6 @@ export default function Portfolio() {
     const enrichedUserCdps = useMemo(() => {
         if (!userCdpsMap || !stabilityPoolData) return [];
 
-        console.log("User CDPs Map:", userCdpsMap);
         return Object.entries(userCdpsMap)
             .filter(([_, cdp]) => cdp !== null) // Filter out null CDPs
             .map(([assetSymbol, contractCdp]) => {
@@ -175,7 +174,7 @@ export default function Portfolio() {
                         columns={cdpColumns}
                         loading={userCdpsLoading || spLoading}
                         getRowId={(row) => `${row.contract_id}-${row.lender}`}
-                        pageSizeOptions={[10, 25, 50]}
+                        pageSizeOptions={[10, 25, 50, 100]}
                     />
                 )}
             </Box>
