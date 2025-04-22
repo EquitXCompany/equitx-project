@@ -6,7 +6,6 @@ import { AssetService } from "../services/assetService";
 import { StakerService } from "../services/stakerService";
 import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 import { TableType } from "../entity/LastQueriedTimestamp";
-import { X_WASM_HASH } from "../config/constants";
 
 dotenv.config();
 
@@ -145,14 +144,19 @@ async function updateLastQueriedTimestamp(
 
 async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map<string, Map<string, string>>> {
   const mapping = new Map<string, Map<string, string>>();
-  mapping.set(X_WASM_HASH, new Map());
   const assets = await assetService.findAllWithPools();
   assets.forEach((asset: any) => {
     if (!asset.liquidityPool) {
       console.warn(`No pool address found for asset ${asset.symbol} in updateStakes`);
       return;
     }
-    mapping.get(X_WASM_HASH)!.set(asset.liquidityPool.pool_address, asset.symbol);
+    if (!mapping.has(asset.liquidityPool.mercury_wasm_hash)) {
+      mapping.set(asset.liquidityPool.mercury_wasm_hash, new Map());
+    }
+    mapping.get(asset.liquidityPool.mercury_wasm_hash)!.set(
+      asset.liquidityPool.pool_address,
+      asset.symbol
+    );
   });
 
   return mapping;

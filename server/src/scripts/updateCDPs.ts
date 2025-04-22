@@ -12,7 +12,7 @@ import { AssetService } from "../services/assetService";
 import { CDPHistoryAction } from "../entity/CDPHistory";
 import { CDPHistoryService } from "../services/cdpHistoryService";
 import { LiquidationService } from "../services/liquidationService";
-import { DECIMALS_XLM, X_WASM_HASH } from "../config/constants";
+import { DECIMALS_XLM } from "../config/constants";
 
 dotenv.config();
 
@@ -256,14 +256,16 @@ async function updateLastQueriedTimestamp(
 
 async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map<string, Map<string, string>>> {
   const mapping = new Map<string, Map<string, string>>();
-  mapping.set(X_WASM_HASH, new Map());
   const assets = await assetService.findAllWithPools();
   assets.forEach((asset: any) => {
     if (!asset.liquidityPool) {
       console.warn(`No pool address found for asset ${asset.symbol} in updateCDPs`);
       return;
     }
-    mapping.get(X_WASM_HASH)!.set(asset.liquidityPool.pool_address, asset.symbol);
+    if (!mapping.has(asset.liquidityPool.mercury_wasm_hash)) {
+      mapping.set(asset.liquidityPool.mercury_wasm_hash, new Map());
+    }
+    mapping.get(asset.liquidityPool.mercury_wasm_hash)!.set(asset.liquidityPool.pool_address, asset.symbol);
   });
 
   return mapping;
@@ -274,6 +276,7 @@ async function updateCDPs(wasmHashToUpdate: string | null = null) {
     const assetService = await AssetService.create();
     const cdpRepository = AppDataSource.getRepository(CDP);
     const wasmHashMapping = await getWasmHashToLiquidityPoolMapping(assetService);
+    console.log(wasmHashMapping);
 
     for (const [wasmHash, contractMapping] of wasmHashMapping) {
       if (wasmHashToUpdate !== null && wasmHashToUpdate !== wasmHash) {
