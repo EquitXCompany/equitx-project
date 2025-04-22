@@ -16,6 +16,7 @@ import CDPStats from "./components/CDPStats";
 import StabilityPoolStats from "./components/StabilityPoolStats";
 import AdminPanel from "./components/AdminPanel";
 import { ContractMappingProvider } from "../contexts/ContractMappingContext";
+import Portfolio from "./routes/portfolio";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,7 +76,7 @@ const router = createHashRouter([
       },
       {
         path: "portfolio",
-        element: <CDPStats />,
+        element: <Portfolio />,
         errorElement,
       },
       {
