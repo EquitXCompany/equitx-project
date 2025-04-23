@@ -36,24 +36,31 @@ export const deployAsset: RequestHandler = async (req, res) => {
   const liquidityPoolService = await LiquidityPoolService.create();
   // Determine if we're using testnet or mainnet
   const isTestnet = process.env.NETWORK === "testnet" || !process.env.NETWORK;
+  const {
+    symbol,
+    contractId,
+    feedAddress,
+    minCollateralRatio,
+  } = req.body;
+
+  if (!symbol) {
+    res.status(400).json({ error: "Missing symbol" });
+    return;
+  }
+  if (!contractId) {
+    res.status(400).json({ error: "Missing contract ID" });
+    return;
+  }
+  if (!feedAddress) {
+    res.status(400).json({ error: "Missing feed address" });
+    return;
+  }
+  if (!minCollateralRatio) {
+    res.status(400).json({ error: "Missing minimum collateral ratio" });  
+    return;
+  }
 
   try {
-    const {
-      symbol,
-      contractId,
-      feedAddress,
-      minCollateralRatio,
-    } = req.body;
-    if (
-      !symbol ||
-      !contractId ||
-      !feedAddress ||
-      !minCollateralRatio
-    ) {
-      res.status(400).json({ error: "Missing required fields" });
-      return;
-    }
-
     // Check if asset already exists
     const existingPool = await liquidityPoolService.findOne(`x${symbol}`);
     if (existingPool) {
@@ -154,7 +161,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
   } catch (error: any) {
     console.error("Error deploying asset:", error);
     res
-    .status(500)
+      .status(500)
       .json({ error: error.message || "An unknown error occurred" });
   }
 };
