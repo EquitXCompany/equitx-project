@@ -264,6 +264,13 @@ export const deployAsset: RequestHandler = async (req, res) => {
       throw new Error("Could not extract WASM hash from Mercury output");
     }
 
+    // Set the WASM hash in the database for the liquidity pools
+    for (const pool of liquidityPools) {
+      // Update wasm hash for each pool
+      pool.mercury_wasm_hash = wasmHash;
+      await liquidityPoolService.update(pool.asset.symbol, pool);
+    }
+
     res.status(200).json({
       success: true,
       contractId,
