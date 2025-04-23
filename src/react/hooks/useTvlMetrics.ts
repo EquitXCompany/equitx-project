@@ -7,7 +7,6 @@ import {
 import { apiClient } from "../../utils/apiClient";
 import { TVLMetricsData, TimestampRange } from "./types";
 import BigNumber from "bignumber.js";
-import { contractMapping } from "../../contracts/contractConfig";
 
 function transformTVLMetrics(data: any): TVLMetricsData {
   return {
@@ -70,7 +69,7 @@ export function useLatestTVLMetrics(
   );
 }
 
-export function useLatestTVLMetricsForAllAssets() {
+export function useLatestTVLMetricsForAllAssets(contractMapping: Record<string, string>) {
   return useQueries(
     Object.keys(contractMapping).map((assetSymbol) => ({
       queryKey: ["tvl-metrics", assetSymbol, "latest"],

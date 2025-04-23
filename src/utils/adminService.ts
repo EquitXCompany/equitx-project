@@ -1,6 +1,9 @@
 import axios from "axios";
 import { apiClient } from "./apiClient";
 import { getAddress, signMessage } from "@stellar/freighter-api";
+import { useQueryClient } from "react-query";
+import Orchestrator from '../contracts/orchestrator';
+import { authenticatedContractCall } from "./contractHelpers";
 
 export interface DeployAssetParams {
   symbol: string;
@@ -14,7 +17,6 @@ export interface DeployAssetParams {
 export interface DeployAssetResponse {
   success: boolean;
   contractId: string;
-  wasmHash: string;
   message: string;
   errors: string[];
 }
@@ -76,11 +78,36 @@ export const deployAsset = async (
   params: DeployAssetParams
 ): Promise<DeployAssetResponse> => {
   try {
+    // Get authentication header first as it is a buggy call and avoids deploying a contract
+    // and being unable to call the server
     const authHeader = await getAuthorizationHeader();
 
+    // append "x" to the symbol
+    const symbol = `x${params.symbol}`;
+    const { result } = await authenticatedContractCall(Orchestrator.deploy_asset_contract, {
+      symbol,
+      name: params.name,
+      asset_contract: params.feedAddress,
+      pegged_asset: params.symbol,
+      decimals: params.decimals,
+      min_collat_ratio: params.minCollateralRatio * 100,
+      annual_interest_rate: params.annualInterestRate * 100,
+    });
+
+    const contractId = result.value;
+    if (!contractId) {
+      throw new Error("Failed to deploy asset, no contract ID returned");
+    }
+
+    // Call the server to update the database and update mercury
     const response = await apiClient.post<DeployAssetResponse>(
       "/api/admin/deploy",
-      params,
+      {
+        contractId,
+        symbol: params.symbol,
+        feedAddress: params.feedAddress,
+        minCollateralRatio: params.minCollateralRatio,
+      },
       {
         headers: {
           Authorization: authHeader,
@@ -91,9 +118,30 @@ export const deployAsset = async (
 
     return response.data;
   } catch (error) {
+    if ((error as Error).message.includes("Transaction simulation failed")) {
+      const err = (error as Error).message;
+      if (err.includes("Contract, #3")) {
+        throw new Error(`x${params.symbol} contract already exists in the orchestrator.`);
+      }
+      const msg = (error as Error).message.split("\n")[0];
+      throw new Error(msg);
+    }
     if (axios.isAxiosError(error) && error.response) {
       throw new Error(error.response.data.error || "Failed to deploy asset");
     }
     throw error;
   }
 };
+
+export const useDeployAsset = (params: DeployAssetParams) => {
+  const queryClient = useQueryClient();
+  return {
+    mutate: async () => {
+      const response = await deployAsset(params);
+      if (response.success) {
+        queryClient.invalidateQueries("contractMapping");
+      }
+      return response;
+    },
+  };
+}

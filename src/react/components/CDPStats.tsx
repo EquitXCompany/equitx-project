@@ -20,7 +20,6 @@ import { useLatestTVLMetricsForAllAssets } from "../hooks/useTvlMetrics";
 import { CDPMetricsData, TVLMetricsData } from "../hooks/types";
 import { UseQueryResult } from "react-query";
 import { useLatestCdpMetricsForAllAssets } from "../hooks/useCdpMetrics";
-import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import { StackedHistogram } from "./charts/StackedHistogram";
 import { LiquidationsHistory } from "./LiquidationsHistory";
 import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
@@ -30,7 +29,8 @@ import { useLiquidations } from "../hooks/useLiquidations";
 import { useWallet } from "../../wallet";
 import ErrorMessage from "../components/errorMessage";
 import { useAssets } from "../hooks/useAssets";
-
+import { useContractMapping } from "../../contexts/ContractMappingContext";
+import { getContractAddress } from "../../contracts/util";
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -54,21 +54,22 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function CDPStats() {
+  const contractMapping = useContractMapping();
   const [tabValue, setTabValue] = useState(0);
   const { account } = useWallet();
   const { data: cdps, isLoading: cdpsLoading } = useCdps();
   const { data: stabilityPoolData, isLoading: spLoading } =
-    useAllStabilityPoolMetadata();
+    useAllStabilityPoolMetadata(contractMapping);
   const { data: assets } = useAssets();
-  const TVLMetricsResults = useLatestTVLMetricsForAllAssets();
-  const cdpMetricsResults = useLatestCdpMetricsForAllAssets();
+  const TVLMetricsResults = useLatestTVLMetricsForAllAssets(contractMapping);
+  const cdpMetricsResults = useLatestCdpMetricsForAllAssets(contractMapping);
   const { data: liquidations, isLoading: liquidationsLoading } =
     useLiquidations();
   const {
     data: userCdpsMap,
     isLoading: userCdpsLoading,
     error: userCdpsError,
-  } = useContractCdpForAllAssets(account || "", {
+  } = useContractCdpForAllAssets(account || "", contractMapping, {
     enabled: !!account,
   });
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -78,7 +79,7 @@ export default function CDPStats() {
   const enrichedCdps = useMemo(() => {
     if (spLoading || !cdps || !stabilityPoolData) return [];
     return cdps.map((cdp) => {
-      const spMetadata = stabilityPoolData[cdp.asset.symbol as XAssetSymbol];
+      const spMetadata = stabilityPoolData[cdp.asset.symbol];
       if (!spMetadata) return cdp;
       const collateralXLM = new BigNumber(cdp.xlm_deposited);
       const debtAsset = new BigNumber(cdp.asset_lent);
@@ -109,7 +110,7 @@ export default function CDPStats() {
     return Object.entries(userCdpsMap)
       .filter(([_, cdp]) => cdp !== null) // Filter out null CDPs
       .map(([assetSymbol, contractCdp]) => {
-        const contractId = contractMapping[assetSymbol as XAssetSymbol];
+        const contractId = getContractAddress(assetSymbol, contractMapping);
         const asset = assets?.find((v) => v.symbol === assetSymbol);
         if (!asset) return null;
         const cdp = convertContractCDPtoClientCDP(
@@ -117,7 +118,7 @@ export default function CDPStats() {
           asset,
           contractId
         );
-        const spMetadata = stabilityPoolData[assetSymbol as XAssetSymbol];
+        const spMetadata = stabilityPoolData[assetSymbol];
         if (!spMetadata || !cdp) return null;
 
         const collateralXLM = cdp.xlm_deposited;
@@ -151,7 +152,7 @@ export default function CDPStats() {
     if (liquidationsLoading || !liquidations || !stabilityPoolData) return [];
 
     return liquidations.map((liquidation) => {
-      const spMetadata = stabilityPoolData[liquidation.asset as XAssetSymbol];
+      const spMetadata = stabilityPoolData[liquidation.asset];
       if (!spMetadata) return liquidation;
 
       const collateralLiquidated = new BigNumber(
@@ -222,7 +223,7 @@ export default function CDPStats() {
         }
         return acc;
       },
-      {} as Record<XAssetSymbol, TVLMetricsData>
+      {} as Record<string, TVLMetricsData>
     );
 
     loadedCdpMetrics.forEach((result) => {
@@ -471,13 +472,13 @@ export default function CDPStats() {
                       (r) => r.data?.asset === asset
                     );
                     if (result?.data) {
-                      acc[asset as XAssetSymbol] =
+                      acc[asset] =
                         result.data.collateralRatioHistogram;
                     }
                     return acc;
                   },
                   {} as Record<
-                    XAssetSymbol,
+                    string,
                     CDPMetricsData["collateralRatioHistogram"]
                   >
                 )}

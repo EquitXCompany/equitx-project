@@ -12,7 +12,6 @@ import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
 import { useLatestTVLMetricsForAllAssets } from "../hooks/useTvlMetrics";
 import { useWallet } from "../../wallet";
 import { useStakersByAddress } from "../hooks/useStakers";
-import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 import BigNumber from "bignumber.js";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -20,6 +19,7 @@ import { StackedHistogram } from "./charts/StackedHistogram";
 import { TVLMetricsData } from "../hooks/types";
 import { formatCurrency, generateAssetColors } from "../../utils/formatters";
 import { Link } from "react-router-dom";
+import { useContractMapping } from "../../contexts/ContractMappingContext";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -38,13 +38,14 @@ const ErrorDisplay = ({ message }: { message: string }) => (
 );
 
 export default function StabilityPoolStats() {
+  const contractMapping = useContractMapping();
   const {
     data: stabilityPoolData,
     isLoading: isStabilityLoading,
     error: stabilityError,
-  } = useAllStabilityPoolMetadata();
+  } = useAllStabilityPoolMetadata(contractMapping);
 
-  const tvlMetricsResults = useLatestTVLMetricsForAllAssets();
+  const tvlMetricsResults = useLatestTVLMetricsForAllAssets(contractMapping);
   const isLoading =
     tvlMetricsResults.some((result) => result.isLoading) || isStabilityLoading;
   const hasError =
@@ -200,7 +201,7 @@ export default function StabilityPoolStats() {
                           (r) => r.data?.asset === asset
                         );
                         const assetStabilityData =
-                          stabilityPoolData?.[asset as XAssetSymbol];
+                          stabilityPoolData?.[asset];
                         if (result?.data && assetStabilityData) {
                           const histogram = result.data.stakedShareHistogram;
                           const convertedHistogram = {
@@ -211,12 +212,12 @@ export default function StabilityPoolStats() {
                                 .div(assetStabilityData.lastpriceXLM)
                             ),
                           };
-                          acc[asset as XAssetSymbol] = convertedHistogram;
+                          acc[asset] = convertedHistogram;
                         }
                         return acc;
                       },
                       {} as Record<
-                        XAssetSymbol,
+                        string,
                         TVLMetricsData["stakedShareHistogram"]
                       >
                     )}
@@ -234,7 +235,7 @@ export default function StabilityPoolStats() {
           const tvlMetrics = tvlMetricsResults.find(
             (result) => result.data?.asset === symbol
           )?.data;
-          const stabilityMetadata = stabilityPoolData?.[symbol as XAssetSymbol];
+          const stabilityMetadata = stabilityPoolData?.[symbol];
           const userStake = userStakes?.find(
             (stake) => stake.asset.symbol === symbol
           );

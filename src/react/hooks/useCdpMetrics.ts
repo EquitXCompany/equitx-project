@@ -7,7 +7,6 @@ import {
 import { apiClient } from "../../utils/apiClient";
 import { CDPMetricsData, TimestampRange } from "./types";
 import BigNumber from "bignumber.js";
-import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
 
 function transformCDPMetrics(data: any): CDPMetricsData {
   return {
@@ -75,8 +74,8 @@ export function useLatestCdpMetrics(
   );
 }
 
-export function useLatestCdpMetricsForAllAssets(): UseQueryResult<CDPMetricsData, Error>[] {
-  const assets = Object.keys(contractMapping) as XAssetSymbol[];
+export function useLatestCdpMetricsForAllAssets(contractMapping: Record<string,string>): UseQueryResult<CDPMetricsData, Error>[] {
+  const assets = Object.keys(contractMapping);
   
   return useQueries<UseQueryOptions<CDPMetricsData, Error>[]>(
     assets.map((asset) => ({

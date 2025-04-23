@@ -24,10 +24,10 @@ import {
   IconButton,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import { deployAsset } from "../../utils/adminService";
-import { contractMapping, XAssetSymbol } from "../../contracts/contractConfig";
+import { useDeployAsset } from "../../utils/adminService";
 import { useWallet } from "../../wallet";
 import { getContractBySymbol } from "../../contracts/util";
+import { useContractMapping } from "../../contexts/ContractMappingContext";
 import { authenticatedContractCall } from "../../utils/contractHelpers";
 import { useAllStabilityPoolMetadata } from "../hooks/useStabilityPoolMetadata";
 
@@ -43,14 +43,16 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const contractMapping = useContractMapping();
+
   const {
     data: allPoolMetadata,
     isLoading: metadataLoading,
     refetch: refetchMetadata,
-  } = useAllStabilityPoolMetadata();
+  } = useAllStabilityPoolMetadata(contractMapping);
   // Asset editing state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentAsset, setCurrentAsset] = useState<XAssetSymbol | null>(null);
+  const [currentAsset, setCurrentAsset] = useState<string | null>(null);
   const [newMinRatio, setNewMinRatio] = useState<number>(0);
   const [newInterestRate, setNewInterestRate] = useState<number>(0);
   const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
@@ -64,10 +66,10 @@ export default function AdminPanel() {
     annualInterestRate: 1,
     feedAddress: DATAFEED_ADDRESS, // Initialize with default feed address
   });
+  const deployNewAsset = useDeployAsset(newAsset)
 
   const [deploymentResult, setDeploymentResult] = useState<{
     contractId: string;
-    wasmHash: string;
     txHash: string;
     partialSuccess: boolean;
     configErrors: string[];
@@ -84,8 +86,8 @@ export default function AdminPanel() {
   const checkAdminStatus = async () => {
     try {
       setLoading(true);
-      const firstAsset = Object.keys(contractMapping)[0] as XAssetSymbol;
-      const contract = getContractBySymbol(firstAsset);
+      const firstAsset = Object.keys(contractMapping)[0] || "";
+      const contract = getContractBySymbol(firstAsset, contractMapping);
       const adminResult = await contract.admin_get({});
       const admin = adminResult.result;
       const isAdmin = Boolean(admin && admin === account);
@@ -135,18 +137,10 @@ export default function AdminPanel() {
     setSuccess(null);
 
     try {
-      const deployResponse = await deployAsset({
-        symbol: newAsset.symbol,
-        name: newAsset.name,
-        decimals: newAsset.decimals,
-        minCollateralRatio: newAsset.minCollateralRatio,
-        annualInterestRate: newAsset.annualInterestRate,
-        feedAddress: newAsset.feedAddress, // Pass the feed address to the API
-      });
-      
+      const deployResponse = await deployNewAsset.mutate();
+
       setDeploymentResult({
         contractId: deployResponse.contractId,
-        wasmHash: deployResponse.wasmHash,
         txHash: deployResponse.message,
         configErrors: deployResponse.errors || [],
         partialSuccess: deployResponse.errors?.length > 0,
@@ -158,6 +152,7 @@ export default function AdminPanel() {
       } else {
         setSuccess(`Contract for x${newAsset.symbol} deployed successfully!`);
       }
+      refetchMetadata();
       setActiveStep(3);
     } catch (err: any) {
       console.error("Contract deployment failed:", err);
@@ -179,7 +174,7 @@ export default function AdminPanel() {
   };
 
   // Handle opening the edit dialog for a specific asset
-  const handleEditAsset = (symbol: XAssetSymbol) => {
+  const handleEditAsset = (symbol: string) => {
     setCurrentAsset(symbol);
 
     if (allPoolMetadata && allPoolMetadata[symbol]) {
@@ -201,7 +196,7 @@ export default function AdminPanel() {
     setUpdateError(null);
 
     try {
-      const contract = getContractBySymbol(currentAsset);
+      const contract = getContractBySymbol(currentAsset, contractMapping);
       const contractValue = Math.round(newMinRatio * 100);
       const result = await authenticatedContractCall(
         contract.set_min_collat_ratio,
@@ -235,7 +230,7 @@ export default function AdminPanel() {
     setUpdateError(null);
 
     try {
-      const contract = getContractBySymbol(currentAsset);
+      const contract = getContractBySymbol(currentAsset, contractMapping);
       const contractValue = Math.round(newInterestRate * 100);
       const result = await authenticatedContractCall(
         contract.set_interest_rate,
@@ -455,27 +450,22 @@ export default function AdminPanel() {
               </Paper>
 
               {deploymentResult && (
-                <Alert 
-                  severity={deploymentResult.partialSuccess ? "warning" : "success"} 
+                <Alert
+                  severity={deploymentResult.partialSuccess ? "warning" : "success"}
                   sx={{ mb: 3 }}
                 >
                   <Typography variant="body1" fontWeight="bold">
-                    {deploymentResult.partialSuccess 
-                      ? "Contract deployed with configuration issues" 
+                    {deploymentResult.partialSuccess
+                      ? "Contract deployed with configuration issues"
                       : "Contract deployed successfully!"}
                   </Typography>
                   <Typography variant="body2">
                     Contract ID: {deploymentResult.contractId}
                   </Typography>
-                  {deploymentResult.wasmHash && (
-                    <Typography variant="body2">
-                      WASM Hash: {deploymentResult.wasmHash}
-                    </Typography>
-                  )}
                   <Typography variant="body2">
                     Transaction: {deploymentResult.txHash}
                   </Typography>
-                  
+
                   {deploymentResult.partialSuccess && (
                     <>
                       <Typography variant="body2" color="error" sx={{ mt: 1 }}>
@@ -554,7 +544,7 @@ export default function AdminPanel() {
             <TableBody>
               {Object.entries(contractMapping).map(([symbol, contractId]) => {
                 const metadata = allPoolMetadata
-                  ? allPoolMetadata[symbol as XAssetSymbol]
+                  ? allPoolMetadata[symbol]
                   : undefined;
 
                 return (
@@ -595,7 +585,7 @@ export default function AdminPanel() {
                         <IconButton
                           color="primary"
                           onClick={() =>
-                            handleEditAsset(symbol as XAssetSymbol)
+                            handleEditAsset(symbol)
                           }
                           size="small"
                         >

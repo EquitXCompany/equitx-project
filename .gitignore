@@ -41,7 +41,6 @@ packages/*
 # generated contract client imports
 src/contracts/*
 !src/contracts/util.ts
-!src/contracts/contractConfig.ts
 
 # contracts copied to server for server deployment
 server/prebuilt_contracts

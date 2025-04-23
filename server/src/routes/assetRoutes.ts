@@ -13,6 +13,11 @@ async function initializeRoutes() {
     assetController.getAllAssets.bind(assetController)
   );
   router.get(
+    "/mapping",
+    apiLimiter,
+    assetController.getAllAssetContracts.bind(assetController)
+  );
+  router.get(
     "/:symbol",
     apiLimiter,
     assetController.getAssetBySymbol.bind(assetController)
