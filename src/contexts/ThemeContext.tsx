@@ -9,13 +9,16 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    if (process.env.NODE_ENV !== 'development') {
+      const defaultDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(defaultDark);
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
+        setIsDarkMode(event.matches);
+      });
+    }
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
