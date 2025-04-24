@@ -50,10 +50,6 @@ pub trait IsCollateralized {
     fn pegged_asset(&self) -> Symbol;
 
     /// Basis points. Default: 110%
-    ///
-    /// # Considerations
-    ///
-    /// u16 would suffice, but Soroban SDK doesn't support it 🥴
     fn minimum_collateralization_ratio(&self) -> u32;
 
     /// Get the most recent price for XLM
@@ -115,7 +111,7 @@ pub trait IsCollateralized {
 
     /// Updates and returns the accrued interest on a cdp
     fn get_accrued_interest(&self, lender: Address) -> Result<Interest, Error>;
-    
+
     /// Pay the interest on a CDP
     fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDPContract, Error>;
 }
@@ -160,23 +156,15 @@ pub trait IsCDPAdmin {
     /// Set the asset the xAsset is pegged to. Only callable by admin.
     fn set_pegged_asset(&mut self, to: Symbol);
 
-    /// Only callable by admin.
-    ///
-    /// # Considerations
-    ///
-    /// Should we pass the old value and new and only update if `old` is same as current value, to
-    /// avoid race conditions?
-    ///
-    /// Should we return anything? Right now it just returns `new_ratio` which seems... maybe
-    /// useless?
+    /// Set minimum collateralization ration. Only callable by admin.
     fn set_min_collat_ratio(&mut self, to: u32) -> u32;
 
-    /// set annual interest rate 
+    /// Set annual interest rate
     fn set_interest_rate(&mut self, new_rate: u32) -> u32;
-    
-    /// get annual interest rate
+
+    /// Get annual interest rate
     fn get_interest_rate(&self) -> u32;
 
-    /// get total interest collected
+    /// Get total interest collected
     fn get_total_interest_collected(&self) -> i128;
 }
