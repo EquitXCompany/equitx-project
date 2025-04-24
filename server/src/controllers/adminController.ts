@@ -77,7 +77,6 @@ export const deployAsset: RequestHandler = async (req, res) => {
       );
     }
 
-    // TODO Add the asset to the assets table
     console.log("Contract ID: ", contractId);
     const { price } = await getLatestPriceData(
       symbol,
@@ -97,8 +96,8 @@ export const deployAsset: RequestHandler = async (req, res) => {
     // Deploy to Mercury with Mercury-enabled build
     const mercuryArgs = [
       "mercury-cli",
-      "--jwt",
-      process.env.RETROSHADE_API_TOKEN!,
+      "--key",
+      process.env.MERCURY_KEY!,
       "--mainnet",
       isTestnet ? "false" : "true",
       "retroshade",
