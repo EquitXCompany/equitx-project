@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Form, useLoaderData, redirect, useParams } from "react-router-dom";
-import type { ActionFunction, LoaderFunction } from "react-router-dom";
+import { Form, redirect, useParams } from "react-router-dom";
+import type { ActionFunction } from "react-router-dom";
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
 import BigNumber from 'bignumber.js';
