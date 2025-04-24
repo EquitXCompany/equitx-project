@@ -92,6 +92,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
     const contractIds = existingLiquidityPools.map((lp) => lp.pool_address);
     contractIds.push(contractId);
     console.log("DB contract IDs")
+    console.log(contractIds)
     console.log("Includes contract ID: ", contractIds.includes(contractId))
     // Deploy to Mercury with Mercury-enabled build
     const mercuryArgs = [
