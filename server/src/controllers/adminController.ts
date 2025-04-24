@@ -56,7 +56,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
     return;
   }
   if (!minCollateralRatio) {
-    res.status(400).json({ error: "Missing minimum collateral ratio" });  
+    res.status(400).json({ error: "Missing minimum collateral ratio" });
     return;
   }
 
@@ -87,29 +87,11 @@ export const deployAsset: RequestHandler = async (req, res) => {
       "XLM",
       contractId
     );
-    // Create Asset
-    const existingAsset = await assetService.findOne(`x${symbol}`);
-    existingAsset && console.log("Existing asset", existingAsset)
-    if (!existingAsset) {
-      console.log("Creating asset in database")
-      let asset = new Asset();
-      asset.symbol = `x${symbol}`;
-      asset.feed_address = feedAddress;
-      asset.price = price.toString();
-      asset.last_xlm_price = xlmPrice.toString();
-      asset = await assetService.insert(asset);
-      // Create LiquidityPool
-      const liquidityPool = new LiquidityPool();
-      liquidityPool.asset = asset;
-      liquidityPool.pool_address = contractId;
-      liquidityPool.minimum_collateralization_ratio = minCollateralRatio * 100;
-      await liquidityPoolService.insert(liquidityPool);
-    }
 
-    const liquidityPools = await liquidityPoolService.findAll()
-    const contractIds = liquidityPools.map((lp) => lp.pool_address);
+    const existingLiquidityPools = await liquidityPoolService.findAll()
+    const contractIds = existingLiquidityPools.map((lp) => lp.pool_address);
+    contractIds.push(contractId);
     console.log("DB contract IDs")
-    console.log(contractIds)
     console.log("Includes contract ID: ", contractIds.includes(contractId))
     // Deploy to Mercury with Mercury-enabled build
     const mercuryArgs = [
@@ -146,8 +128,28 @@ export const deployAsset: RequestHandler = async (req, res) => {
       throw new Error("Could not extract WASM hash from Mercury output");
     }
 
-    // Set the WASM hash in the database for the liquidity pools
-    for (const pool of liquidityPools) {
+    // Create Asset
+    const existingAsset = await assetService.findOne(`x${symbol}`);
+    existingAsset && console.log("Existing asset", existingAsset)
+    if (!existingAsset) {
+      console.log("Creating asset in database")
+      let asset = new Asset();
+      asset.symbol = `x${symbol}`;
+      asset.feed_address = feedAddress;
+      asset.price = price.toString();
+      asset.last_xlm_price = xlmPrice.toString();
+      asset = await assetService.insert(asset);
+      // Create LiquidityPool
+      const liquidityPool = new LiquidityPool();
+      liquidityPool.asset = asset;
+      liquidityPool.pool_address = contractId;
+      liquidityPool.minimum_collateralization_ratio = minCollateralRatio * 100;
+      liquidityPool.mercury_wasm_hash = wasmHash;
+      await liquidityPoolService.insert(liquidityPool);
+    }
+
+    // Set the WASM hash in the database for the existing liquidity pools
+    for (const pool of existingLiquidityPools) {
       // Update wasm hash for each pool
       pool.mercury_wasm_hash = wasmHash;
       await liquidityPoolService.update(pool.asset.symbol, pool);
