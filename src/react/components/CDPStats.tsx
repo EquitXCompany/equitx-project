@@ -3,12 +3,11 @@ import {
   Paper,
   Typography,
   Grid,
-  Card,
-  CardContent,
   Tabs,
   Tab,
   Grid2,
 } from "@mui/material";
+import { StatCard } from "./common/StatCard";
 import { formatCurrency, generateAssetColors } from "../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -16,7 +15,7 @@ import {
   useCdps,
   useContractCdpForAllAssets,
 } from "../hooks/useCdps";
-import { ChartsLegend, PieChart } from "@mui/x-charts";
+import { PieChart } from "@mui/x-charts";
 import { useLatestTVLMetricsForAllAssets } from "../hooks/useTvlMetrics";
 import { CDPMetricsData, TVLMetricsData } from "../hooks/types";
 import { UseQueryResult } from "react-query";
@@ -367,84 +366,74 @@ export default function CDPStats() {
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        CDP Statistics
-      </Typography>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
 
       {/* System-wide metrics summary */}
-      <Paper sx={{ mb: 4, p: 2 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={2.4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Active CDPs
-                </Typography>
-                <Typography variant="h5" component="div">
-                  {systemMetrics.totalActiveCdps}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={2.4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  System Collateral Ratio
-                </Typography>
-                <Typography variant="h5" component="div">
-                  {systemMetrics.systemCollateralRatio.toFixed(2)}%
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={2.4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Collateral
-                </Typography>
-                <Typography variant="h5" component="div">
-                  {formatCurrency(
-                    systemMetrics.totalCollateralXlm,
-                    7,
-                    2,
-                    "XLM"
-                  )}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={2.4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Debt Value
-                </Typography>
-                <Typography variant="h5" component="div">
-                  {formatCurrency(systemMetrics.totalDebtValueXlm, 7, 2, "XLM")}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={2.4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Outstanding Interest
-                </Typography>
-                <Typography variant="h5" component="div">
-                  {formatCurrency(
-                    systemMetrics.totalOutstandingInterestXlm,
-                    7,
-                    2,
-                    "XLM"
-                  )}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+      <Paper
+        sx={{
+          mb: 4,
+          p: 2,
+          display: "grid",
+          justifyItems: "start",
+          borderRadius: 10,
+        }}
+      >
+        <Typography
+          variant="h4"
+          sx={{
+            ml: 4,
+            mt: 5,
+            mb: 0,
+            fontWeight: "bold",
+            fontSize: 40
+          }}
+        >
+          CDP STATISTICS
+        </Typography>
+        <Grid
+          container
+          spacing={3}
+          mb={4}
+          className="metric-card-grid"
+          id="metric-cards"
+          sx={{
+            display: "flex",
+            justifyContent: "space-around",
+            margin: 0,
+            width: 1,
+            gap: '20px'
+          }}
+        >
+          <StatCard
+            title="Active CDPs"
+            value={systemMetrics.totalActiveCdps}
+          />
+          <StatCard
+            title="System Collateral Ratio"
+            value={`${systemMetrics.systemCollateralRatio.toFixed(2)}%`}
+          />
+          <StatCard
+            title="Total Collateral"
+            value={formatCurrency(
+                systemMetrics.totalCollateralXlm,
+                7,
+                2,
+                "XLM"
+            )}
+          />
+          <StatCard
+            title="Total Debt Value"
+            value={formatCurrency(systemMetrics.totalDebtValueXlm, 7, 2, "XLM")}
+          />
+          <StatCard
+            title="Outstanding Interest"
+            value={formatCurrency(
+              systemMetrics.totalOutstandingInterestXlm,
+              7,
+              2,
+              "XLM"
+            )}
+          />
         </Grid>
       </Paper>
 
@@ -472,7 +461,7 @@ export default function CDPStats() {
             )}
             <Grid2 container spacing={4} justifyContent='center' pb='10px' px='50px'>
             {piChartData.map(({ backgroundColor, label }, idx) => {
-              return <Grid2 display='flex' justifyContent='center' width={'20%'}>
+              return <Grid2 display='flex' justifyContent='center' width={'20%'} key={idx}>
                 <Box style={{
                   width: '25px',
                   height: '24px',
