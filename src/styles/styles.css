@@ -248,6 +248,10 @@ code {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.MuiChartsLegend-root {
+  display: none;
+}
+
 .metric-card-grid {
   padding: 20px;
   background-color: var(--color-surface-light);
