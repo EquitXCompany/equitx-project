@@ -53,7 +53,7 @@ DB_PORT=5432
 DB_USER=postgres 
 DB_PASSWORD=postgres
 PORT=3000
-RETROSHADE_API_TOKEN=your_api_token
+MERCURY_KEY=[long lived API key](https://docs.mercurydata.app/get-started-with-mercury/authentication)
 ```
 
 3. Run database migrations:
@@ -80,60 +80,6 @@ npm run dev
 - `/api/pricehistories` - Price feed history
 - `/api/contractstate` - Contract state data
 - `/api/admin/deploy-asset` - Administrative endpoint to deploy new assets
-
-## GitHub Integration
-
-The server includes functionality to automatically update configuration files and push changes to GitHub when new assets are deployed. This requires SSH key authentication with GitHub.
-
-### Setting Up GitHub Deploy Keys
-Generate an SSH key (on your local machine):
-
-```bash
-ssh-keygen -t ed25519 -C "equitx-deploy-key" -f ./equitx_deploy_key
-```
-
-Do not set a passphrase
-
-#### Add the public key to GitHub:
-
- - Go to your GitHub repository → Settings → Deploy keys
- - Click "Add deploy key"
-    Title: "EquitX Fly.io Deploy Key"
-    Key: Paste the content of equitx_deploy_key.pub
- - Check "Allow write access"
- - Click "Add key"
- - Add the private key to Fly.io as a secret:
-
-```bash
-fly secrets set GITHUB_SSH_KEY="$(cat ./equitx_deploy_key)"
-fly secrets set GITHUB_KNOWN_HOSTS="$(ssh-keyscan -t rsa github.com)"
-```
-
-### Rotating GitHub SSH Keys
-To rotate the SSH keys used for GitHub authentication:
-
-Generate a new SSH key:
-
-```bash
-ssh-keygen -t ed25519 -C "equitx-deploy-key-new" -f ./new_deploy_key
-``` 
-Do not set a passphrase
-
-Add the new public key to GitHub (follow step 2 above with the new key)
-
-Update the Fly.io secrets:
-
-```bash
-fly secrets set GITHUB_SSH_KEY="$(cat ./new_deploy_key)"
-```
-
-Once verified working, remove the old deploy key from GitHub
-
-
-## Scripts
-
-- `updateCDPs.ts` - Cron job to update CDP status and handle liquidations
-- `createAssets.ts` - Initialize asset records and related tables
 
 ## Database Migrations
 
