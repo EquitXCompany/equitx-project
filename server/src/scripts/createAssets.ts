@@ -36,6 +36,7 @@ export async function createAssetsIfNotExist(assetConfig: AssetConfig) {
         liquidityPool.asset = asset;
         liquidityPool.pool_address = config.pool_address;
         liquidityPool.minimum_collateralization_ratio = minRatio;
+        liquidityPool.mercury_wasm_hash = config.wasm_hash;
         await liquidityPoolService.insert(liquidityPool);
 
         console.log(`Created asset ${symbol} with associated tables`);
