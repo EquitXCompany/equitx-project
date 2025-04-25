@@ -268,7 +268,7 @@ code {
 
 [data-theme="dark"] .metric-card-paper-root {
   background-color: #000;
-  border-color: white;
+  border-color: #707070;
 }
 
 .metric-card-container {
