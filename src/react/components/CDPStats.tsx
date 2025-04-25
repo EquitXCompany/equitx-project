@@ -7,6 +7,7 @@ import {
   CardContent,
   Tabs,
   Tab,
+  Grid2,
 } from "@mui/material";
 import { formatCurrency, generateAssetColors } from "../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
@@ -15,7 +16,7 @@ import {
   useCdps,
   useContractCdpForAllAssets,
 } from "../hooks/useCdps";
-import { PieChart } from "@mui/x-charts";
+import { ChartsLegend, PieChart } from "@mui/x-charts";
 import { useLatestTVLMetricsForAllAssets } from "../hooks/useTvlMetrics";
 import { CDPMetricsData, TVLMetricsData } from "../hooks/types";
 import { UseQueryResult } from "react-query";
@@ -268,16 +269,18 @@ export default function CDPStats() {
   const assetSymbols = Object.keys(contractMapping);
   const assetColors = generateAssetColors(assetSymbols);
 
-  const piChartData: { id: number; value: number; label: string }[] | [] =
+  const piChartData: { id: number; value: number; label: string, backgroundColor: (string | undefined)[] }[] | [] =
     !TVLMetricsResults.some((result) => result.isLoading)
       ? TVLMetricsResults.map((result: UseQueryResult, idx) => {
+          const backgroundColor = assetSymbols.map((asset) => assetColors[asset]);
           return {
             id: idx,
             value: (result?.data as TVLMetricsData).totalXlmLocked
               .div(1e7)
               .toNumber(),
             label: (result?.data as TVLMetricsData).asset,
-            backgroundColor: assetSymbols.map((asset) => assetColors[asset]),
+            backgroundColor,
+            color: backgroundColor[idx]
           };
         })
       : [];
@@ -450,10 +453,39 @@ export default function CDPStats() {
             XLM locked by asset
           </Typography>
 
-          <Paper style={{ height: 400, width: "100%" }}>
+          <Paper style={{ minHeight: '400px', width: "100%" }}>
             {!TVLMetricsResults.some((result) => result.isLoading) && (
-              <PieChart series={[{ data: piChartData }]} />
+              <div style={{ width: '100%', height: '350px' }}>
+              <PieChart
+                sx={{ margin: '52px' }}
+                series={[{
+                  data: piChartData,
+                  innerRadius: '66%',
+                  paddingAngle: 0,
+                  cx: '62%',
+                }]}
+                slotProps={{ legend: { hidden: true, direction: 'row',       position: { 
+                  vertical: 'middle',
+                  horizontal: 'middle'
+                } } }}
+              >
+              </PieChart>
+              </div>
             )}
+            <Grid2 container spacing={4} justifyContent='center' pb='10px' px='50px'>
+            {piChartData.map(({ backgroundColor, label }, idx) => {
+              return <Grid2 display='flex' justifyContent='center' width={'20%'}>
+                <Box style={{
+                  width: '25px',
+                  height: '24px',
+                  backgroundColor: backgroundColor[idx],
+                  display: 'inline-block',
+                  margin: 4
+                }}></Box>
+                {label}
+                </Grid2>
+              })}
+            </Grid2>
           </Paper>
         </Grid>
 
