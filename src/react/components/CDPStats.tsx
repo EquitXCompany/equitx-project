@@ -464,10 +464,7 @@ export default function CDPStats() {
                   paddingAngle: 0,
                   cx: '62%',
                 }]}
-                slotProps={{ legend: { hidden: true, direction: 'row',       position: { 
-                  vertical: 'middle',
-                  horizontal: 'middle'
-                } } }}
+                slotProps={{ legend: { hidden: true }}}
               >
               </PieChart>
               </div>
