@@ -14,7 +14,7 @@ import {
 import Chevron from './common/Chevron';
 import {
   Dashboard as DashboardIcon,
-  WorkOutline as PortfolioIcon,
+  // WorkOutline as PortfolioIcon,
   AccountBalance as CDPIcon,
   Pool as PoolIcon,
   LightMode as LightModeIcon,
@@ -89,7 +89,7 @@ export default function Navbar() {
         )}
 
 
-        <ListItem disablePadding>
+        {/* <ListItem disablePadding>
           <ListItemButton
             component={Link}
             to="/portfolio"
@@ -100,7 +100,7 @@ export default function Navbar() {
             </ListItemIcon>
             {open && <ListItemText primary="Portfolio" />}
           </ListItemButton>
-        </ListItem>
+        </ListItem> */}
 
         <ListItem disablePadding>
           <ListItemButton
