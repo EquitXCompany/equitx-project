@@ -35,9 +35,9 @@ export default function Portfolio() {
             />
         ) : (
             <>
-                <Grid2 container columns={3} justifyContent='center' pb='10px' px='50px'>
+                <Grid2 container columns={3} justifyContent='left' pb='10px' px='50px'>
                 {userCdpsMap && Object.entries(userCdpsMap).filter(([_, cdp]) => !!cdp).map(([asset, cdp]) => (
-                    <Paper key={asset} sx={{ p: 2, border: '1px solid', borderRadius: '4px', margin: 2, minWidth: '10em' }}>
+                    <Paper key={asset} sx={{ p: 2, border: '1px solid', borderRadius: '4px', margin: 2, minWidth: '20em' }}>
                         <Typography variant="h6">{asset}</Typography>
                         <Typography>{cdp?.status.tag}</Typography>
                         <Typography>Debt: {cdp?.asset_lent.toString()}</Typography>
