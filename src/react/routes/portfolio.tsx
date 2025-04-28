@@ -44,6 +44,7 @@ export default function Portfolio() {
                         <Typography>{formatNumber(cdp?.asset_lent)} {asset} lent</Typography>
                         <Typography>Collateralization Ratio: {BigNumber(cdp?.collateralization_ratio!/100).toFixed(2)}%</Typography>
                         <Typography>{formatNumber(cdp?.xlm_deposited)} XLM Locked</Typography>
+                        <Typography>{formatNumber(cdp?.accrued_interest.amount)} interest accrued in {asset}</Typography>
                         <Typography><Link
                             href={`#/cdps/${asset}/${account}`}
                             sx={{ textDecoration: 'none', color: 'primary.main' }}
