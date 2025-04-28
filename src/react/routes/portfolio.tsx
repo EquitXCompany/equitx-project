@@ -5,25 +5,26 @@ import { convertContractCDPtoClientCDP, useContractCdpForAllAssets } from '../ho
 import BigNumber from 'bignumber.js';
 import { useAllStabilityPoolMetadata } from '../hooks/useStabilityPoolMetadata';
 import { useMemo } from 'react';
-import { contractMapping, XAssetSymbol } from '../../contracts/contractConfig';
 import { formatCurrency } from '../../utils/formatters';
 import { DataGrid } from '@mui/x-data-grid';
 import { useAssets } from '../hooks/useAssets';
+import { useContractMapping } from '../../contexts/ContractMappingContext';
 
 export default function Portfolio() {
     const { account } = useWallet();
+    const contractMapping = useContractMapping();
     const {
         data: userCdpsMap,
         isLoading: userCdpsLoading,
         error: userCdpsError,
-    } = useContractCdpForAllAssets(account || "", {
+    } = useContractCdpForAllAssets(account || "", contractMapping, {
         enabled: !!account,
     });
     const { data: assets } = useAssets();
 
 
     const { data: stabilityPoolData, isLoading: spLoading } =
-        useAllStabilityPoolMetadata();
+        useAllStabilityPoolMetadata(contractMapping);
 
     const enrichedUserCdps = useMemo(() => {
         if (!userCdpsMap || !stabilityPoolData) return [];
@@ -31,15 +32,15 @@ export default function Portfolio() {
         return Object.entries(userCdpsMap)
             .filter(([_, cdp]) => cdp !== null) // Filter out null CDPs
             .map(([assetSymbol, contractCdp]) => {
-                const contractId = contractMapping[assetSymbol as XAssetSymbol];
+                const contractId = contractMapping[assetSymbol];
                 const asset = assets?.find((v) => v.symbol === assetSymbol);
                 if (!asset) return null;
                 const cdp = convertContractCDPtoClientCDP(
                     contractCdp!,
                     asset,
-                    contractId
+                    contractId!
                 );
-                const spMetadata = stabilityPoolData[assetSymbol as XAssetSymbol];
+                const spMetadata = stabilityPoolData[assetSymbol];
                 if (!spMetadata || !cdp) return null;
 
                 const collateralXLM = cdp.xlm_deposited;
