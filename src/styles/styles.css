@@ -235,6 +235,11 @@ code {
     flex-wrap: nowrap;
   }
 }
+@media (min-width: 1500px) {
+  #cdp-cards {
+    flex-wrap: nowrap;
+  }
+}
 
 #metric-cards > .MuiGrid-item { 
   padding: 0;
@@ -311,6 +316,13 @@ code {
 [data-theme="light"] .MuiTable-root {
   tr:nth-child(odd) { background-color: var(--color-surface-light) !important; }
   tr:nth-child(even) { background-color: var(--color-background-light) !important; }
+  .MuiTableCell-root {
+    border: none;
+  }
+}
+
+.MuiDataGrid-row--borderBottom {
+  background-color: var(--color-text-primary-light) !important;
 }
 
 .brand-chevron {
