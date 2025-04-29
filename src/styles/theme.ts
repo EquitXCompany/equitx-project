@@ -1,8 +1,10 @@
 import { createTheme } from '@mui/material/styles';
+import { tabClasses } from "@mui/material/Tab";
 
 const black = "#000000";
 const white = "#ffffff";
 const darkGray = "#1A1C21";
+const dimGray = "#2A2C33";
 const gray = "#707070";
 const mediumGray = "#AEAEAE";
 const lightGray = "#F3F4F6";
@@ -175,6 +177,99 @@ const getTheme = (mode: 'light' | 'dark') => createTheme({
         },
       },
     },
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          backgroundColor: mode === 'dark' ? black : white,
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          opacity: 1,
+          overflow: "initial",
+          paddingLeft: "90px",
+          paddingRight: "90px",
+          borderTopLeftRadius: "25px",
+          borderTopRightRadius: "25px",
+          color: mode === 'dark' ? lightGray : darkGray,
+          backgroundColor: mode === 'dark' ? dimGray : lightGray,
+          transition: "0.2s",
+          zIndex: 2,
+          marginTop: '4px',
+          textTransform: "uppercase",
+          font: "normal normal 600 20px/24px Instrument Sans",
+          "&:before": {
+            transition: "0.2s",
+          },
+          "&:first-of-type": {
+            "--r": "25px",
+            margin: "0 -25px 0 0",
+            lineHeight: "1.8",
+            borderRight: "var(--r) solid #0000",
+            borderRadius: "var(--r) calc(2*var(--r)) 0 0/var(--r)",
+            mask:
+              `  
+              radial-gradient(var(--r) at 100% 0,#0000 98%,#000 101%) 
+              100% 100%/var(--r) var(--r) no-repeat, 
+              conic-gradient(#000 0 0) padding-box;
+              `,
+            background: mode === 'dark' ? dimGray : lightGray,
+            width: "fit-content",
+          },
+          "&:not(:first-of-type)": {
+            "--r": "25px",
+            margin: "0 -25px",
+            lineHeight: "1.8",
+            borderInline: "var(--r) solid #0000",
+            borderRadius:" calc(2*var(--r)) calc(2*var(--r)) 0 0/var(--r)",
+            mask: 
+              `radial-gradient(var(--r) at var(--r) 0,#0000 98%,#000 101%)
+                calc(-1*var(--r)) 100%/100% var(--r) repeat-x,
+                conic-gradient(#000 0 0) padding-box;`,
+            background: mode === 'dark' ? dimGray : lightGray,
+            width: "fit-content",
+            "&:before": {
+              content: '" "',
+              position: "absolute",
+              left: 0,
+              display: "block",
+              height: 20,
+              width: "1px",
+              zIndex: 1,
+              marginTop: '4px',
+              backgroundColor: mode === 'dark' ? darkGray : lightGray,
+            },
+          },
+          [`& + .${tabClasses.selected}::before`]: {
+            opacity: 0,
+          },
+          "&:hover": {
+            [`&:not(.${tabClasses.selected})`]: {
+              backgroundColor: "rgba(255 255 255 / 55%)",
+            },
+            "&::before": {
+              opacity: 0,
+            },
+            [`& + .${tabClasses.root}::before`]: {
+              opacity: 0,
+            },
+          },
+          [`&.${tabClasses.selected}`]: {
+            backgroundColor: mode === 'dark' ? darkGray : lightGray,
+            color: mode === 'dark' ? lightGray : darkGray,
+            
+          },
+          [`&.${tabClasses.selected} + .${tabClasses.root}`]: {
+            zIndex: 1,
+          },
+          [`&.${tabClasses.selected} + .${tabClasses.root}::before`]: {
+            opacity: 0,
+          },
+        }
+      }
+    }
   },
   typography: {
     fontFamily: '"Instrument Sans", "Roboto", "Helvetica", "Arial", sans-serif',

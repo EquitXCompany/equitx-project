@@ -33,11 +33,12 @@ export const StatCard = ({
         alignItems: 'center',
         p: 2,
         height: '165px',
-        width: '280px',
+        maxWidth: '280px',
+        flexGrow: 1,
         borderRadius: '20px',
         transition: 'transform 0.2s',
         '&:hover': {
-          transform: 'translateY(-2px)',
+          transform: 'translateY(-2px)'
         },
       }}
     >

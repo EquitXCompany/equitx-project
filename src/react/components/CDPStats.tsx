@@ -395,7 +395,7 @@ export default function CDPStats() {
           spacing={3}
           mb={4}
           className="metric-card-grid"
-          id="metric-cards"
+          id="cdp-cards"
           sx={{
             display: "flex",
             justifyContent: "space-around",
@@ -511,7 +511,7 @@ export default function CDPStats() {
       <LiquidationsHistory />
 
       <Paper sx={{ mt: 4, width: "100%" }}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Box>
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
