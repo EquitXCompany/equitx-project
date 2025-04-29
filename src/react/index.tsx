@@ -16,6 +16,7 @@ import CDPStats from "./components/CDPStats";
 import StabilityPoolStats from "./components/StabilityPoolStats";
 import AdminPanel from "./components/AdminPanel";
 import { ContractMappingProvider } from "../contexts/ContractMappingContext";
+import Portfolio from "./routes/portfolio";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,11 @@ const router = createHashRouter([
       {
         path: "stability-pool/:assetSymbol",
         element: <StabilityPool />,
+        errorElement,
+      },
+      {
+        path: "portfolio",
+        element: <Portfolio />,
         errorElement,
       },
       {

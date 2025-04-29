@@ -317,7 +317,6 @@ export function convertContractCDPtoClientCDP(
   asset: Asset,
   contractId: string
 ): Omit<CDP, "createdAt" | "updatedAt"> {
-  console.log(contractCDP);
   return {
     asset,
     contract_id: contractId,

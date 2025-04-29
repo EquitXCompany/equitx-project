@@ -14,6 +14,7 @@ import {
 import Chevron from './common/Chevron';
 import {
   Dashboard as DashboardIcon,
+  // WorkOutline as PortfolioIcon,
   AccountBalance as CDPIcon,
   Pool as PoolIcon,
   LightMode as LightModeIcon,
@@ -55,7 +56,7 @@ export default function Navbar() {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', p: 2, flexDirection: 'column' }}>
         <IconButton onClick={handleDrawerToggle} sx={{ ml: 'auto' }}>
-          <Chevron open={open} isDarkMode={isDarkMode}/>
+          <Chevron open={open} isDarkMode={isDarkMode} />
         </IconButton>
       </Box>
       <List>
@@ -86,6 +87,20 @@ export default function Navbar() {
             </ListItemButton>
           </ListItem>
         )}
+
+
+        {/* <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/portfolio"
+            selected={location.pathname === '/portfolio'}
+          >
+            <ListItemIcon>
+              <PortfolioIcon />
+            </ListItemIcon>
+            {open && <ListItemText primary="Portfolio" />}
+          </ListItemButton>
+        </ListItem> */}
 
         <ListItem disablePadding>
           <ListItemButton
