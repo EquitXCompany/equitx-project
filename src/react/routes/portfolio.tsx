@@ -4,8 +4,7 @@ import ErrorMessage from '../components/errorMessage';
 import { useContractCdpForAllAssets } from '../hooks/useCdps';
 import BigNumber from 'bignumber.js';
 import { useContractMapping } from '../../contexts/ContractMappingContext';
-import { useAssets } from '../hooks/useAssets';
-import { useAllStabilityPoolMetadata, useStabilityPoolMetadata } from '../hooks/useStabilityPoolMetadata';
+import { useAllStabilityPoolMetadata } from '../hooks/useStabilityPoolMetadata';
 
 export default function Portfolio() {
     const { account } = useWallet();
