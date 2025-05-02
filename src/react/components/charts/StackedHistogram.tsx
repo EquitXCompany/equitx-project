@@ -171,82 +171,6 @@ export function StackedHistogram({
           minHeight: "48px", // Ensure space for controls
         }}
       >
-        <FormControl variant="outlined" size="small" sx={{ minWidth: 100 }}>
-          <InputLabel
-            id="step-label"
-            sx={{
-              transform: "translate(14px, -17px) scale(0.75)",
-              "&.Mui-focused": {
-                transform: "translate(14px, -17px) scale(0.75)",
-              },
-              backgroundColor: theme.palette.background.paper,
-              padding: "0 4px",
-              zIndex: 1,
-              color: theme.palette.text.secondary,
-            }}
-            shrink
-          >
-            Step
-          </InputLabel>
-          <Select
-            labelId="step-label"
-            value={step}
-            onChange={(e) => setStep(Number(e.target.value))}
-            notched
-            sx={{
-              color: theme.palette.text.primary,
-              "& .MuiSelect-icon": {
-                color: theme.palette.text.secondary,
-              },
-            }}
-          >
-            {[1, 2, 3, 4].map((value) => (
-              <MenuItem
-                key={value * baseBucketSize}
-                value={value * baseBucketSize}
-              >
-                {`${(baseBucketSize * value).toFixed(1)}`}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl variant="outlined" size="small" sx={{ minWidth: 100 }}>
-          <InputLabel
-            id="groups-label"
-            sx={{
-              transform: "translate(14px, -17px) scale(0.75)",
-              "&.Mui-focused": {
-                transform: "translate(14px, -17px) scale(0.75)",
-              },
-              backgroundColor: theme.palette.background.paper,
-              padding: "0 4px",
-              zIndex: 1,
-              color: theme.palette.text.secondary,
-            }}
-            shrink
-          >
-            Groups
-          </InputLabel>
-          <Select
-            labelId="groups-label"
-            value={groups}
-            onChange={(e) => setGroups(Number(e.target.value))}
-            notched
-            sx={{
-              color: theme.palette.text.primary,
-              "& .MuiSelect-icon": {
-                color: theme.palette.text.secondary,
-              },
-            }}
-          >
-            {[10, 15, 20, 25, 30, 35, 40, 45, 50].map((value) => (
-              <MenuItem key={value} value={value}>
-                {`${value}`}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
       </Box>
 
       {/* Chart container */}
@@ -324,6 +248,74 @@ export function StackedHistogram({
           />
         </Box>
       </Box>
+      <FormControl variant="outlined" size="small" sx={{ minWidth: 100, flexDirection: 'column' }}>
+
+          <label htmlFor="step-label" style={{ padding: '2px', font: 'normal normal 600 20px/24px Instrument Sans' }}>
+            Step
+          </label>
+          <Select
+            labelId="step-label"
+            value={step}
+            onChange={(e) => setStep(Number(e.target.value))}
+            notched
+            sx={{
+              border: '1px solid white',
+              borderRadius: '18px',
+              p: '3px',
+              color: theme.palette.text.primary,
+              "& .MuiSelect-icon": {
+                color: theme.palette.text.secondary,
+              },
+            }}
+          >
+            {[1, 2, 3, 4].map((value) => (
+              <MenuItem
+                key={value * baseBucketSize}
+                value={value * baseBucketSize}
+              >
+                {`${(baseBucketSize * value).toFixed(1)}`}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl variant="outlined" size="small" sx={{ minWidth: 100 }}>
+          <InputLabel
+            id="groups-label"
+            sx={{
+              transform: "translate(14px, -17px) scale(0.75)",
+              "&.Mui-focused": {
+                transform: "translate(14px, -17px) scale(0.75)",
+              },
+              backgroundColor: theme.palette.background.paper,
+              padding: "0 4px",
+              zIndex: 1,
+              color: theme.palette.text.secondary,
+            }}
+            shrink
+          >
+            Groups
+          </InputLabel>
+          
+          <Select
+            labelId="groups-label"
+            value={groups}
+            onChange={(e) => setGroups(Number(e.target.value))}
+            notched
+            sx={{
+              color: theme.palette.text.primary,
+              "& .MuiSelect-icon": {
+                color: theme.palette.text.secondary,
+              },
+            }}
+          >
+            {[10, 15, 20, 25, 30, 35, 40, 45, 50].map((value) => (
+              <MenuItem key={value} value={value}>
+                {`${value}`}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
     </Box>
   );
 }
