@@ -262,6 +262,17 @@ code {
   background-color: #1A1C21;
 }
 
+.collateral-ratio-distri label {
+  padding: 2px;
+  font: normal normal 600 20px/24px Instrument Sans;
+}
+
+.collateral-ratio-distri .MuiSelect-root {
+  border: 1px solid white;
+  border-radius: 18px;
+  padding: 3px;
+}
+
 .metric-card-paper-root {
   border: 1px black solid;
 }

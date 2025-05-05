@@ -248,9 +248,8 @@ export function StackedHistogram({
           />
         </Box>
       </Box>
-      <FormControl variant="outlined" size="small" sx={{ minWidth: 100, flexDirection: 'column' }}>
-
-          <label htmlFor="step-label" style={{ padding: '2px', font: 'normal normal 600 20px/24px Instrument Sans' }}>
+      <FormControl className="collateral-ratio-distri" variant="outlined" size="small" sx={{ minWidth: 100, flexDirection: 'row' }}>
+          <label htmlFor="step-label">
             Step
           </label>
           <Select
@@ -259,9 +258,6 @@ export function StackedHistogram({
             onChange={(e) => setStep(Number(e.target.value))}
             notched
             sx={{
-              border: '1px solid white',
-              borderRadius: '18px',
-              p: '3px',
               color: theme.palette.text.primary,
               "& .MuiSelect-icon": {
                 color: theme.palette.text.secondary,
@@ -279,24 +275,10 @@ export function StackedHistogram({
           </Select>
         </FormControl>
 
-        <FormControl variant="outlined" size="small" sx={{ minWidth: 100 }}>
-          <InputLabel
-            id="groups-label"
-            sx={{
-              transform: "translate(14px, -17px) scale(0.75)",
-              "&.Mui-focused": {
-                transform: "translate(14px, -17px) scale(0.75)",
-              },
-              backgroundColor: theme.palette.background.paper,
-              padding: "0 4px",
-              zIndex: 1,
-              color: theme.palette.text.secondary,
-            }}
-            shrink
-          >
+        <FormControl className="collateral-ratio-distri" variant="outlined" size="small" sx={{ minWidth: 100, flexDirection: 'row' }}>
+          <label>
             Groups
-          </InputLabel>
-          
+          </label>
           <Select
             labelId="groups-label"
             value={groups}
