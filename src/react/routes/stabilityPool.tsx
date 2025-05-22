@@ -383,7 +383,7 @@ function StabilityPool() {
 
         <Grid item xs={12}>
           <Grid container spacing={2}>
-            {userDeposit.isGreaterThan(0) ? (
+            {stakerPosition !== null ? (
               <>
                 <Grid item xs={12} sm={4}>
                   <Button
@@ -423,7 +423,7 @@ function StabilityPool() {
                 variant="contained"
                 onClick={handleUnstake}
                 fullWidth
-                disabled={!isSignedIn || loading || userDeposit.isEqualTo(0)}
+                disabled={!isSignedIn || loading || stakerPosition === null}
               >
                 {loading ? <CircularProgress size={24} /> : 'Unstake'}
               </Button>
