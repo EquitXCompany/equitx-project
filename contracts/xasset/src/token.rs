@@ -27,6 +27,7 @@ const UNSTAKE_RETURN: i128 = 20_000_000;
 const SECONDS_PER_YEAR: u64 = 31_536_000; // 365 days
 const INTEREST_PRECISION: i128 = 1_000_000_000; // 9 decimal places for precision
 const DEFAULT_PRECISION: i128 = 10_000_000; // 7 decimal places for precision
+const INTEREST_ACCRUAL_INTERVAL: u64 = 300; // seconds
 
 fn bankers_round(value: i128, precision: i128) -> i128 {
     let half = precision / 2;
@@ -1496,6 +1497,11 @@ impl Token {
         let time_elapsed = now.saturating_sub(last_time);
         if time_elapsed == 0 {
             return Ok((cdp.accrued_interest, now));
+        }
+
+        // Only accrue interest if at least 300s have passed
+        if time_elapsed < 300 {
+            return Ok((cdp.accrued_interest, last_time));
         }
 
         // Do not accrue interest after it has been frozen
