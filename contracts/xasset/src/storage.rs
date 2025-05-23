@@ -41,7 +41,7 @@ impl CDPInternal {
             asset_lent,
             status: CDPStatus::Open,
             accrued_interest: Interest::default(),
-            last_interest_time: timestamp, 
+            last_interest_time: timestamp,
         }
     }
 }

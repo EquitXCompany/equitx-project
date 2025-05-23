@@ -1,5 +1,5 @@
 #![no_std]
-use collateralized::{CDPAdmin, Collateralized, CDPContract, CDPStatus};
+use collateralized::{CDPAdmin, CDPContract, CDPStatus, Collateralized};
 use loam_sdk::{
     derive_contract,
     soroban_sdk::{self, Address, String, Symbol, Vec},
@@ -11,15 +11,15 @@ use token::Token;
 
 pub mod collateralized;
 pub mod error;
-mod storage;
 pub mod stability_pool;
+mod storage;
 pub mod token;
 
 #[cfg(feature = "mercury")]
 pub mod index_types;
 
-pub use error::Error;
 use crate::storage::Interest;
+pub use error::Error;
 
 // FIXME: copied from data_feed; find way to reuse
 #[loam_sdk::soroban_sdk::contracttype]

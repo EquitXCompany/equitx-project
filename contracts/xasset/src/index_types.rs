@@ -1,6 +1,6 @@
-use retroshade_sdk::Retroshade;
-use loam_sdk::soroban_sdk::{self, contracttype, Address };
 use crate::collateralized::CDPStatus;
+use loam_sdk::soroban_sdk::{self, contracttype, Address};
+use retroshade_sdk::Retroshade;
 
 #[derive(Retroshade)]
 #[contracttype]
@@ -12,7 +12,7 @@ pub struct CDP {
     pub ledger: u32,
     pub timestamp: u64,
     pub accrued_interest: i128,
-    pub interest_paid: i128, 
+    pub interest_paid: i128,
     pub last_interest_time: u64,
 }
 
