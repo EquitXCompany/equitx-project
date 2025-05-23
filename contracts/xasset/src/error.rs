@@ -75,7 +75,7 @@ pub enum Error {
 
     // Payment exceeds interest due
     PaymentExceedsInterestDue = 24,
-    
+
     // "Interest must be paid before debt can be repaid"
     InterestMustBePaidFirst = 25,
 
