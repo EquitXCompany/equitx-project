@@ -44,3 +44,7 @@ src/contracts/*
 
 # contracts copied to server for server deployment
 server/prebuilt_contracts
+
+# Test snapshots
+contracts/test_snapshots/
+**/test_snapshots/
