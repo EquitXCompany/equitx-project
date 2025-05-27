@@ -617,7 +617,7 @@ impl IsCollateralized for Token {
         }
 
         // Pay off any interest first
-        cdp = self.pay_interest_from(lender.clone(), 0)?;
+        cdp = self.pay_interest_from(lender.clone())?;
 
         // Now continue with debt repayment
         if cdp.asset_lent < amount {
@@ -659,10 +659,10 @@ impl IsCollateralized for Token {
     ) -> Result<CDPContract, Error> {
         lender.require_auth();
 
+        if amount_in_xasset <= 0 {
+            return Err(Error::InterestRepaidNotPositive);
+        }
         self.apply_interest_payment(lender, amount_in_xasset, |s, lender, amount_in_xlm| {
-            if s.native().balance(lender) < *amount_in_xlm {
-                return Err(Error::InsufficientXLMForInterest);
-            }
             match s
                 .native()
                 .try_transfer(lender, &env().current_contract_address(), amount_in_xlm)
@@ -1483,6 +1483,7 @@ impl Token {
     {
         let cdp = self.cdp(lender.clone())?;
         let mut interest = cdp.accrued_interest;
+        // if called with 0, it means we want to pay off all currently accrued interest
         let amount_to_pay = if amount_in_xasset == 0 {
             interest.amount
         } else {
@@ -1499,6 +1500,9 @@ impl Token {
         let xasset_decimals = self.decimals_asset_feed()?;
         let xlm_decimals = self.decimals_xlm_feed()?;
         let amount_in_xlm = self.convert_xasset_to_xlm(amount_to_pay)?;
+        if self.native().balance(&lender) < amount_in_xlm {
+            return Err(Error::InsufficientXLMForInterest);
+        }
 
         pay_fn(self, &lender, &amount_in_xlm)?;
 
@@ -1529,22 +1533,18 @@ impl Token {
     }
 
     /// Internal-only, called with contract as spender. Doesn't require lender auth, uses xlm approve.
-    fn pay_interest_from(
-        &mut self,
-        approver: Address,
-        amount_in_xasset: i128,
-    ) -> Result<CDPContract, Error> {
-        self.apply_interest_payment(approver, amount_in_xasset, |s, from, amount_in_xlm| match s
-            .native()
-            .try_transfer_from(
+    fn pay_interest_from(&mut self, approver: Address) -> Result<CDPContract, Error> {
+        self.apply_interest_payment(approver, 0, |s, from, amount_in_xlm| {
+            match s.native().try_transfer_from(
                 &env().current_contract_address(),
                 from,
                 &env().current_contract_address(),
                 amount_in_xlm,
             ) {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(_)) => Err(Error::InsufficientApprovedXLMForInterestRepayment),
-            Err(_) => Err(Error::XLMHostInvocationFailed),
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(_)) => Err(Error::InsufficientApprovedXLMForInterestRepayment),
+                Err(_) => Err(Error::XLMHostInvocationFailed),
+            }
         })
     }
 

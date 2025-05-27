@@ -87,4 +87,7 @@ pub enum Error {
 
     // Invoking XLM SAC contract failed
     XLMHostInvocationFailed = 28,
+
+    // Interest repaid must be greater than 0
+    InterestRepaidNotPositive = 29,
 }
