@@ -27,7 +27,6 @@ const UNSTAKE_RETURN: i128 = 20_000_000;
 const SECONDS_PER_YEAR: u64 = 31_536_000; // 365 days
 const INTEREST_PRECISION: i128 = 1_000_000_000; // 9 decimal places for precision
 const DEFAULT_PRECISION: i128 = 10_000_000; // 7 decimal places for precision
-const INTEREST_ACCRUAL_INTERVAL: u64 = 300; // seconds
 
 fn bankers_round(value: i128, precision: i128) -> i128 {
     let half = precision / 2;
@@ -617,7 +616,7 @@ impl IsCollateralized for Token {
         }
 
         // Pay off any interest first
-        cdp = self.pay_interest(lender.clone(), 0)?;
+        cdp = self.pay_interest_from(lender.clone(), 0)?;
 
         // Now continue with debt repayment
         if cdp.asset_lent < amount {
@@ -659,74 +658,19 @@ impl IsCollateralized for Token {
     ) -> Result<CDPContract, Error> {
         lender.require_auth();
 
-        // Check if CDP exists
-        let cdp = self.cdp(lender.clone())?;
-
-        // Get accrued interest
-        let mut interest = cdp.accrued_interest.clone();
-
-        // If amount is 0, assume the user wants to pay all accrued interest
-        let amount_to_pay = if amount_in_xasset == 0 {
-            interest.amount
-        } else {
-            // Otherwise validate the payment amount
-            if interest.amount < amount_in_xasset {
-                return Err(Error::PaymentExceedsInterestDue);
+        self.apply_interest_payment(lender, amount_in_xasset, |s, lender, amount_in_xlm| {
+            if s.native().balance(lender) < *amount_in_xlm {
+                return Err(Error::InsufficientXLMForInterest);
             }
-            amount_in_xasset
-        };
-
-        // No need to proceed if there's nothing to pay
-        if amount_to_pay == 0 {
-            return Ok(cdp);
-        }
-
-        // Convert xasset amount to XLM equivalent using the current price
-        let price = self.lastprice_asset().unwrap();
-        let xlmprice = self.lastprice_xlm().unwrap();
-        let xasset_decimals = self.decimals_asset_feed()?;
-        let xlm_decimals = self.decimals_xlm_feed()?;
-        let amount_in_xlm = self.convert_xasset_to_xlm(amount_to_pay)?;
-
-        // Check for sufficient XLM balance
-        if self.native().balance(&lender) < amount_in_xlm {
-            return Err(Error::InsufficientXLMForInterest);
-        }
-
-        // Transfer XLM from lender to contract
-        let _ = self
-            .native()
-            .try_transfer(&lender, &env().current_contract_address(), &amount_in_xlm)
-            .map_err(|_| Error::XLMTransferFailed)?;
-
-        interest.amount -= amount_to_pay;
-        interest.paid += amount_in_xlm;
-
-        let decorated_cdp = self.decorate(
-            CDPInternal {
-                xlm_deposited: cdp.xlm_deposited,
-                asset_lent: cdp.asset_lent,
-                accrued_interest: interest,
-                status: cdp.status,
-                last_interest_time: cdp.last_interest_time,
-            },
-            lender.clone(),
-            xlmprice.price,
-            xlm_decimals,
-            price.price,
-            xasset_decimals,
-        );
-
-        // This is different from repay debt where the xasset is burned from user; here XLM is
-        // being transferred from the user to repay the interest. Its also different from a liquidation
-        // where the SP's xasset is burned to cover the debt.
-        // Only XLM is being transferred to the SP to pay the interest so the rewards must be updated
-        self.set_cdp_from_decorated(lender, decorated_cdp.clone());
-        self.interest_collected
-            .set(&(self.get_total_interest_collected() + amount_in_xlm));
-        self.increment_interest_for_current_epoch(&amount_in_xlm);
-
-        Ok(decorated_cdp)
+            match s
+                .native()
+                .try_transfer(lender, &env().current_contract_address(), amount_in_xlm)
+            {
+                Ok(Ok(())) => Ok(()), // both contract invocation and logic succeeded
+                Ok(Err(_)) => Err(Error::XLMTransferFailed), // invocation succeeded but logic failed
+                Err(_) => Err(Error::XLMHostInvocationFailed), // invocation (host error) failed
+            }
+        })
     }
 
     fn merge_cdps(&mut self, lenders: Vec<Address>) -> Result<(), Error> {
@@ -1499,11 +1443,6 @@ impl Token {
             return Ok((cdp.accrued_interest, now));
         }
 
-        // Only accrue interest if at least 300s have passed
-        if time_elapsed < 300 {
-            return Ok((cdp.accrued_interest, last_time));
-        }
-
         // Do not accrue interest after it has been frozen
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Ok((cdp.accrued_interest, now));
@@ -1530,6 +1469,82 @@ impl Token {
         self.interest_collected
             .get()
             .expect("Total interest collected should be initialized")
+    }
+
+    fn apply_interest_payment<F>(
+        &mut self,
+        lender: Address,
+        amount_in_xasset: i128,
+        pay_fn: F,
+    ) -> Result<CDPContract, Error>
+    where
+        F: FnOnce(&Self, &Address, &i128) -> Result<(), Error>,
+    {
+        let cdp = self.cdp(lender.clone())?;
+        let mut interest = cdp.accrued_interest;
+        let amount_to_pay = if amount_in_xasset == 0 {
+            interest.amount
+        } else {
+            if interest.amount < amount_in_xasset {
+                return Err(Error::PaymentExceedsInterestDue);
+            }
+            amount_in_xasset
+        };
+        if amount_to_pay == 0 {
+            return Ok(cdp);
+        }
+        let price = self.lastprice_asset().unwrap();
+        let xlmprice = self.lastprice_xlm().unwrap();
+        let xasset_decimals = self.decimals_asset_feed()?;
+        let xlm_decimals = self.decimals_xlm_feed()?;
+        let amount_in_xlm = self.convert_xasset_to_xlm(amount_to_pay)?;
+
+        pay_fn(self, &lender, &amount_in_xlm)?;
+
+        interest.amount -= amount_to_pay;
+        interest.paid += amount_in_xlm;
+
+        let decorated_cdp = self.decorate(
+            CDPInternal {
+                xlm_deposited: cdp.xlm_deposited,
+                asset_lent: cdp.asset_lent,
+                accrued_interest: interest,
+                status: cdp.status,
+                last_interest_time: cdp.last_interest_time,
+            },
+            lender.clone(),
+            xlmprice.price,
+            xlm_decimals,
+            price.price,
+            xasset_decimals,
+        );
+
+        self.set_cdp_from_decorated(lender, decorated_cdp.clone());
+        self.interest_collected
+            .set(&(self.get_total_interest_collected() + amount_in_xlm));
+        self.increment_interest_for_current_epoch(&amount_in_xlm);
+
+        Ok(decorated_cdp)
+    }
+
+    /// Internal-only, called with contract as spender. Doesn't require lender auth, uses xlm approve.
+    fn pay_interest_from(
+        &mut self,
+        approver: Address,
+        amount_in_xasset: i128,
+    ) -> Result<CDPContract, Error> {
+        self.apply_interest_payment(approver, amount_in_xasset, |s, from, amount_in_xlm| match s
+            .native()
+            .try_transfer_from(
+                &env().current_contract_address(),
+                from,
+                &env().current_contract_address(),
+                amount_in_xlm,
+            ) {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(_)) => Err(Error::InsufficientApprovedXLMForInterestRepayment),
+            Err(_) => Err(Error::XLMHostInvocationFailed),
+        })
     }
 
     fn convert_xasset_to_xlm(&self, amount_in_xasset: i128) -> Result<i128, Error> {

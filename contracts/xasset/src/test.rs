@@ -348,7 +348,7 @@ fn test_cdp_operations_with_interest() {
     e.mock_all_auths();
 
     let xlm_admin_address = Address::generate(&e);
-    let (_, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
+    let (sac_contract, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
     let xlm_token_address = xlm_admin.address.clone();
     let datafeed = create_data_feed(&e);
     let admin: Address = Address::generate(&e);
@@ -404,6 +404,17 @@ fn test_cdp_operations_with_interest() {
     let cdp_before_repay = token.cdp(&alice);
     assert!(cdp_before_repay.asset_lent + cdp_before_repay.accrued_interest.amount > 700_000_000);
 
+    // Approve XLM for contract to pay accrued interest during repay_debt
+    let extra_interest_buffer = 1_000;
+    let xasset_interest = cdp_before_repay.accrued_interest.amount + extra_interest_buffer;
+    // Estimate how much XLM is required for interest payment using the token's conversion function
+    let xlm_needed = xasset_interest * usdt_price / xlm_price;
+
+    // Approve contract to spend XLM from Alice for paying interest
+    let contract_address = token.address.clone();
+    let live_until_ledger = e.ledger().sequence() + 100;
+    sac_contract.approve(&alice, &contract_address, &xlm_needed, &live_until_ledger);
+
     // Repay some debt (this should first pay off accrued interest)
     token.repay_debt(&alice, &300_000_000);
 
@@ -413,4 +424,20 @@ fn test_cdp_operations_with_interest() {
         final_cdp.asset_lent + final_cdp.accrued_interest.amount
             < cdp_before_repay.asset_lent + cdp_before_repay.accrued_interest.amount
     );
+
+    // test pay_interest
+    // Advance time by 2 months
+    let time_after_debt = initial_time + 55944000 + 5_184_000; // +60 days (2 months in seconds)
+    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), time_after_debt);
+
+    // Get updated accrued interest
+    let cdp_for_interest = token.cdp(&alice);
+    let accrued_interest = cdp_for_interest.accrued_interest.amount;
+    assert!(accrued_interest > 0);
+
+    let repay_interest_amount = accrued_interest / 2;
+    let cdp_post_pay = token.pay_interest(&alice, &repay_interest_amount);
+
+    assert!(cdp_post_pay.accrued_interest.amount < accrued_interest);
+    assert!(cdp_post_pay.accrued_interest.amount > 0);
 }
