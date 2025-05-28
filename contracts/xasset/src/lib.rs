@@ -18,7 +18,7 @@ pub mod token;
 #[cfg(feature = "mercury")]
 pub mod index_types;
 
-use crate::storage::Interest;
+use crate::storage::InterestDetail;
 pub use error::Error;
 
 // FIXME: copied from data_feed; find way to reuse

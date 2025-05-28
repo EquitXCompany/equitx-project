@@ -7,7 +7,7 @@ use loam_sdk::soroban_sdk::{
 };
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
-use crate::storage::{Allowance, CDPInternal, Interest};
+use crate::storage::{Allowance, CDPInternal, Interest, InterestDetail};
 use crate::{collateralized::CDPStatus, data_feed, storage::Txn, Error};
 use crate::{
     collateralized::{CDPContract, IsCDPAdmin, IsCollateralized},
@@ -646,10 +646,29 @@ impl IsCollateralized for Token {
         self.liquidate(lender)
     }
 
-    fn get_accrued_interest(&self, lender: Address) -> Result<Interest, Error> {
+    fn get_accrued_interest(&self, lender: Address) -> Result<InterestDetail, Error> {
         let cdp = self.cdps.get(lender.clone()).ok_or(Error::CDPNotFound)?;
-        let (interest, _last_interest_time) = self.get_updated_accrued_interest(&cdp)?;
-        Ok(interest)
+        let (interest, last_interest_time) = self.get_updated_accrued_interest(&cdp)?;
+
+        // Calculate approvalAmount: Projected interest 5 minutes ahead
+        let now = env().ledger().timestamp();
+        let five_min_later = now + 300; // 5 minutes in seconds
+
+        // Project interest 5 minutes ahead
+        let projected_interest =
+            self.get_projected_interest(&cdp, cdp.last_interest_time, five_min_later)?;
+        let approval_amount = self.convert_xasset_to_xlm(projected_interest.amount)?;
+
+        // Calculate interest in XLM
+        let amount_in_xlm = self.convert_xasset_to_xlm(interest.amount)?;
+
+        Ok(InterestDetail {
+            amount: interest.amount,
+            paid: interest.paid,
+            amountInXLM: amount_in_xlm,
+            approvalAmount: approval_amount,
+            lastInterestTime: last_interest_time,
+        })
     }
 
     fn pay_interest(
@@ -1438,30 +1457,11 @@ impl Token {
             return Ok((Interest::default(), now));
         }
 
-        // Calculate time elapsed since last interest calculation
-        let time_elapsed = now.saturating_sub(last_time);
-        if time_elapsed == 0 {
-            return Ok((cdp.accrued_interest, now));
-        }
-
         // Do not accrue interest after it has been frozen
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Ok((cdp.accrued_interest, now));
         }
-
-        // Calculate interest based on time elapsed
-        let annual_rate = self.get_annual_interest_rate() as i128;
-        // Calculate interest: debt * rate * time
-        let interest_amount = bankers_round(
-            cdp.asset_lent * annual_rate * (time_elapsed as i128) * INTEREST_PRECISION
-                / (BASIS_POINTS * (SECONDS_PER_YEAR as i128)),
-            INTEREST_PRECISION,
-        );
-
-        let interest = Interest {
-            amount: cdp.accrued_interest.amount + interest_amount,
-            paid: cdp.accrued_interest.paid,
-        };
+        let interest = self.get_projected_interest(cdp, last_time, now)?;
 
         Ok((interest, now))
     }
@@ -1573,4 +1573,32 @@ impl Token {
     /*fn get_interest_for_epoch(&self, epoch: u64) -> i128 {
         self.interest_record.get(epoch).unwrap_or_default()
     }*/
+
+    // Helper to calculate projected interest at a future timestamp
+    fn get_projected_interest(
+        &self,
+        cdp: &CDPInternal,
+        from_time: u64,
+        to_time: u64,
+    ) -> Result<Interest, Error> {
+        if from_time == 0 {
+            return Ok(Interest::default());
+        }
+
+        let annual_rate = self.get_annual_interest_rate() as i128;
+        let time_elapsed = to_time.saturating_sub(from_time);
+        if time_elapsed == 0 {
+            return Ok(cdp.accrued_interest);
+        }
+
+        let interest_amount = bankers_round(
+            cdp.asset_lent * annual_rate * (time_elapsed as i128) * INTEREST_PRECISION
+                / (BASIS_POINTS * (SECONDS_PER_YEAR as i128)),
+            INTEREST_PRECISION,
+        );
+        Ok(Interest {
+            amount: cdp.accrued_interest.amount + interest_amount,
+            paid: cdp.accrued_interest.paid,
+        })
+    }
 }

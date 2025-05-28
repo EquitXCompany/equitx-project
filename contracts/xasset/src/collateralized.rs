@@ -3,7 +3,10 @@ use loam_sdk::{
     subcontract,
 };
 
-use crate::{storage::Interest, Error, PriceData};
+use crate::{
+    storage::{Interest, InterestDetail},
+    Error, PriceData,
+};
 
 #[loam_sdk::soroban_sdk::contracttype]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -110,7 +113,7 @@ pub trait IsCollateralized {
     fn close_cdp(&mut self, lender: Address) -> Result<(), Error>;
 
     /// Updates and returns the accrued interest on a cdp
-    fn get_accrued_interest(&self, lender: Address) -> Result<Interest, Error>;
+    fn get_accrued_interest(&self, lender: Address) -> Result<InterestDetail, Error>;
 
     /// Pay the interest on a CDP
     fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDPContract, Error>;

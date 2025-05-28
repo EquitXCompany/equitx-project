@@ -388,9 +388,6 @@ fn test_cdp_operations_with_interest() {
     // With 11% interest rate, expect ~55_000_000 interest (500_000_000 * 0.11)
     assert!(cdp_after_year.accrued_interest.amount >= 54_000_000); // Allow for some rounding
 
-    // Add more collateral
-    token.add_collateral(&alice, &5_000_000_000);
-
     // Advance another 6 months
     loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 47304000);
 
@@ -404,16 +401,19 @@ fn test_cdp_operations_with_interest() {
     let cdp_before_repay = token.cdp(&alice);
     assert!(cdp_before_repay.asset_lent + cdp_before_repay.accrued_interest.amount > 700_000_000);
 
-    // Approve XLM for contract to pay accrued interest during repay_debt
-    let extra_interest_buffer = 1_000;
-    let xasset_interest = cdp_before_repay.accrued_interest.amount + extra_interest_buffer;
-    // Estimate how much XLM is required for interest payment using the token's conversion function
-    let xlm_needed = xasset_interest * usdt_price / xlm_price;
+    // Use contract-provided view to get approval info
+    let interest_detail = token.get_accrued_interest(&alice);
+    let approval_amount = interest_detail.approvalAmount; // amount of xlm needed for the next 5 minutes
 
     // Approve contract to spend XLM from Alice for paying interest
     let contract_address = token.address.clone();
     let live_until_ledger = e.ledger().sequence() + 100;
-    sac_contract.approve(&alice, &contract_address, &xlm_needed, &live_until_ledger);
+    sac_contract.approve(
+        &alice,
+        &contract_address,
+        &approval_amount,
+        &live_until_ledger,
+    );
 
     // Repay some debt (this should first pay off accrued interest)
     token.repay_debt(&alice, &300_000_000);

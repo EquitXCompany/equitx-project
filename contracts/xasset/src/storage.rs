@@ -54,3 +54,18 @@ pub struct Interest {
     /// Amount of interest paid
     pub paid: i128,
 }
+
+#[contracttype]
+#[derive(Clone, Copy, Default)]
+pub struct InterestDetail {
+    /// Amount of interest accrued
+    pub amount: i128,
+    /// Amount of interest paid
+    pub paid: i128,
+    /// Amount of interest accrued in XLM
+    pub amountInXLM: i128,
+    /// Amount of interest in XLM that will accrue 5 minutes from now
+    pub approvalAmount: i128,
+    /// Unix timestamp of when interest accrual was last calculated
+    pub lastInterestTime: u64,
+}
