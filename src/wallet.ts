@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAddress, isConnected, getNetwork } from "@stellar/freighter-api";
+import { getAddress, isConnected, getNetwork, signTransaction } from "@stellar/freighter-api";
 
 let account: string;
 let connected: boolean;
@@ -21,6 +21,7 @@ export function getState() {
     network,
     networkPassphrase,
     isSignedIn: isSignedIn(),
+    signTransaction
   };
 }
 
@@ -30,6 +31,7 @@ type onChangeHandler = (args: {
   network: string;
   networkPassphrase: string;
   isSignedIn: boolean;
+  signTransaction: any;
 }) => void | Promise<void>;
 
 const onChangeHandlers: onChangeHandler[] = [];
@@ -75,6 +77,7 @@ export async function refresh(forceUpdate = false) {
           network,
           networkPassphrase,
           isSignedIn: signedIn,
+          signTransaction
         }),
       ),
     );
