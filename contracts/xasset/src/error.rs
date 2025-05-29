@@ -86,7 +86,7 @@ pub enum Error {
     InsufficientApprovedXLMForInterestRepayment = 27,
 
     // Invoking XLM SAC contract failed
-    XLMHostInvocationFailed = 28,
+    XLMInvocationFailed = 28,
 
     // Interest repaid must be greater than 0
     InterestRepaidNotPositive = 29,
