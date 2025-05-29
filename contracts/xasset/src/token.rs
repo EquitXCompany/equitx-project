@@ -665,9 +665,9 @@ impl IsCollateralized for Token {
         Ok(InterestDetail {
             amount: interest.amount,
             paid: interest.paid,
-            amountInXLM: amount_in_xlm,
-            approvalAmount: approval_amount,
-            lastInterestTime: last_interest_time,
+            amount_in_xlm,
+            approval_amount,
+            last_interest_time,
         })
     }
 
@@ -688,7 +688,7 @@ impl IsCollateralized for Token {
             {
                 Ok(Ok(())) => Ok(()), // both contract invocation and logic succeeded
                 Ok(Err(_)) => Err(Error::XLMTransferFailed), // invocation succeeded but logic failed
-                Err(_) => Err(Error::XLMHostInvocationFailed), // invocation (host error) failed
+                Err(_) => Err(Error::XLMInvocationFailed),   // invocation (host error) failed
             }
         })
     }
@@ -1543,7 +1543,7 @@ impl Token {
             ) {
                 Ok(Ok(())) => Ok(()),
                 Ok(Err(_)) => Err(Error::InsufficientApprovedXLMForInterestRepayment),
-                Err(_) => Err(Error::XLMHostInvocationFailed),
+                Err(_) => Err(Error::XLMInvocationFailed),
             }
         })
     }

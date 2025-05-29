@@ -97,6 +97,26 @@ pub trait IsCollateralized {
     /// Increases the Collateralization Ratio (CR) by repaying debt in the form of xAsset.
     /// When the debt is repaid, the xAsset is burned (i.e., destroyed).
     /// More xAsset cannot be burned than debt owed by the CDP.
+    ///
+    /// **Repayment Workflow:**
+    /// 1. Call [`get_accrued_interest`] to get the latest accrued interest, including `approval_amount`.
+    /// 2. Call the XLM SAC's `approve` function to approve spending the required XLM:
+    ///    ```
+    ///    stellar contract invoke \
+    ///      --id <xlm_sac_contract_id> \
+    ///      -- approve \
+    ///      --from <your_id> \
+    ///      --spender <token_contract_id> \
+    ///      --amount <approval_amount> \
+    ///      --expiration_ledger <current_ledger_seq_plus_x>
+    ///    ```
+    ///    - `--from` is your account.
+    ///    - `--spender` is this token contract's ID.
+    ///    - `--amount` is the `approval_amount` returned by `get_accrued_interest`.
+    ///    - `--expiration_ledger` should be a value a few ledgers into the future (e.g., `current sequence + 100` ~ 5 minutes).
+    /// 3. Call this function [`repay_debt`] within 5 minutes to finalize repayment and burn xAsset.
+    ///
+    /// This ensures the proper interest payment is authorized and prevents race conditions.
     fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error>;
 
     /// Liquidates a frozen CDP. Upon liquidation, CDP debt is repaid by withdrawing xAsset from a Stability Pool.
@@ -112,10 +132,25 @@ pub trait IsCollateralized {
     /// A CDP is closed after all its debt is repaid and its collateral is withdrawn.
     fn close_cdp(&mut self, lender: Address) -> Result<(), Error>;
 
-    /// Updates and returns the accrued interest on a cdp
+    /// Updates and returns the accrued interest on a CDP.
+    ///
+    /// Returns an [`InterestDetail`] struct, including:
+    /// - `amount`: total interest accrued;
+    /// - `paid`: total interest paid;
+    /// - `amount_in_xlm`: interest amount expressed in XLM;
+    /// - `approval_amount`: the amount of XLM that needs to be approved for repayment if repaid within five minutes;
+    /// - `last_interest_time`: timestamp of last calculation.
     fn get_accrued_interest(&self, lender: Address) -> Result<InterestDetail, Error>;
 
-    /// Pay the interest on a CDP
+    /// Pays the accrued interest (but not principal) on a CDP.
+    ///
+    /// - Interest is paid in XLM, not in the principal token.
+    /// - To determine the current interest due (in both principal token and XLM),
+    ///   call [`get_accrued_interest`], which returns both values.
+    /// - Use the `amount_in_xlm` and/or `approval_amount` from that result when
+    ///   approving and paying interest.
+    ///
+    /// Note: This function is for paying only the interest; to repay principal, use [`repay_debt`].
     fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDPContract, Error>;
 }
 

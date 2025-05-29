@@ -403,16 +403,14 @@ fn test_cdp_operations_with_interest() {
 
     // Use contract-provided view to get approval info
     let interest_detail = token.get_accrued_interest(&alice);
-    let approval_amount = interest_detail.approvalAmount; // amount of xlm needed for the next 5 minutes
+    let approval_amount = interest_detail.approval_amount; // amount of xlm needed for the next 5 minutes
 
     // Approve contract to spend XLM from Alice for paying interest
-    let contract_address = token.address.clone();
-    let live_until_ledger = e.ledger().sequence() + 100;
     sac_contract.approve(
         &alice,
-        &contract_address,
+        &token.address.clone(),
         &approval_amount,
-        &live_until_ledger,
+        &(e.ledger().sequence() + 100),
     );
 
     // Repay some debt (this should first pay off accrued interest)

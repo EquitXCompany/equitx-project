@@ -63,9 +63,9 @@ pub struct InterestDetail {
     /// Amount of interest paid
     pub paid: i128,
     /// Amount of interest accrued in XLM
-    pub amountInXLM: i128,
+    pub amount_in_xlm: i128,
     /// Amount of interest in XLM that will accrue 5 minutes from now
-    pub approvalAmount: i128,
+    pub approval_amount: i128,
     /// Unix timestamp of when interest accrual was last calculated
-    pub lastInterestTime: u64,
+    pub last_interest_time: u64,
 }
