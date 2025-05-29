@@ -401,15 +401,11 @@ fn test_cdp_operations_with_interest() {
     let cdp_before_repay = token.cdp(&alice);
     assert!(cdp_before_repay.asset_lent + cdp_before_repay.accrued_interest.amount > 700_000_000);
 
-    // Use contract-provided view to get approval info
-    let interest_detail = token.get_accrued_interest(&alice);
-    let approval_amount = interest_detail.approval_amount; // amount of xlm needed for the next 5 minutes
-
     // Approve contract to spend XLM from Alice for paying interest
     sac_contract.approve(
         &alice,
         &token.address.clone(),
-        &approval_amount,
+        &token.get_accrued_interest(&alice).approval_amount,
         &(e.ledger().sequence() + 100),
     );
 
