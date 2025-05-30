@@ -194,19 +194,6 @@ function Edit() {
     return;
   }, [actionData, navigate]);
 
-  // Calculate XLM needed for interest payment based on current rates
-  const calculateXlmNeeded = (interestAmount: BigNumber) => {
-    if (!metadata) return new BigNumber(0);
-
-    const interestXLM = interestAmount
-      .times(metadata.lastpriceAsset)
-      .div(metadata.lastpriceXLM)
-      .integerValue(BigNumber.ROUND_CEIL);
-
-    // Add a buffer to account for additional interest accrual between transactions
-    return interestXLM.plus(10_000_000);
-  };
-
   const handleRepayDebt = async () => {
     if (!cdp || !metadata || !amount) return;
 
