@@ -47,7 +47,10 @@ pub trait IsOrchestratorTrait {
         decimals: u32,
         annual_interest_rate: u32,
     ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
-    fn get_asset_contract(&self, asset_symbol: loam_sdk::soroban_sdk::String) -> Result<loam_sdk::soroban_sdk::Address, Error>;
+    fn get_asset_contract(
+        &self,
+        asset_symbol: loam_sdk::soroban_sdk::String,
+    ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
     // Manually set an asset symbol to an existing contract address
     fn set_asset_contract(
         &mut self,

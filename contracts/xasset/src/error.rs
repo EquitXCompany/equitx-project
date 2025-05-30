@@ -4,81 +4,90 @@ use loam_sdk::soroban_sdk::{self, contracterror};
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Error {
-    // "Insufficient collateralization ratio"
+    /// "Insufficient collateralization ratio"
     InsufficientCollateralization = 1,
 
-    // "CDP already exists for this lender"
+    /// "CDP already exists for this lender"
     CDPAlreadyExists = 2,
 
-    // "CDP not found"
+    /// "CDP not found"
     CDPNotFound = 3,
 
-    // "CDP not insolvent"
+    /// "CDP not insolvent"
     CDPNotInsolvent = 4,
 
-    // "CDP must be Open to borrow asset"
+    /// "CDP must be Open to borrow asset"
     CDPNotOpen = 5,
 
-    // "Insufficient collateral"
+    /// "Insufficient collateral"
     InsufficientCollateral = 6,
 
-    // "Insufficient balance"
+    /// "Insufficient balance"
     InsufficientBalance = 7,
 
-    // "Repayment amount exceeds debt"
+    /// "Repayment amount exceeds debt"
     RepaymentExceedsDebt = 8,
 
-    // "Cannot close CDP with outstanding debt"
+    /// "Cannot close CDP with outstanding debt"
     OutstandingDebt = 9,
 
-    // "At least two CDPs are required for merging" or "All CDPs must be frozen to merge"
+    /// "At least two CDPs are required for merging" or "All CDPs must be frozen to merge"
     InvalidMerge = 10,
 
-    // "CDP must be frozen to be liquidated" or "Debt and collateral must be positive"
+    /// "CDP must be frozen to be liquidated" or "Debt and collateral must be positive"
     InvalidLiquidation = 11,
 
-    // "Withdrawal would cause undercollateralization"
+    /// "Withdrawal would cause undercollateralization"
     InvalidWithdrawal = 12,
 
-    // "CDP must be Open or Insolvent to add collateral"
+    /// "CDP must be Open or Insolvent to add collateral"
     CDPNotOpenOrInsolvent = 13,
 
-    // "CDP must be Open or Insolvent to repay debt"
+    /// "CDP must be Open or Insolvent to repay debt"
     CDPNotOpenOrInsolventForRepay = 14,
 
-    // "User already has a stake. Use deposit function to add to existing stake."
+    /// "User already has a stake. Use deposit function to add to existing stake."
     StakeAlreadyExists = 15,
 
-    // "User does not have a stake. Use stake function to create one."
+    /// "User does not have a stake. Use stake function to create one."
     StakeDoesntExist = 16,
 
-    // "live_until_ledger must be greater than or equal to the current ledger number"
+    /// "live_until_ledger must be greater than or equal to the current ledger number"
     InvalidLedgerSequence = 17,
 
-    // "Failed to fetch price data from the Oracle"
+    /// "Failed to fetch price data from the Oracle"
     OraclePriceFetchFailed = 18,
 
-    // "Failed to fetch decimals from the Oracle"
+    /// "Failed to fetch decimals from the Oracle"
     OracleDecimalsFetchFailed = 19,
 
-    // "Failed to transfer XLM"
+    /// "Failed to transfer XLM"
     XLMTransferFailed = 20,
 
-    // "Claim rewards from previous epoch before modifying position"
+    /// "Claim rewards from previous epoch before modifying position"
     ClaimRewardsFirst = 21,
 
-    // "Insufficient amount of xAsset staked
+    /// "Insufficient amount of xAsset staked
     InsufficientStake = 22,
 
-    // "Insufficient interest"
+    /// "Insufficient interest"
     InsufficientInterest = 23,
 
-    // Payment exceeds interest due
+    /// Payment exceeds interest due
     PaymentExceedsInterestDue = 24,
-    
-    // "Interest must be paid before debt can be repaid"
+
+    /// "Interest must be paid before debt can be repaid"
     InterestMustBePaidFirst = 25,
 
-    // "Insufficient XLM to pay interest"
+    /// "Insufficient XLM to pay interest"
     InsufficientXLMForInterest = 26,
+
+    /// Approval needed for interest repayment
+    InsufficientApprovedXLMForInterestRepayment = 27,
+
+    /// Invoking XLM SAC contract failed
+    XLMInvocationFailed = 28,
+
+    /// Interest repaid must be greater than 0
+    InterestRepaidNotPositive = 29,
 }

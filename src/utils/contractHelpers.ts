@@ -11,7 +11,6 @@ export async function authenticatedContractCall(contractMethod: any, params: any
 
 export const getStatusColor = (status: string, isDarkMode?: boolean): string => {
   const mode = isDarkMode ? 'dark' : 'light';
-  console.log(mode)
   
   switch (status.toLowerCase()) {
     case 'open':

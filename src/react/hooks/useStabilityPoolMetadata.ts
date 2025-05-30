@@ -12,6 +12,7 @@ export interface StabilityPoolMetadata {
   symbolAsset: string;
   contractId: string;
   interestRate: number;
+  sacAddress: string;
 }
 
 export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: Record<string, string>) {
@@ -41,6 +42,7 @@ export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: R
             throw new Error("Failed to fetch asset price");
           }
         })).div(10 ** 14);
+        const sacAddress = await contract.xlm_sac();
 
         setData({
           lastpriceXLM,
@@ -49,6 +51,7 @@ export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: R
           symbolAsset: assetSymbol,
           contractId: contract.options.contractId,
           interestRate: interestRate.result,
+          sacAddress: sacAddress.result,
         });
       } catch (err) {
         setError(err as Error);
@@ -83,11 +86,12 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
           const assetSymbol = symbol;
           const contract = getContractBySymbol(assetSymbol, contractMapping);
 
-          const [minRatio, xlmPrice, assetPrice, interestRate] = await Promise.all([
+          const [minRatio, xlmPrice, assetPrice, interestRate, sacAddress] = await Promise.all([
             contract.minimum_collateralization_ratio(),
             contract.lastprice_xlm(),
             contract.lastprice_asset(),
             contract.get_interest_rate(),
+            contract.xlm_sac(),
           ]);
 
           const lastpriceXLM = new BigNumber(
@@ -111,6 +115,7 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
               min_ratio: minRatio.result,
               symbolAsset: assetSymbol,
               contractId: contract.options.contractId,
+              sacAddress: sacAddress.result,
             },
           };
         })

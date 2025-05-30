@@ -6,7 +6,6 @@ use loam_sdk::{
 use crate::{collateralized::CDPStatus, Error};
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 
-
 #[contracttype]
 #[derive(Clone)]
 pub struct StakerPosition {

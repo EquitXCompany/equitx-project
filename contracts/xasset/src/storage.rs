@@ -41,7 +41,7 @@ impl CDPInternal {
             asset_lent,
             status: CDPStatus::Open,
             accrued_interest: Interest::default(),
-            last_interest_time: timestamp, 
+            last_interest_time: timestamp,
         }
     }
 }
@@ -53,4 +53,19 @@ pub struct Interest {
     pub amount: i128,
     /// Amount of interest paid
     pub paid: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Copy, Default)]
+pub struct InterestDetail {
+    /// Amount of interest accrued
+    pub amount: i128,
+    /// Amount of interest paid
+    pub paid: i128,
+    /// Amount of interest accrued in XLM
+    pub amount_in_xlm: i128,
+    /// Amount of interest in XLM that will accrue 5 minutes from now
+    pub approval_amount: i128,
+    /// Unix timestamp of when interest accrual was last calculated
+    pub last_interest_time: u64,
 }
