@@ -47,18 +47,11 @@ ENV RUSTFLAGS="-C codegen-units=1"
 # Install mercury-cli with memory optimizations
 RUN cargo install mercury-cli --no-default-features
 
-# Install loam CLI from prebuilt binary with specific version
-RUN mkdir -p /tmp/loam && \
-    cd /tmp/loam && \
-    wget --no-check-certificate https://github.com/loambuild/loam/releases/download/loam-cli-v0.14.4/loam-cli-v0.14.4-x86_64-unknown-linux-gnu.tar.gz && \
-    tar xzf loam-cli-v0.14.4-x86_64-unknown-linux-gnu.tar.gz && \
-    mv loam /usr/local/bin/ && \
-    chmod +x /usr/local/bin/loam && \
-    cd /app && \
-    rm -rf /tmp/loam
+# Install stellar-scaffold CLI
+RUN cargo install stellar-scaffold-cli
 
-# Verify loam is installed correctly
-RUN loam --version || echo "Loam version check failed but continuing build"
+# Verify stellar-scaffold is installed correctly
+RUN stellar-scaffold --version || echo "Stellar Scaffold version check failed but continuing build"
 
 # Set the working directory to /app
 WORKDIR /app
@@ -71,12 +64,12 @@ RUN npm install
 
 # Copy everything so we can build contracts
 COPY . .
-RUN mkdir -p ./target/loam && \
+RUN mkdir -p ./target/stellar && \
     mkdir -p ./server/prebuilt_contracts
 
 # Build prebuilt contracts and the rest of the application
 RUN npm run build:prebuilt-contracts
-RUN LOAM_ENV=staging loam build --build-clients
+RUN STELLAR_SCAFFOLD_ENV=staging stellar-scaffold build --build-clients
 RUN npm run install:contracts
 
 # Move the packages directory to the server
