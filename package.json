@@ -21,7 +21,7 @@
     "astro": "astro",
     "build": "LOAM_ENV=staging loam build --build-clients && npm run install:contracts && astro check && astro build",
     "dev": "LOAM_ENV=development loam build --build-clients && npm run install:contracts && astro dev",
-    "build:prebuilt-contracts": "mkdir -p server/prebuilt_contracts && loam build --manifest-path Cargo.toml && cp target/wasm32-unknown-unknown/release/xasset.wasm server/prebuilt_contracts/xasset_standard.wasm && loam build --features mercury --manifest-path Cargo.toml && cp target/wasm32-unknown-unknown/release/xasset.wasm server/prebuilt_contracts/xasset_mercury.wasm",
+    "build:prebuilt-contracts": "mkdir -p server/prebuilt_contracts && loam build --manifest-path Cargo.toml && cp target/wasm32-none/release/xasset.wasm server/prebuilt_contracts/xasset_standard.wasm && loam build --features mercury --manifest-path Cargo.toml && cp target/wasm32-none/release/xasset.wasm server/prebuilt_contracts/xasset_mercury.wasm",
     "dev:with-prebuilt": "npm run build:prebuilt-contracts && LOAM_ENV=development loam build --build-clients && npm run install:contracts && astro dev",
     "build:with-prebuilt": "npm run build:prebuilt-contracts && LOAM_ENV=staging loam build --build-clients && npm run install:contracts && astro check && astro build",
     "preview": "astro preview",

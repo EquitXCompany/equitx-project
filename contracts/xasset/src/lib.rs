@@ -32,7 +32,7 @@ pub mod data_feed {
     use loam_sdk::soroban_sdk;
 
     soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/data_feed.wasm"
+        file = "../../target/wasm32-none/release/data_feed.wasm"
     );
 }
 
