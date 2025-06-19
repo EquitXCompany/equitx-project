@@ -35,9 +35,9 @@ RUN apt-get update -qq && \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 # Install specific toolchain
-RUN rustup toolchain install 1.81.0 --profile minimal
-RUN rustup default 1.81.0
-RUN rustup target add wasm32-unknown-unknown
+RUN rustup toolchain install 1.86.0 --profile minimal
+RUN rustup default 1.86.0
+RUN rustup target add wasm32v1-none
 
 # Optimize Cargo build to use less memory
 ENV CARGO_BUILD_JOBS=1
