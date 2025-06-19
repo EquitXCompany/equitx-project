@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -53,7 +53,7 @@ jobs:
           fi
 
       - name: Build DataFeed contract
-        run: cargo rustc --manifest-path=contracts/data-feed/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release -- -C opt-level=z -C overflow-checks=yes -C debuginfo=0 -C strip=symbols -C debug-assertions=yes -C panic=abort -C codegen-units=1 -C lto=yes
+        run: cargo rustc --manifest-path=contracts/data-feed/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release -- -C opt-level=z -C overflow-checks=yes -C debuginfo=0 -C strip=symbols -C debug-assertions=yes -C panic=abort -C codegen-units=1 -C lto=yes
         
       - name: Cache Node.js dependencies
         uses: actions/cache@v4
