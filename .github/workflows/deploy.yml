@@ -43,13 +43,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Check and install loam-cli
+      - name: Check and install stellar-scaffold
         run: |
-          if ! command -v loam &> /dev/null
+          if ! command -v stellar-scaffold &> /dev/null
           then
-            cargo install loam-cli --locked
+            cargo install stellar-scaffold-cli --locked
           else
-            echo "loam-cli is already installed"
+            echo "stellar-scaffold-cli is already installed"
           fi
 
       - name: Build DataFeed contract
