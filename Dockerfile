@@ -47,8 +47,15 @@ ENV RUSTFLAGS="-C codegen-units=1"
 # Install mercury-cli with memory optimizations
 RUN cargo install mercury-cli --no-default-features
 
-# Install stellar-scaffold CLI
-RUN cargo install stellar-scaffold-cli
+# Install scaffold-stellar CLI from prebuilt binary with specific version
+RUN mkdir -p /tmp/stellar-scaffold && \
+    cd /tmp/stellar-scaffold && \
+    wget --no-check-certificate https://github.com/AhaLabs/scaffold-stellar/releases/download/stellar-scaffold-cli-v0.0.3/stellar-scaffold-cli-v0.0.3-aarch64-unknown-linux-gnu.tar.gz && \
+    tar xzf stellar-scaffold-cli-v0.0.3-aarch64-unknown-linux-gnu.tar.gz && \
+    mv stellar-scaffold /usr/local/bin/ && \
+    chmod +x /usr/local/bin/stellar-scaffold && \
+    cd /app && \
+    rm -rf /tmp/stellar-scaffold
 
 # Verify stellar-scaffold is installed correctly
 RUN stellar-scaffold --version || echo "Stellar Scaffold version check failed but continuing build"
@@ -119,7 +126,7 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV RUSTFLAGS="-C codegen-units=1"
 
 # Install mercury-cli with memory optimizations
-RUN cargo install mercury-cli --no-default-features --locked
+RUN cargo install mercury-cli --locked --no-default-features
 
 # Install stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar && \
