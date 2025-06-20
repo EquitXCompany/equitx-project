@@ -50,8 +50,8 @@ RUN cargo install mercury-cli --no-default-features
 # Install scaffold-stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar-scaffold && \
     cd /tmp/stellar-scaffold && \
-    wget --no-check-certificate https://github.com/AhaLabs/scaffold-stellar/releases/download/stellar-scaffold-cli-v0.0.3/stellar-scaffold-cli-v0.0.3-aarch64-unknown-linux-gnu.tar.gz && \
-    tar xzf stellar-scaffold-cli-v0.0.3-aarch64-unknown-linux-gnu.tar.gz && \
+    wget --no-check-certificate https://github.com/AhaLabs/scaffold-stellar/releases/download/stellar-scaffold-cli-v0.0.3/stellar-scaffold-cli-v0.0.3-x86_64-unknown-linux-gnu.tar.gz && \
+    tar xzf stellar-scaffold-cli-v0.0.3-x86_64-unknown-linux-gnu.tar.gz && \
     mv stellar-scaffold /usr/local/bin/ && \
     chmod +x /usr/local/bin/stellar-scaffold && \
     cd /app && \
