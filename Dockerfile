@@ -126,7 +126,7 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV RUSTFLAGS="-C codegen-units=1"
 
 # Install mercury-cli with memory optimizations
-RUN cargo install mercury-cli --no-default-features
+RUN cargo install mercury-cli --no-default-features --locked
 
 # Install stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar && \
