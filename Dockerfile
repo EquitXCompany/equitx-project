@@ -131,8 +131,8 @@ RUN cargo install mercury-cli --locked --no-default-features
 # Install stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar && \
     cd /tmp/stellar && \
-    wget --no-check-certificate https://github.com/stellar/stellar-cli/releases/download/v22.5.0/stellar-cli-22.5.0-x86_64-unknown-linux-gnu.tar.gz && \
-    tar xzf stellar-cli-22.5.0-x86_64-unknown-linux-gnu.tar.gz && \
+    wget --no-check-certificate https://github.com/stellar/stellar-cli/releases/download/v22.8.1/stellar-cli-22.8.1-x86_64-unknown-linux-gnu.tar.gz && \
+    tar xzf stellar-cli-22.8.1-x86_64-unknown-linux-gnu.tar.gz && \
     mv stellar /usr/local/bin/ && \
     chmod +x /usr/local/bin/stellar && \
     cd /app && \
