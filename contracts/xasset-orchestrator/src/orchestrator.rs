@@ -9,7 +9,14 @@ use loam_sdk::{
 };
 use loam_subcontract_core::Core;
 
-import_contract!(xasset);
+// import_contract!(xasset);
+pub mod xasset {
+    use loam_sdk::soroban_sdk;
+
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32v1-none/release/xasset.wasm"
+    );
+}
 
 #[loamstorage]
 pub struct Storage {

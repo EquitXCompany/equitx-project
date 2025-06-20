@@ -28,16 +28,16 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - run: rustup target add wasm32-unknown-unknown
+    - run: rustup target add wasm32v1-none
     - uses: stellar/stellar-cli@v22.6.0
     - name: Install cargo-binstall
       uses: cargo-bins/cargo-binstall@v1.12.3
-    - name: Install loam
-      run: cargo binstall loam-cli
+    - name: Install Stellar Scaffold CLI
+      run: cargo install stellar-scaffold-cli
     - name: Install cargo-nextest
       run: cargo binstall cargo-nextest
-    - name: Build & build clients with Loam
-      run: LOAM_ENV=testing loam build --build-clients
+    - name: Build & build clients with Stellar Scaffold
+      run: STELLAR_SCAFFOLD_ENV=testing stellar-scaffold build --build-clients
     - name: Cargo build
       run: cargo build --verbose
     - name: Run tests

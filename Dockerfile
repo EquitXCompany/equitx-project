@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # Adjust NODE_VERSION as desired
-ARG NODE_VERSION=18.20.6
+ARG NODE_VERSION=22.16.0
 FROM node:${NODE_VERSION}-slim AS base
 
 LABEL fly_launch_runtime="Node.js"
@@ -35,9 +35,9 @@ RUN apt-get update -qq && \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 # Install specific toolchain
-RUN rustup toolchain install 1.81.0 --profile minimal
-RUN rustup default 1.81.0
-RUN rustup target add wasm32-unknown-unknown
+RUN rustup toolchain install 1.86.0 --profile minimal
+RUN rustup default 1.86.0
+RUN rustup target add wasm32v1-none
 
 # Optimize Cargo build to use less memory
 ENV CARGO_BUILD_JOBS=1
@@ -47,18 +47,18 @@ ENV RUSTFLAGS="-C codegen-units=1"
 # Install mercury-cli with memory optimizations
 RUN cargo install mercury-cli --no-default-features
 
-# Install loam CLI from prebuilt binary with specific version
-RUN mkdir -p /tmp/loam && \
-    cd /tmp/loam && \
-    wget --no-check-certificate https://github.com/loambuild/loam/releases/download/loam-cli-v0.14.4/loam-cli-v0.14.4-x86_64-unknown-linux-gnu.tar.gz && \
-    tar xzf loam-cli-v0.14.4-x86_64-unknown-linux-gnu.tar.gz && \
-    mv loam /usr/local/bin/ && \
-    chmod +x /usr/local/bin/loam && \
+# Install scaffold-stellar CLI from prebuilt binary with specific version
+RUN mkdir -p /tmp/stellar-scaffold && \
+    cd /tmp/stellar-scaffold && \
+    wget --no-check-certificate https://github.com/AhaLabs/scaffold-stellar/releases/download/stellar-scaffold-cli-v0.0.3/stellar-scaffold-cli-v0.0.3-aarch64-unknown-linux-gnu.tar.gz && \
+    tar xzf stellar-scaffold-cli-v0.0.3-aarch64-unknown-linux-gnu.tar.gz && \
+    mv stellar-scaffold /usr/local/bin/ && \
+    chmod +x /usr/local/bin/stellar-scaffold && \
     cd /app && \
-    rm -rf /tmp/loam
+    rm -rf /tmp/stellar-scaffold
 
-# Verify loam is installed correctly
-RUN loam --version || echo "Loam version check failed but continuing build"
+# Verify stellar-scaffold is installed correctly
+RUN stellar-scaffold --version || echo "Stellar Scaffold version check failed but continuing build"
 
 # Set the working directory to /app
 WORKDIR /app
@@ -71,12 +71,12 @@ RUN npm install
 
 # Copy everything so we can build contracts
 COPY . .
-RUN mkdir -p ./target/loam && \
+RUN mkdir -p ./target/stellar && \
     mkdir -p ./server/prebuilt_contracts
 
 # Build prebuilt contracts and the rest of the application
 RUN npm run build:prebuilt-contracts
-RUN LOAM_ENV=staging loam build --build-clients
+RUN STELLAR_SCAFFOLD_ENV=staging stellar-scaffold build --build-clients
 RUN npm run install:contracts
 
 # Move the packages directory to the server
@@ -126,13 +126,13 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV RUSTFLAGS="-C codegen-units=1"
 
 # Install mercury-cli with memory optimizations
-RUN cargo install mercury-cli --no-default-features --locked
+RUN cargo install mercury-cli --locked --no-default-features
 
 # Install stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar && \
     cd /tmp/stellar && \
-    wget --no-check-certificate https://github.com/stellar/stellar-cli/releases/download/v22.5.0/stellar-cli-22.5.0-x86_64-unknown-linux-gnu.tar.gz && \
-    tar xzf stellar-cli-22.5.0-x86_64-unknown-linux-gnu.tar.gz && \
+    wget --no-check-certificate https://github.com/stellar/stellar-cli/releases/download/v22.8.1/stellar-cli-22.8.1-x86_64-unknown-linux-gnu.tar.gz && \
+    tar xzf stellar-cli-22.8.1-x86_64-unknown-linux-gnu.tar.gz && \
     mv stellar /usr/local/bin/ && \
     chmod +x /usr/local/bin/stellar && \
     cd /app && \

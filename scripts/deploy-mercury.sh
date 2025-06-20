@@ -8,9 +8,9 @@ source "$PROJECT_DIR/.env"
 
 # Build with mercury features
 echo "Building with Mercury features..."
-loam build --features mercury
+stellar scaffold build --features mercury
 
-WASM_FILE="$PROJECT_DIR/target/loam/xasset.wasm"
+WASM_FILE="$PROJECT_DIR/target/stellar/xasset.wasm"
 
 # Build contracts array for mercury-cli
 declare -a contract_args=()

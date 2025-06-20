@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -43,17 +43,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Check and install loam-cli
+      - name: Check and install stellar-scaffold
         run: |
-          if ! command -v loam &> /dev/null
+          if ! command -v stellar-scaffold &> /dev/null
           then
-            cargo install loam-cli --locked
+            cargo install stellar-scaffold-cli --locked
           else
-            echo "loam-cli is already installed"
+            echo "stellar-scaffold-cli is already installed"
           fi
 
       - name: Build DataFeed contract
-        run: cargo rustc --manifest-path=contracts/data-feed/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release -- -C opt-level=z -C overflow-checks=yes -C debuginfo=0 -C strip=symbols -C debug-assertions=yes -C panic=abort -C codegen-units=1 -C lto=yes
+        run: cargo rustc --manifest-path=contracts/data-feed/Cargo.toml --crate-type=cdylib --target=wasm32v1-none --release -- -C opt-level=z -C overflow-checks=yes -C debuginfo=0 -C strip=symbols -C debug-assertions=yes -C panic=abort -C codegen-units=1 -C lto=yes
         
       - name: Cache Node.js dependencies
         uses: actions/cache@v4
