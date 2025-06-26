@@ -15,5 +15,5 @@ loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
 loam-subcontract-core = { workspace = true }
 xasset = { path = "../xasset" }
 
-[package.metadata.loam]
+[package.metadata.stellar]
 contract = true

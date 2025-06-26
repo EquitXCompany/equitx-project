@@ -19,5 +19,5 @@ loam-subcontract-core = { workspace = true }
 [dev-dependencies]
 loam-sdk = { workspace = true, features = ["soroban-sdk-testutils"] }
 
-[package.metadata.loam]
+[package.metadata.stellar]
 contract = true
