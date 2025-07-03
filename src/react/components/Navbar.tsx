@@ -33,7 +33,6 @@ const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIw31uG19BY
 export default function Navbar() {
   const [open, setOpen] = useState(true);
   const location = useLocation();
-  const isDevelopment = process.env.NODE_ENV === 'development';
   const { isDarkMode, toggleTheme } = useTheme();
   const { isSignedIn, account } = useWallet();
   const contractMapping = useContractMapping();
@@ -158,7 +157,7 @@ export default function Navbar() {
 
         {open && <Divider sx={{ my: 1 }} />}
 
-        {isDevelopment && <ListItem disablePadding>
+        <ListItem disablePadding>
           <ListItemButton onClick={toggleTheme}>
             <ListItemIcon>
               {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
@@ -166,7 +165,6 @@ export default function Navbar() {
             {open && <ListItemText primary={`${isDarkMode ? 'Light' : 'Dark'} Mode`} />}
           </ListItemButton>
         </ListItem>
-        }
       </List>
     </Drawer>
   );
