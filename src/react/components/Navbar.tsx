@@ -25,6 +25,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useWallet } from '../../wallet';
 import { useContractMapping } from '../../contexts/ContractMappingContext';
+import { ADMIN_ADDRESS } from '../../constants';
 
 const drawerWidth = 240;
 const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScIw31uG19BYszyMnKeDfRo4-UnbKAkHxQWBhpYvtdFEr-F-g/viewform?usp=dialog';
@@ -34,7 +35,7 @@ export default function Navbar() {
   const location = useLocation();
   const isDevelopment = process.env.NODE_ENV === 'development';
   const { isDarkMode, toggleTheme } = useTheme();
-  const { isSignedIn } = useWallet();
+  const { isSignedIn, account } = useWallet();
   const contractMapping = useContractMapping();
 
   const handleDrawerToggle = () => {
@@ -73,7 +74,7 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
-        {isSignedIn && (
+        {isSignedIn && account === ADMIN_ADDRESS && (
           <ListItem disablePadding>
             <ListItemButton
               component={Link}
