@@ -9,10 +9,13 @@
     "verbatimModuleSyntax": false,
     "jsxImportSource": "react",
     "exactOptionalPropertyTypes": false,
-    "types": ["jest", "@testing-library/jest-dom"],
+    "types": [
+      "jest",
+      "@testing-library/jest-dom"
+    ],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "module": "esnext", 
-    "target": "ESNext", 
-  }
+    "module": "esnext",
+    "target": "ESNext",
+  },
 }
