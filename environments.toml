@@ -52,5 +52,16 @@ rpc-url = "https://soroban-testnet.stellar.org"
 network-passphrase = "Test SDF Network ; September 2015"
 
 [staging.contracts]
-orchestrator = { id = "CBINKKI4WXU4KZZCTBEFVMHHJMHWAZRSLHYXUVD225FYTMPXM345XLGJ" }
-xBTC = { id = "CCAI5SQCFHRAOG4BVUZXV3HXCUZT6MMKIEIAZWVL5MB653NZGJ3BS6D7" }
+orchestrator = { id = "CBYSURJO55YGAD3BTQWPQOX2SX5FMYKBU4EKXKQZLMC3PZNTYDMCXRZD" }
+xBTC = { id = "CCY5XML5KDGAMVKFFVKZDHPTYH2U6GCCLXDNJKIYDBLJGK5PCJVEQTNQ" }
+
+# [production]
+# accounts = ["equitx"]
+
+# [production.network]
+# rpc-url = "https://soroban.stellar.org"
+# network-passphrase = "Public Global Stellar Network ; September 2015"   
+
+# [production.contracts]
+# orchestrator = { id = "TODO" }
+# xBTC = { id = "TODO" }

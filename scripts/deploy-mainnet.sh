@@ -1,19 +1,19 @@
 #!/bin/bash
 
-export STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-export STELLAR_RPC_URL="https://soroban-testnet.stellar.org"
-export STELLAR_ACCOUNT=equitxtestnet
-export STELLAR_NETWORK=testnet
+export STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
+export STELLAR_RPC_URL="https://mainnet.sorobanrpc.com"
+export STELLAR_ACCOUNT=equitxmainnet
+export STELLAR_NETWORK=mainnet
 
 rm -rf target/stellar
-stellar scaffold build staging
+stellar scaffold build production
 # Deploy and initialize contracts for each asset
-DATAFEED="CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63"
+DATAFEED="CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN"
 echo "Uploading xasset contract..."
-xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.wasm --source equitxtestnet)
+xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.wasm --source equitxmainnet)
 echo "Deploying orchestrator contract..."
-contract_id=$(stellar contract deploy --wasm target/stellar/orchestrator.wasm --source equitxtestnet)
-stellar contract invoke --id $contract_id -- admin_set --new-admin equitxtestnet
+contract_id=$(stellar contract deploy --wasm target/stellar/orchestrator.wasm --source equitxmainnet)
+stellar contract invoke --id $contract_id -- admin_set --new-admin equitxmainnet
 stellar contract invoke --id $contract_id -- init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --xasset_wasm_hash "$xasset_wasm_hash"
 
 # Declare a regular array to store asset-to-contract mappings
@@ -30,8 +30,8 @@ deploy_xasset() {
   asset_contract_map+=("$asset=$contract_result")
 }
 
-# Deploy testnet assets
-assets=("BTC" "ETH" "USDT" "XRP" "SOL" "ADA" "DOT")
+# Deploy mainnet assets
+assets=("BTC" "ETH" "USDT")
 
 for asset in "${assets[@]}"; do
     deploy_xasset "$asset"
@@ -39,10 +39,10 @@ done
 
 # Update orchestrator in environments.toml
 awk -v id="$contract_id" '
-  BEGIN { in_staging=0 }
-  /^\[staging\.contracts\]/ { in_staging=1 }
-  /^\[/ && $0 !~ /^\[staging\.contracts\]/ { in_staging=0 }
-  in_staging && /^orchestrator = { id = / {
+  BEGIN { in_production=0 }
+  /^\[production\.contracts\]/ { in_production=1 }
+  /^\[/ && $0 !~ /^\[production\.contracts\]/ { in_production=0 }
+  in_production && /^orchestrator = { id = / {
     print "orchestrator = { id = \"" id "\" }"
     next
   }
@@ -52,30 +52,30 @@ awk -v id="$contract_id" '
 # Update xBTC in environments.toml
 if [[ -n "$xBTC_contract_id" ]]; then
   awk -v id="$xBTC_contract_id" '
-    BEGIN { in_staging=0; found=0 }
-    /^\[staging\.contracts\]/ { in_staging=1 }
-    /^\[/ && $0 !~ /^\[staging\.contracts\]/ { in_staging=0 }
-    in_staging && /^xBTC = { id = / {
+    BEGIN { in_production=0; found=0 }
+    /^\[production\.contracts\]/ { in_production=1 }
+    /^\[/ && $0 !~ /^\[production\.contracts\]/ { in_production=0 }
+    in_production && /^xBTC = { id = / {
       print "xBTC = { id = \"" id "\" }"
       found=1
       next
     }
     { print }
     END {
-      if (in_staging && !found) print "xBTC = { id = \"" id "\" }"
+      if (in_production && !found) print "xBTC = { id = \"" id "\" }"
     }
   ' environments.toml > environments.toml.tmp && mv environments.toml.tmp environments.toml
 fi
 
 # Build clients with the updated environment
-STELLAR_SCAFFOLD_ENV=staging stellar scaffold build --build-clients
+STELLAR_SCAFFOLD_ENV=production stellar scaffold build --build-clients
 npm run install:contracts
 echo ""
 
 echo "Deployed orchestrator contract with id $contract_id"
 
 # Update existing_contracts.txt with new contract IDs
-CONTRACTS_FILE="scripts/existing_contracts.txt"
+CONTRACTS_FILE="scripts/existing_contracts.production.txt"
 for entry in "${asset_contract_map[@]}"; do
     IFS="=" read -r asset contract <<< "$entry"
     key="x$asset"
