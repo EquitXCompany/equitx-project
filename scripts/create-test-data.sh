@@ -7,6 +7,10 @@ XASSET_CONTRACT_IDS=()
 load_contract_ids() {
     local file_path="$1"
     while IFS=: read -r key value; do
+        # Remove leading/trailing whitespace and surrounding quotes
+        value="${value//\"/}"
+        value="${value//\'/}"
+        value="$(echo "$value" | xargs)" # trim whitespace
         XASSET_CONTRACT_IDS+=("$key:$value")
     done < "$file_path"
 }
