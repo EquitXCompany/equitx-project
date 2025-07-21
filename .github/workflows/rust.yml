@@ -32,6 +32,10 @@ jobs:
     - uses: stellar/stellar-cli@v22.6.0
     - name: Install cargo-binstall
       uses: cargo-bins/cargo-binstall@v1.12.3
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libdbus-1-dev pkg-config libudev-dev
     - name: Install Stellar Scaffold CLI
       run: |
         if ! command -v stellar-scaffold &> /dev/null; then

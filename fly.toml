@@ -20,3 +20,7 @@ primary_region = 'cdg'
   memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
+
+[env]
+STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+STELLAR_RPC_URL="https://soroban-testnet.stellar.org"
