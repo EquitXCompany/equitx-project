@@ -35,7 +35,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libdbus-1-dev pkg-config libudev
+        sudo apt-get install -y libdbus-1-dev pkg-config libudev-dev
     - name: Install Stellar Scaffold CLI
       run: |
         if ! command -v stellar-scaffold &> /dev/null; then
