@@ -1,0 +1,21 @@
+app = 'equitx-main'
+primary_region = 'cdg'
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  memory = '2gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[env]
+STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
+STELLAR_RPC_URL="https://mainnet.sorobanrpc.com"
