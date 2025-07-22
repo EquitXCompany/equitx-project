@@ -15,7 +15,10 @@ import {
   useTheme,
 } from "@mui/material";
 
-import { useLatestProtocolStats, useProtocolStatsHistory } from "../hooks/useProtocolStats";
+import {
+  useLatestProtocolStats,
+  useProtocolStatsHistory,
+} from "../hooks/useProtocolStats";
 import { useLatestCdpMetrics } from "../hooks/useCdpMetrics";
 import { useLatestTVLMetrics } from "../hooks/useTvlMetrics";
 import { MetricCard } from "./common/MetricCard";
@@ -29,21 +32,24 @@ export default function Dashboard() {
   const contractMapping = useContractMapping();
   const assetSymbols = Object.keys(contractMapping);
 
-  const dateParams = useMemo(() => ({
-    start_time: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    end_time: new Date().toISOString(),
-  }), []);
+  const dateParams = useMemo(
+    () => ({
+      start_time: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      end_time: new Date().toISOString(),
+    }),
+    [],
+  );
 
-  const { 
-    data: protocolStats, 
-    isLoading: statsLoading, 
-    error: statsError 
+  const {
+    data: protocolStats,
+    isLoading: statsLoading,
+    error: statsError,
   } = useLatestProtocolStats();
 
-  const { 
-    data: statsHistory, 
+  const {
+    data: statsHistory,
     isLoading: historyLoading,
-    error: historyError 
+    error: historyError,
   } = useProtocolStatsHistory(dateParams);
 
   // Top section metrics
@@ -68,14 +74,14 @@ export default function Dashboard() {
       title: "System Collateral Ratio",
       value: protocolStats?.riskMetrics.systemCollateralization,
       format: (value: any) => formatCurrency(value, 0, 2, "%"),
-    }
+    },
   ];
 
-  const cdpRows = assetSymbols.map(symbol => {
+  const cdpRows = assetSymbols.map((symbol) => {
     const { data: cdpMetrics, error: cdpError } = useLatestCdpMetrics(symbol);
     const { data: tvlMetrics, error: tvlError } = useLatestTVLMetrics(symbol);
 
-    if (cdpError || tvlError ) {
+    if (cdpError || tvlError) {
       return {
         asset: symbol,
         error: true,
@@ -105,16 +111,40 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: theme.palette.background.default }}>
+      {/* TVL Chart */}
+      <Paper component={Box} sx={{ p: 2, mb: 4 }}>
+        {historyError ? (
+          <Alert severity="error">Failed to load TVL history data</Alert>
+        ) : (
+          <TVLChart
+            data={statsHistory || []}
+            type="protocol"
+            isLoading={historyLoading}
+          />
+        )}
+      </Paper>
+
       {/* Top Metrics Grid */}
-      <Grid container spacing={3} mb={4} className="metric-card-grid" id="metric-cards"
+      <Grid
+        container
+        spacing={3}
+        mb={4}
+        className="metric-card-grid"
+        id="metric-cards"
         sx={{
           margin: 0,
           width: 1,
-          gap: '20px'
+          gap: "20px",
         }}
       >
         {topMetrics.map((metric, index) => (
-          <Grid item xs={12} md={3} key={index} className="metric-card-container">
+          <Grid
+            item
+            xs={12}
+            md={3}
+            key={index}
+            className="metric-card-container"
+          >
             <MetricCard
               title={metric.title}
               value={metric.format(metric.value)}
@@ -125,20 +155,8 @@ export default function Dashboard() {
         ))}
       </Grid>
 
-      {/* TVL Chart */}
-      <Paper component={Box} sx={{ p: 2, mb:2 }}>
-        {historyError ? (
-          <Alert severity="error">Failed to load TVL history data</Alert>
-        ) : (
-          <TVLChart 
-            data={statsHistory || []} 
-            type="protocol"
-            isLoading={historyLoading} 
-          />
-        )}
-      </Paper>
-
       {/* CDP Table */}
+      {/*
       <TableContainer component={Paper} sx={{ border: 5, borderColor: theme.palette.background.paper, borderRadius: 10 }}>
         <Table>
           <TableHead sx={{ borderBottom: 1, borderColor: theme.palette.text.secondary }}>
@@ -166,7 +184,7 @@ export default function Dashboard() {
                     <TableCell>{formatCurrency(row.minted!, 7, 2, row.asset)}</TableCell>
                     <TableCell>{formatCurrency(row.deposits!, 7, 2, "XLM")}</TableCell>
                     <TableCell>{formatCurrency(row.tvl!, 14, 2, "USD")}</TableCell>
-                    <TableCell>{formatCurrency(row.marketCap!, 14, 2, "USD")}</TableCell> 
+                    <TableCell>{formatCurrency(row.marketCap!, 14, 2, "USD")}</TableCell>
                     <TableCell>
                       <Typography
                         variant="button"
@@ -190,6 +208,7 @@ export default function Dashboard() {
           </TableBody>
         </Table>
       </TableContainer>
+      */}
 
       {/* Global Loading State */}
       {statsLoading && (

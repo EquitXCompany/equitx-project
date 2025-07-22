@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { Tooltip, IconButton } from '@mui/material';
-import { useTheme}  from '../../../contexts/ThemeContext';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import React, { useState } from "react";
+import { Tooltip, IconButton } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
 interface AddressDisplayProps {
   address: string;
 }
 
-const AddressDisplay: React.FC<AddressDisplayProps> = ({ address: address }) => {
+const AddressDisplay: React.FC<AddressDisplayProps> = ({
+  address: address,
+}) => {
   const [copied, setCopied] = useState(false);
-  const { isDarkMode } = useTheme();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(address);
@@ -20,7 +20,9 @@ const AddressDisplay: React.FC<AddressDisplayProps> = ({ address: address }) => 
   const truncatedLender = `${address.slice(0, 4)}...${address.slice(52, 56)}`;
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+    <span
+      style={{ display: "inline-flex", alignItems: "center", height: "48px" }}
+    >
       <Tooltip title={address}>
         <span>{truncatedLender}</span>
       </Tooltip>
@@ -29,10 +31,6 @@ const AddressDisplay: React.FC<AddressDisplayProps> = ({ address: address }) => 
           <ContentCopyIcon fontSize="inherit" />
         </IconButton>
       </Tooltip>
-        <img
-          className="account-logo"
-          src={isDarkMode ? '/EQUITX-Logo-Circle-Gray-Outline.svg' : '/EQUITX-Logo-Circle-Dark-Outline.svg'}
-        />
     </span>
   );
 };

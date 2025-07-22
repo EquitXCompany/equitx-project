@@ -40,7 +40,6 @@ const router = createHashRouter([
               flexGrow: 1,
               width: "$(window).innerWidth() + 'px'",
               height: "$(window).innerHeight() + 'px'",
-              overflow: "auto",
             }}
           >
             <ViewHeader />
