@@ -1,8 +1,5 @@
 {
-  "exclude": [
-    "../packages",
-    "./migrations"
-  ],
+  "exclude": ["../packages", "./migrations"],
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -10,8 +7,8 @@
     "target": "ESNext",
     "outDir": "./dist",
     "rootDir": "./",
-    "moduleResolution": "Node16",
-    "module": "Node16",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
     "baseUrl": "./",
     "paths": {
       "*": ["src/*"]
