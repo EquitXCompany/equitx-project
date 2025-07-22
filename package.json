@@ -19,10 +19,9 @@
   "name": "equitx",
   "scripts": {
     "astro": "astro",
-    "build": "LOAM_ENV=staging stellar-scaffold build --build-clients && npm run install:contracts && astro check && astro build",
-    "dev": "STELLAR_SCAFFOLD_ENV=staging stellar-scaffold build --build-clients && npm run install:contracts && astro dev",
-    "dev:mock": "PUBLIC_ENABLE_MOCKS=true STELLAR_SCAFFOLD_ENV=staging stellar-scaffold build --build-clients && npm run install:contracts && astro dev",
-    "dev:mock:prebuilt": "npm run build:prebuilt-contracts && PUBLIC_ENABLE_MOCKS=true LOAM_ENV=development stellar-scaffold build --build-clients && npm run install:contracts && astro dev",
+    "build": "STELLAR_SCAFFOLD_ENV=staging stellar-scaffold build --build-clients && npm run install:contracts && astro build --mode=testnet",
+    "check": "astro check",
+    "dev": "STELLAR_SCAFFOLD_ENV=development stellar-scaffold build --build-clients && npm run install:contracts && astro dev",
     "build:prebuilt-contracts": "mkdir -p server/prebuilt_contracts && stellar-scaffold build --manifest-path Cargo.toml && cp target/wasm32v1-none/release/xasset.wasm server/prebuilt_contracts/xasset_standard.wasm && stellar-scaffold build --features mercury --manifest-path Cargo.toml && cp target/wasm32v1-none/release/xasset.wasm server/prebuilt_contracts/xasset_mercury.wasm",
     "dev:with-prebuilt": "npm run build:prebuilt-contracts && STELLAR_SCAFFOLD_ENV=development stellar-scaffold build --build-clients && npm run install:contracts && astro dev",
     "build:with-prebuilt": "npm run build:prebuilt-contracts && STELLAR_SCAFFOLD_ENV=staging stellar-scaffold build --build-clients && npm run install:contracts && astro check && astro build",
