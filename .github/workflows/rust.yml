@@ -29,9 +29,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - run: rustup target add wasm32v1-none
-    - uses: stellar/stellar-cli@v22.6.0
+    - uses: stellar/stellar-cli@v23.0.0
     - name: Install cargo-binstall
-      uses: cargo-bins/cargo-binstall@v1.12.3
+      uses: cargo-bins/cargo-binstall@v1.14.1
     - name: Install system dependencies
       run: |
         sudo apt-get update
