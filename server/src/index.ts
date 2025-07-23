@@ -88,7 +88,8 @@ AppDataSource.initialize()
       console.log(`Server running on port ${PORT}`);
     });
 
-    await createAssetsIfNotExist(assetConfig);
+    // Uncomment this to create assets according to AssetConfig.ts if they do not exist
+    // await createAssetsIfNotExist(assetConfig);
 
     cron.schedule('*/15 * * * *', async () => {
       console.log('Running CDP metrics update...');

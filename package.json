@@ -15,6 +15,7 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "msw": "^2.10.3",
+    "supabase": "^2.31.8",
     "ts-jest": "^29.2.5",
     "typescript": "^5.3.3"
   },
