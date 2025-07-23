@@ -20,7 +20,7 @@ load_contract_ids "$(dirname "$0")/existing_contracts.txt"
 # Construct and execute the catchup command
 cmd=(
     mercury-cli
-    --jwt "$MERCURY_JWT"
+    --key "$MERCURY_KEY"
     --local false
     --mainnet false
     catchup
