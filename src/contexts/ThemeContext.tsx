@@ -1,5 +1,13 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useTheme as useMUITheme } from '@mui/material/styles';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { useTheme as useMUITheme } from "@mui/material/styles";
+
+const prefersDark = "(prefers-color-scheme: dark)";
 
 type ThemeContextType = {
   isDarkMode: boolean;
@@ -9,24 +17,45 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Use media query to set initial theme state
+  const [isDarkMode, setIsDarkMode] = useState(
+    window.matchMedia(prefersDark).matches,
+  );
 
+  // Add event listener for system preference changes
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      const defaultDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(defaultDark);
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
-        setIsDarkMode(event.matches);
-      });
-    }
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDarkMode(event.matches);
+    };
+
+    window.matchMedia(prefersDark).addEventListener("change", handleChange);
+
+    return () => {
+      window
+        .matchMedia(prefersDark)
+        .removeEventListener("change", handleChange);
+    };
+  }, []);
+
+  // Add toggle body attribute on state change
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-theme",
+      isDarkMode ? "dark" : "light",
+    );
   }, [isDarkMode]);
 
   const theme = useMUITheme();
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--mui-palette-primary-main', theme.palette.primary.main);
-    document.documentElement.style.setProperty('--mui-palette-secondary-main', theme.palette.secondary.main);
+    document.documentElement.style.setProperty(
+      "--mui-palette-primary-main",
+      theme.palette.primary.main,
+    );
+    document.documentElement.style.setProperty(
+      "--mui-palette-secondary-main",
+      theme.palette.secondary.main,
+    );
   }, [theme]);
 
   const toggleTheme = () => {
@@ -43,7 +72,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 }
