@@ -28,12 +28,12 @@ import { startStakeUpdateJob } from "./scripts/updateStakes";
 import { calculateCDPMetrics, runDailyMetrics } from "./scripts/dailyMetrics";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 const CLIENTPORT = process.env.CLIENTPORT || 4321;
 
 // Middleware
 const corsOptions = {
-  origin: ['https://equitxcompany.github.io', 'https://test.equitx.com', 'http://localhost:' + CLIENTPORT],
+  origin: ['https://equitxcompany.github.io', 'https://test.equitx.com', 'https://app.equitx.com', 'http://localhost:' + CLIENTPORT],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -84,7 +84,7 @@ AppDataSource.initialize()
     console.log("Database connection established");
 
     await initializeRoutes();
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
 

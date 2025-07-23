@@ -152,4 +152,4 @@ COPY --from=build /app/server/prebuilt_contracts ./prebuilt_contracts
 
 # Expose the port the app runs on
 EXPOSE 3000
-CMD [ "npm", "run", "coldstart" ]
+CMD [ "npm", "start" ]
