@@ -32,7 +32,7 @@ echo "Deploying contracts to Mercury Retroshades..."
 # Construct and execute the command using arrays to preserve proper argument handling
 cmd=(
     mercury-cli
-    --jwt "$MERCURY_JWT"
+    --key "$MERCURY_KEY"
     --mainnet false
     retroshade
     --project "equitx"
