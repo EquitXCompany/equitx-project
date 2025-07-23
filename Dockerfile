@@ -58,7 +58,7 @@ RUN mkdir -p /tmp/stellar-scaffold && \
     rm -rf /tmp/stellar-scaffold
 
 # Verify stellar-scaffold is installed correctly
-RUN stellar-scaffold --version || echo "Stellar Scaffold version check failed but continuing build"
+RUN stellar-scaffold version || echo "Stellar Scaffold version check failed but continuing build"
 
 # Set the working directory to /app
 WORKDIR /app
