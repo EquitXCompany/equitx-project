@@ -83,6 +83,8 @@ npm run dev
 
 ## Database Migrations
 
+_These are instructions for running migrations locally from when the project was in inital development; use [supabase migrations](https://supabase.com/docs/guides/deployment/database-migrations) after July 2025._
+
 To generate new migrations:
 
 1. Make changes to your entity files in `src/entity/`
