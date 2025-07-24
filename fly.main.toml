@@ -19,3 +19,4 @@ primary_region = 'cdg'
 [env]
 STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 STELLAR_RPC_URL="https://mainnet.sorobanrpc.com"
+ADMIN_PUBLIC_KEY="GAWZYZFO6UW5OMEROHAR5UXLBSYCZTDHC7B2AD2LMPM5HLNTSJ4HFQLQ"
