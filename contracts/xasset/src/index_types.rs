@@ -1,8 +1,6 @@
 use crate::collateralized::CDPStatus;
 use loam_sdk::soroban_sdk::{self, contracttype, Address};
-use retroshade_sdk::Retroshade;
 
-#[derive(Retroshade)]
 #[contracttype]
 pub struct CDP {
     pub id: Address,
@@ -16,7 +14,6 @@ pub struct CDP {
     pub last_interest_time: u64,
 }
 
-#[derive(Retroshade)]
 #[contracttype]
 pub struct StakePosition {
     pub id: Address,
@@ -29,7 +26,6 @@ pub struct StakePosition {
     pub timestamp: u64,
 }
 
-#[derive(Retroshade)]
 #[contracttype]
 pub struct Liquidation {
     pub cdp_id: Address,

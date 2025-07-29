@@ -26,6 +26,7 @@ import { createAssetsIfNotExist } from "./scripts/createAssets";
 import { assetConfig } from "./config/AssetConfig";
 import { startStakeUpdateJob } from "./scripts/updateStakes";
 import { calculateCDPMetrics, runDailyMetrics } from "./scripts/dailyMetrics";
+import { EventIndexer } from "./indexer/eventIndexer"; 
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -105,5 +106,13 @@ AppDataSource.initialize()
     startCDPUpdateJob();
     startStakeUpdateJob();
     runDailyMetrics();
+
+    // Start the event indexer
+    try {
+      const indexer = new EventIndexer();
+      await indexer.start();
+    } catch (error) {
+      console.error("Failed to start event indexer:", error);
+    }
   })
   .catch((error) => console.log("TypeORM connection error: ", error));

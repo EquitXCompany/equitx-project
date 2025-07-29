@@ -1,4 +1,4 @@
-import { Keypair, TransactionBuilder, Operation, Networks } from "stellar-sdk";
+import { Keypair } from "@stellar/stellar-sdk";
 import { basicNodeSigner } from "@stellar/stellar-sdk/contract";
 import * as bip39 from "bip39";
 import { derivePath } from "ed25519-hd-key";

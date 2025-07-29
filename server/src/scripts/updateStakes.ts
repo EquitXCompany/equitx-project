@@ -1,64 +1,17 @@
 import cron from "node-cron";
 import { Staker } from "../entity/Staker";
 import dotenv from "dotenv";
-import axios, { AxiosError } from "axios";
 import { AssetService } from "../services/assetService";
 import { StakerService } from "../services/stakerService";
 import { LastQueriedTimestampService } from "../services/lastQueriedTimestampService";
 import { TableType } from "../entity/LastQueriedTimestamp";
-
-dotenv.config();
-
-const apiClient = axios.create({
-  baseURL: "https://api.mercurydata.app",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${process.env.RETROSHADE_API_TOKEN}`,
-  },
-});
-
-interface RetroShadeStake {
-  id: string;
-  contract_id: string;
-  xasset_deposit: string;
-  product_constant: string;
-  compounded_constant: string;
-  rewards_claimed: string;
-  epoch: string;
-  timestamp: number;
-}
-
-async function fetchStakes(
-  tableName: string,
-  lastQueriedTimestamp: number
-): Promise<RetroShadeStake[]> {
-  try {
-    const { data } = await apiClient.post("/retroshadesv1", {
-      query: `SELECT * FROM ${tableName} WHERE timestamp > ${lastQueriedTimestamp} ORDER BY timestamp DESC`,
-    });
-    const latestEntries = new Map<string, RetroShadeStake>();
-    data.forEach((item: RetroShadeStake) => {
-      if (
-        !latestEntries.has(item.id) ||
-        item.timestamp > latestEntries.get(item.id)!.timestamp
-      ) {
-        latestEntries.set(item.id, item);
-      }
-    });
-
-    return Array.from(latestEntries.values());
-  } catch (error) {
-    const axiosError = error as AxiosError;
-    const errorMessage = axiosError.response
-      ? `Error fetching stakes: ${axiosError.response.status} - ${axiosError.response.statusText} - - ${axiosError.response.data}`
-      : `Error fetching stakes ${axiosError.message || 'Unknown error'}`;
-    console.error(errorMessage);
-    return [];
-  }
-}
 import { StakerHistoryService } from "../services/stakerHistoryService";
 import { StakerHistoryAction } from "../entity/StakerHistory";
 import BigNumber from "bignumber.js";
+import { StakePositionEventService } from "../services/stakePositionEventService";
+import { StakePositionEvent } from "../entity/StakePositionEvent";
+
+dotenv.config();
 
 async function determineStakeAction(
   oldStaker: Staker | null,
@@ -91,7 +44,7 @@ async function determineStakeAction(
 }
 
 async function updateStakesInDatabase(
-  stakes: RetroShadeStake[],
+  stakeEvents: StakePositionEvent[],
   assetSymbol: string
 ): Promise<void> {
   const stakerService = await StakerService.create();
@@ -103,28 +56,29 @@ async function updateStakesInDatabase(
     throw new Error(`Asset ${assetSymbol} not found`);
   }
 
-  for (const stake of stakes) {
-    const oldStaker = await stakerService.findOne(assetSymbol, stake.id);
-    const newStaker = await stakerService.upsert(assetSymbol, stake.id, {
-      address: stake.id,
-      xasset_deposit: stake.xasset_deposit,
-      product_constant: stake.product_constant,
-      compounded_constant: stake.compounded_constant,
+  for (const stakeEvent of stakeEvents) {
+    console.log(`processing stake event at timestamp ${stakeEvent.timestamp}`)
+    const oldStaker = await stakerService.findOne(assetSymbol, stakeEvent.address);
+    const newStaker = await stakerService.upsert(assetSymbol, stakeEvent.address, {
+      address: stakeEvent.address,
+      xasset_deposit: stakeEvent.xasset_deposit,
+      product_constant: stakeEvent.product_constant,
+      compounded_constant: stakeEvent.compounded_constant,
       total_rewards_claimed:
-        (oldStaker?.total_rewards_claimed ?? 0) + stake.rewards_claimed,
-      epoch: stake.epoch,
+        (BigNumber(oldStaker?.total_rewards_claimed ?? 0)).plus(BigNumber(stakeEvent.rewards_claimed)).toString(),
+      epoch: stakeEvent.epoch,
       asset,
-      updated_at: new Date(stake.timestamp * 1000),
-      created_at: oldStaker ? oldStaker.created_at : new Date(stake.timestamp * 1000),
+      updated_at: new Date(Number(stakeEvent.timestamp * 1000)),
+      created_at: oldStaker ? oldStaker.created_at : new Date(Number(stakeEvent.timestamp * 1000)),
     });
 
-    const action = await determineStakeAction(oldStaker, newStaker, stake.rewards_claimed);
+    const action = await determineStakeAction(oldStaker, newStaker, stakeEvent.rewards_claimed);
     await stakerHistoryService.createHistoryEntry(
       newStaker.id,
       newStaker,
       action,
       oldStaker,
-      stake.rewards_claimed
+      stakeEvent.rewards_claimed
     );
   }
 }
@@ -164,33 +118,42 @@ async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map
 
 async function updateStakes() {
   const assetService = await AssetService.create();
+  const stakePositionEventService = await StakePositionEventService.create();
+  
   try {
     const wasmHashMapping = await getWasmHashToLiquidityPoolMapping(assetService);
 
     for (const [wasmHash, contractMapping] of wasmHashMapping) {
       const lastTimestamp = await getLastQueriedTimestamp(wasmHash);
       console.log(
-        `Querying stakes from reflector with timestamp ${lastTimestamp}`
+        `Querying stakes from local events with timestamp ${lastTimestamp}`
       );
 
-      const stakes = await fetchStakes(
-        `stake_position${wasmHash}`,
-        lastTimestamp
-      );
+      const stakeEvents = await stakePositionEventService.findEventsAfterTimestamp(lastTimestamp);
 
-      for (const stake of stakes) {
-        const assetSymbol = contractMapping.get(stake.contract_id);
+      // Group events by asset symbol based on contract_id
+      const eventsByAsset = new Map<string, StakePositionEvent[]>();
+      for (const stakeEvent of stakeEvents) {
+        const assetSymbol = contractMapping.get(stakeEvent.contract_id);
         if (!assetSymbol) {
-          console.warn(`No asset found for contract ID ${stake.contract_id}`);
+          console.warn(`No asset found for contract ID ${stakeEvent.contract_id}`);
           continue;
         }
-
-        await updateStakesInDatabase([stake], assetSymbol);
+        
+        if (!eventsByAsset.has(assetSymbol)) {
+          eventsByAsset.set(assetSymbol, []);
+        }
+        eventsByAsset.get(assetSymbol)!.push(stakeEvent);
       }
 
-      if (stakes.length > 0) {
+      // Process events for each asset
+      for (const [assetSymbol, events] of eventsByAsset) {
+        await updateStakesInDatabase(events, assetSymbol);
+      }
+
+      if (stakeEvents.length > 0) {
         const newLastTimestamp = Math.max(
-          ...stakes.map((stake) => stake.timestamp)
+          ...stakeEvents.map((event) => Number(event.timestamp))
         );
         await updateLastQueriedTimestamp(wasmHash, newLastTimestamp);
         console.log(
@@ -198,14 +161,10 @@ async function updateStakes() {
         );
       }
 
-      console.log(`Updated ${stakes.length} stakes for wasm hash ${wasmHash}`);
+      console.log(`Updated ${stakeEvents.length} stakes for wasm hash ${wasmHash}`);
     }
   } catch (error) {
-    const axiosError = error as AxiosError;
-    const errorMessage = axiosError.response
-      ? `Error updating stakes: ${axiosError.response.status} - ${axiosError.response.statusText} - - ${axiosError.response.data}`
-      : `Error updating stakes ${axiosError.message || 'Unknown error'}`;
-    console.error(errorMessage);
+    console.error("Error updating stakes:", error);
     throw error;
   }
 }

@@ -7,6 +7,10 @@ import { LiquidityPool } from "./entity/LiquidityPool";
 import { ContractState } from "./entity/ContractState";
 import { LastQueriedTimestamp } from "./entity/LastQueriedTimestamp";
 import { CDPHistory } from "./entity/CDPHistory";
+import { CDPEvent } from "./entity/CDPEvent";
+import { IndexerState } from "./entity/IndexerState";
+import { LiquidationEvent } from "./entity/LiquidationEvent";
+import { StakePositionEvent } from "./entity/StakePositionEvent";
 import { CDPMetrics } from "./entity/CDPMetrics";
 import { Liquidation } from "./entity/Liquidation";
 import { ProtocolStats } from "./entity/ProtocolStats";
@@ -23,12 +27,12 @@ const config: DataSourceOptions = {
   password: process.env.DB_PASSWORD || "postgres",
   database: process.env.DB_NAME || "equitxindexer",
   entities: [
-    Asset, 
-    PriceHistory, 
-    CDP, 
-    Staker, 
-    LiquidityPool, 
-    ContractState, 
+    Asset,
+    PriceHistory,
+    CDP,
+    Staker,
+    LiquidityPool,
+    ContractState,
     LastQueriedTimestamp,
     CDPHistory,
     CDPMetrics,
@@ -37,8 +41,12 @@ const config: DataSourceOptions = {
     StakerHistory,
     TVLMetrics,
     UserMetrics,
-    UtilizationMetrics
-   ],
+    UtilizationMetrics,
+    StakePositionEvent,
+    IndexerState,
+    CDPEvent,
+    LiquidationEvent,
+  ],
   synchronize: false,
   migrations: [__dirname + "/../migration/*.ts"],
 };

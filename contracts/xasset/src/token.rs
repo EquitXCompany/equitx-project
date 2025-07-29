@@ -469,19 +469,20 @@ impl IsCollateralized for Token {
         // 5. create CDP
         self.cdps.set(lender.clone(), &cdp.clone());
 
-        #[cfg(feature = "mercury")]
-        crate::index_types::CDP {
-            id: lender.clone(),
-            xlm_deposited: cdp.xlm_deposited,
-            asset_lent: cdp.asset_lent,
-            accrued_interest: cdp.accrued_interest.amount,
-            interest_paid: cdp.accrued_interest.paid,
-            last_interest_time: cdp.last_interest_time,
-            status: cdp.status,
-            ledger: env.ledger().sequence(),
-            timestamp: env.ledger().timestamp(),
-        }
-        .emit(env);
+        env.events().publish(
+            (Symbol::new(&env, "CDP"), lender.clone()), 
+            crate::index_types::CDP {
+                id: lender.clone(),
+                xlm_deposited: cdp.xlm_deposited,  // From your existing cdp
+                asset_lent: cdp.asset_lent,
+                accrued_interest: cdp.accrued_interest.amount,
+                interest_paid: cdp.accrued_interest.paid,
+                last_interest_time: cdp.last_interest_time,
+                status: cdp.status,
+                ledger: env.ledger().sequence(),
+                timestamp: env.ledger().timestamp(),
+            },
+        );
         Ok(())
     }
 
@@ -748,7 +749,20 @@ impl IsCollateralized for Token {
                 )
                 .map_err(|_| Error::XLMTransferFailed)?;
         }
-
+        env().events().publish(
+        (Symbol::new(env(), "CDP"), lender.clone()),
+            crate::index_types::CDP {
+                id: lender.clone(),
+                xlm_deposited: cdp.xlm_deposited,
+                asset_lent: cdp.asset_lent,
+                accrued_interest: cdp.accrued_interest.amount,
+                interest_paid: cdp.accrued_interest.paid,
+                last_interest_time: cdp.last_interest_time,
+                status: CDPStatus::Closed,
+                ledger: env().ledger().sequence(),
+                timestamp: env().ledger().timestamp(),
+            },
+        );
         self.cdps.remove(lender);
         Ok(())
     }
@@ -920,43 +934,46 @@ impl IsStabilityPool for Token {
         cdp.xlm_deposited -= liquidated_collateral;
         cdp.asset_lent -= liquidated_debt;
 
-        #[cfg(feature = "mercury")]
-        crate::index_types::Liquidation {
-            cdp_id: lender.clone(),
-            collateral_liquidated: liquidated_collateral,
-            principal_repaid: liquidated_debt,
-            accrued_interest_repaid: interest_to_liquidate_xasset,
-            collateral_applied_to_interest: interest_to_liquidate_xlm,
-            collateralization_ratio: calculate_collateralization_ratio(
-                cdp.asset_lent + liquidated_debt,
-                self.lastprice_asset()?.price,
-                cdp.xlm_deposited + liquidated_collateral,
-                self.lastprice_xlm()?.price,
-                self.decimals_xlm_feed()?,
-                self.decimals_asset_feed()?,
-                interest.amount + interest_to_liquidate_xasset,
-            ),
-            xlm_price: self.lastprice_xlm()?.price,
-            xasset_price: self.lastprice_asset()?.price,
-            ledger: env().ledger().sequence(),
-            timestamp: env().ledger().timestamp(),
-        }
-        .emit(env());
-        // If all debt is repaid, close the CDP
-        if cdp.asset_lent == 0 {
-            #[cfg(feature = "mercury")]
-            crate::index_types::CDP {
-                id: lender.clone(),
-                xlm_deposited: cdp.xlm_deposited,
-                asset_lent: cdp.asset_lent,
-                accrued_interest: cdp.accrued_interest.amount,
-                interest_paid: cdp.accrued_interest.paid,
-                last_interest_time: cdp.last_interest_time,
-                status: CDPStatus::Closed,
+        env().events().publish(
+            (Symbol::new(env(), "Liquidation"), lender.clone()),
+            crate::index_types::Liquidation {
+                cdp_id: lender.clone(),
+                collateral_liquidated: liquidated_collateral,
+                principal_repaid: liquidated_debt,
+                accrued_interest_repaid: interest_to_liquidate_xasset,
+                collateral_applied_to_interest: interest_to_liquidate_xlm,
+                collateralization_ratio: calculate_collateralization_ratio(
+                    cdp.asset_lent + liquidated_debt,
+                    self.lastprice_asset()?.price,
+                    cdp.xlm_deposited + liquidated_collateral,
+                    self.lastprice_xlm()?.price,
+                    self.decimals_xlm_feed()?,
+                    self.decimals_asset_feed()?,
+                    interest.amount + interest_to_liquidate_xasset,
+                ),
+                xlm_price: self.lastprice_xlm()?.price,
+                xasset_price: self.lastprice_asset()?.price,
                 ledger: env().ledger().sequence(),
                 timestamp: env().ledger().timestamp(),
-            }
-            .emit(env());
+            },
+        );
+
+        // If all debt is repaid, close the CDP
+        if cdp.asset_lent == 0 {
+            env().events().publish(
+                (Symbol::new(env(), "CDP"), lender.clone()),
+                crate::index_types::CDP {
+                    id: lender.clone(),
+                    xlm_deposited: cdp.xlm_deposited,
+                    asset_lent: cdp.asset_lent,
+                    accrued_interest: cdp.accrued_interest.amount,
+                    interest_paid: cdp.accrued_interest.paid,
+                    last_interest_time: cdp.last_interest_time,
+                    status: CDPStatus::Closed,
+                    ledger: env().ledger().sequence(),
+                    timestamp: env().ledger().timestamp(),
+                },
+            );
             self.cdps.remove(lender);
             Ok((liquidated_debt, liquidated_collateral, CDPStatus::Closed))
         } else {
@@ -1125,19 +1142,20 @@ impl Token {
     }
 
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDPContract) {
-        #[cfg(feature = "mercury")]
-        crate::index_types::CDP {
-            id: lender.clone(),
-            xlm_deposited: decorated_cdp.xlm_deposited,
-            asset_lent: decorated_cdp.asset_lent,
-            accrued_interest: decorated_cdp.accrued_interest.amount,
-            interest_paid: decorated_cdp.accrued_interest.paid,
-            last_interest_time: decorated_cdp.last_interest_time,
-            status: decorated_cdp.status,
-            ledger: env().ledger().sequence(),
-            timestamp: env().ledger().timestamp(),
-        }
-        .emit(env());
+        env().events().publish(
+        (Symbol::new(env(), "CDP"), lender.clone()),
+            crate::index_types::CDP {
+                id: lender.clone(),
+                xlm_deposited: decorated_cdp.xlm_deposited,
+                asset_lent: decorated_cdp.asset_lent,
+                accrued_interest: decorated_cdp.accrued_interest.amount,
+                interest_paid: decorated_cdp.accrued_interest.paid,
+                last_interest_time: decorated_cdp.last_interest_time,
+                status: decorated_cdp.status,
+                ledger: env().ledger().sequence(),
+                timestamp: env().ledger().timestamp(),
+            },
+        );
         self.cdps.set(
             lender,
             &CDPInternal {
@@ -1217,18 +1235,20 @@ impl Token {
                 to.clone(),
                 amount_to_withdraw,
             );
-            #[cfg(feature = "mercury")]
-            crate::index_types::StakePosition {
-                id: to.clone(),
-                xasset_deposit: 0,
-                product_constant: self.get_product_constant(),
-                compounded_constant: self.get_compounded_constant(),
-                rewards_claimed: 0,
-                epoch: self.get_epoch(),
-                ledger: env().ledger().sequence(),
-                timestamp: env().ledger().timestamp(),
-            }
-            .emit(env());
+            env().events().publish(
+                (Symbol::new(env(), "StakePosition"), to.clone()),
+                crate::index_types::StakePosition {
+                    id: to.clone(),
+                    xasset_deposit: 0,
+                    product_constant: self.get_product_constant(),
+                    compounded_constant: self.get_compounded_constant(),
+                    rewards_claimed: 0,
+                    epoch: self.get_epoch(),
+                    ledger: env().ledger().sequence(),
+                    timestamp: env().ledger().timestamp(),
+                },
+            );
+
             self.remove_deposit(to);
             self.add_total_xasset(-amount_to_withdraw);
             return Ok(());
@@ -1315,18 +1335,19 @@ impl Token {
     }
 
     pub fn set_deposit(&mut self, address: Address, position: StakerPosition, _rewards: i128) {
-        #[cfg(feature = "mercury")]
-        crate::index_types::StakePosition {
-            id: address.clone(),
-            xasset_deposit: position.xasset_deposit,
-            product_constant: position.product_constant,
-            compounded_constant: position.compounded_constant,
-            rewards_claimed: _rewards,
-            epoch: position.epoch,
-            ledger: env().ledger().sequence(),
-            timestamp: env().ledger().timestamp(),
-        }
-        .emit(env());
+        env().events().publish(
+            (Symbol::new(env(), "StakePosition"), address.clone()),
+            crate::index_types::StakePosition {
+                id: address.clone(),
+                xasset_deposit: position.xasset_deposit,
+                product_constant: position.product_constant,
+                compounded_constant: position.compounded_constant,
+                rewards_claimed: _rewards,
+                epoch: position.epoch,
+                ledger: env().ledger().sequence(),
+                timestamp: env().ledger().timestamp(),
+            },
+        );
         self.deposits.set(address, &position);
     }
 
