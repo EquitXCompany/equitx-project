@@ -3,11 +3,16 @@
 use crate::error::Error;
 use crate::{SorobanContract__, SorobanContract__Client};
 
-use loam_sdk::import_contract;
 use loam_sdk::soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
 use loam_sdk::soroban_sdk::{String, Symbol};
 
-import_contract!(xasset);
+pub mod xasset {
+    use loam_sdk::soroban_sdk;
+
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32v1-none/release/xasset.wasm"
+    );
+}
 
 fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let orchestrator = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));

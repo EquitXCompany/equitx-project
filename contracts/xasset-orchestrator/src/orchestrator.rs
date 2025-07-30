@@ -1,6 +1,6 @@
 use crate::{error::Error, Contract};
 use loam_sdk::{
-    import_contract, loamstorage,
+    loamstorage,
     soroban_sdk::{
         self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, Lazy, LoamKey,
         PersistentMap, String, Symbol,
