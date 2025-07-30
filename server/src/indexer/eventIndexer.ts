@@ -11,10 +11,7 @@ const CONTRACT_FILTER_BATCH_SIZE = 5;
 
 export class EventIndexer {
   private sorobanServer: rpc.Server;
-  private knownContracts: Map<
-    string,
-    { wasmHash: string; contractId: string; assetSymbol: string }
-  >;
+  private knownContracts: string[];
 
   private LEDGER_BATCH_SIZE = 10000;
   private EVENT_BATCH_SIZE = 100;
@@ -26,21 +23,15 @@ export class EventIndexer {
       throw new Error("Environment variable STELLAR_RPC_URL must be set");
     }
     this.sorobanServer = new rpc.Server(RPC_URL);
-    this.knownContracts = new Map();
+    this.knownContracts = [];
   }
 
   async init() {
     const assetService = await AssetService.create();
     const assets = await assetService.findAllWithPools();
-    assets.forEach((asset) => {
-      if (asset.liquidityPool) {
-        this.knownContracts.set(asset.liquidityPool.pool_address, {
-          wasmHash: asset.liquidityPool.mercury_wasm_hash,
-          contractId: asset.liquidityPool.pool_address,
-          assetSymbol: asset.symbol,
-        });
-      }
-    });
+    this.knownContracts = assets
+      .map(asset => asset.liquidityPool?.pool_address)
+      .filter((address): address is string => !!address);
   }
 
   async start() {
@@ -83,9 +74,7 @@ export class EventIndexer {
         );
 
         // Get events for all our contracts in this ledger range (single call)
-        const contractIds = Array.from(this.knownContracts.keys());
         await this.processEventsForContracts(
-          contractIds,
           currentStartLedger,
           endLedger
         );
@@ -119,10 +108,8 @@ export class EventIndexer {
   ): Promise<number> {
     try {
       // Try a minimal query to test if the start ledger is acceptable
-      const contractIds = Array.from(this.knownContracts.keys());
-      if (contractIds.length === 0) {
-        // If no contracts, just return the requested ledger
-        return requestedStartLedger;
+      if (this.knownContracts.length === 0) {
+        throw new Error("No contracts to index!")
       }
 
       // Test with just one contract and a single ledger to minimize the query
@@ -134,7 +121,7 @@ export class EventIndexer {
             filters: [
               {
                 type: "contract",
-                contractIds: [contractIds[0]],
+                contractIds: [this.knownContracts[0]],
               },
             ],
             limit: 1,
@@ -180,9 +167,7 @@ export class EventIndexer {
           console.log(
             `Processing events from ledger ${state.last_ledger + 1} to ${latestLedger.sequence}`
           );
-          const contractIds = Array.from(this.knownContracts.keys());
           await this.processEventsForContracts(
-            contractIds,
             state.last_ledger + 1,
             latestLedger.sequence
           );
@@ -198,10 +183,10 @@ export class EventIndexer {
   }
 
   async processEventsForContracts(
-    contractIds: string[],
     startLedger: number,
     endLedger: number
   ) {
+    let contractIds = this.knownContracts;
     // Process contracts in batches of 5 (RPC filter limitation)
     for (let i = 0; i < contractIds.length; i += CONTRACT_FILTER_BATCH_SIZE) {
       const contractIdsBatch = contractIds.slice(
@@ -245,12 +230,11 @@ export class EventIndexer {
               );
               continue;
             }
-            const contractInfo = this.knownContracts.get(contractIdStr);
-            if (contractInfo) {
-              await this.processContractEvent(event, contractInfo);
+            if (this.knownContracts.includes(contractIdStr)) {
+              await this.processContractEvent(event, contractIdStr);
             } else {
               console.warn(
-                `Contract info not found for ID: ${contractIdStr} (filtered by ${contractIdsBatch.join(", ")})`
+                `Contract ID not found in known contracts: ${contractIdStr} (filtered by ${contractIdsBatch.join(", ")})`
               );
             }
           }
@@ -274,7 +258,7 @@ export class EventIndexer {
 
   async processContractEvent(
     event: rpc.Api.EventResponse,
-    contractInfo: { wasmHash: string; contractId: string; assetSymbol: string }
+    contractId: string,
   ) {
     try {
       const topics = event.topic.map((t) => scValToNative(t));
@@ -285,7 +269,7 @@ export class EventIndexer {
         case "CDP":
           const CDPEvent = {
             event_id: event.id,
-            contract_id: contractInfo.contractId,
+            contract_id: contractId,
             lender: data.id,
             xlm_deposited: data.xlm_deposited.toString(),
             asset_lent: data.asset_lent.toString(),
@@ -302,7 +286,7 @@ export class EventIndexer {
         case "StakePosition":
           const StakeEvent = {
             event_id: event.id,
-            contract_id: contractInfo.contractId,
+            contract_id: contractId,
             address: data.id,
             xasset_deposit: data.xasset_deposit.toString(),
             product_constant: data.product_constant.toString(),
@@ -318,7 +302,7 @@ export class EventIndexer {
         case "Liquidation":
           const LiqEvent = {
             event_id: event.id,
-            contract_id: contractInfo.contractId,
+            contract_id: contractId,
             cdp_id: data.cdp_id,
             collateral_liquidated: data.collateral_liquidated.toString(),
             principal_repaid: data.principal_repaid.toString(),
