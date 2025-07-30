@@ -9,21 +9,21 @@ export class StakePositionEvent {
   contract_id!: string;
 
   @Column({ type: "varchar", length: 56 })
-  address!: string;  // id: Address
+  address!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   xasset_deposit!: string;
 
-  @Column("decimal")
+  @Column({ type: "bigint", unsigned: true })
   product_constant!: string;
 
-  @Column("decimal")
+  @Column({ type: "bigint", unsigned: true })
   compounded_constant!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   rewards_claimed!: string;
 
-  @Column("bigint")
+  @Column({ type: "numeric", precision: 10, scale: 0 })
   epoch!: string;
 
   @Column()

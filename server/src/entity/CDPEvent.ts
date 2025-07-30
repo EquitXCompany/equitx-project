@@ -7,15 +7,15 @@ export class CDPEvent {
   id!: number;
 
   @Column({ type: "varchar", length: 56 })
-  contract_id!: string;  // xasset contract ID
+  contract_id!: string;
 
   @Column({ type: "varchar", length: 56 })
-  lender!: string;  // id: Address
+  lender!: string;
 
-  @Column("decimal")
-  xlm_deposited!: string;  // i128 as string (BigNumber)
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  xlm_deposited!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   asset_lent!: string;
 
   @Column({
@@ -29,10 +29,10 @@ export class CDPEvent {
   @Index()
   timestamp!: number;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   accrued_interest!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   interest_paid!: string;
 
   @Column("bigint")

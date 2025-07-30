@@ -11,25 +11,25 @@ export class LiquidationEvent {
   @Column({ type: "varchar", length: 56 })
   cdp_id!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   collateral_liquidated!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   principal_repaid!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   accrued_interest_repaid!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   collateral_applied_to_interest!: string;
 
-  @Column()
-  collateralization_ratio!: number;
+  @Column({ type: "numeric", precision: 30, scale: 0 })
+  collateralization_ratio!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   xlm_price!: string;
 
-  @Column("decimal")
+  @Column({ type: "numeric", precision: 30, scale: 0 })
   xasset_price!: string;
 
   @Column()

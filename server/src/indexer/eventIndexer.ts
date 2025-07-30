@@ -176,6 +176,10 @@ export class EventIndexer {
         );
 
         if (latestLedger.sequence > state.last_ledger) {
+
+          console.log(
+            `Processing events from ledger ${state.last_ledger + 1} to ${latestLedger.sequence}`
+          );
           const contractIds = Array.from(this.knownContracts.keys());
           await this.processEventsForContracts(
             contractIds,
@@ -321,7 +325,7 @@ export class EventIndexer {
             accrued_interest_repaid: data.accrued_interest_repaid.toString(),
             collateral_applied_to_interest:
               data.collateral_applied_to_interest.toString(),
-            collateralization_ratio: data.collateralization_ratio,
+            collateralization_ratio: data.collateralization_ratio.toString(),
             xlm_price: data.xlm_price.toString(),
             xasset_price: data.xasset_price.toString(),
             ledger: event.ledger,
