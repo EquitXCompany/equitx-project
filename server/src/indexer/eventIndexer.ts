@@ -1,4 +1,4 @@
-import { rpc, StrKey, xdr } from "@stellar/stellar-sdk";
+import { rpc, scValToNative, StrKey, xdr } from "@stellar/stellar-sdk";
 import { AppDataSource } from "../ormconfig"; // Adjust path
 import { AssetService } from "../services/assetService"; // Adjust path
 import BigNumber from "bignumber.js";
@@ -277,8 +277,8 @@ export class EventIndexer {
     contractInfo: { wasmHash: string; contractId: string; assetSymbol: string }
   ) {
     try {
-      const topics = event.topic.map((t) => this.decodeScVal(t));
-      const data = this.decodeScVal(event.value);
+      const topics = event.topic.map((t) => scValToNative(t));
+      const data = scValToNative(event.value);
 
       const eventType = typeof topics[0] === "string" ? topics[0] : null; // Add type guard
       switch (eventType) {
@@ -343,10 +343,8 @@ export class EventIndexer {
     }
   }
 
-    // Add helper method to map status to enum
   private mapStatusToEnum(status: any): CDPStatus {
     if (Array.isArray(status)) {
-      // If it's still an array, take the first element
       status = status[0];
     }
     
@@ -361,91 +359,11 @@ export class EventIndexer {
       }
     }
     
-    if (typeof status === 'number') {
-      // Direct numeric mapping
-      return status as CDPStatus;
+    if (typeof status === 'number' || typeof status === 'bigint') {
+      return Number(status) as CDPStatus;
     }
-    
-    // Default fallback
+
     return CDPStatus.Open;
-  }
-
-
-  decodeScVal(val: xdr.ScVal): any {
-    switch (val.switch()) {
-      case xdr.ScValType.scvVoid():
-        return null;
-      case xdr.ScValType.scvBool():
-        return val.b();
-      case xdr.ScValType.scvU32():
-        return val.u32();
-      case xdr.ScValType.scvI32():
-        return val.i32();
-      case xdr.ScValType.scvU64(): {
-        const u64 = val.u64();
-        return new BigNumber(u64.high).times(0x100000000).plus(u64.low); // Combine high/low u32 to BigNumber
-      }
-      case xdr.ScValType.scvI64(): {
-        const i64 = val.i64();
-        let value = new BigNumber(i64.high)
-          .times(0x100000000)
-          .plus(i64.low >>> 0); // Unsigned low
-        if (i64.high < 0) value = value.negated(); // Apply sign
-        return value;
-      }
-      case xdr.ScValType.scvU128(): {
-        const parts = val.u128();
-        const hi = new BigNumber(parts.hi().toString());
-        const lo = new BigNumber(parts.lo().toString());
-        return hi.times("18446744073709551616").plus(lo); // 2^64
-      }
-      case xdr.ScValType.scvI128(): {
-        const parts = val.i128();
-        let hi = new BigNumber(parts.hi().high)
-          .times(0x100000000)
-          .plus(parts.hi().low >>> 0);
-        let lo = new BigNumber(parts.lo().high)
-          .times(0x100000000)
-          .plus(parts.lo().low >>> 0);
-        let value = hi.times("18446744073709551616").plus(lo); // 2^64
-        if (parts.hi().high < 0) value = value.negated(); // Apply sign if MSB is set
-        return value;
-      }
-      case xdr.ScValType.scvAddress(): {
-        const addr = val.address();
-        switch (addr.switch()) {
-          case xdr.ScAddressType.scAddressTypeAccount():
-            return StrKey.encodeEd25519PublicKey(addr.accountId().ed25519());
-          case xdr.ScAddressType.scAddressTypeContract():
-            return StrKey.encodeContract(addr.contractId());
-          default:
-            throw new Error(`Unknown address type: ${addr.switch().name}`);
-        }
-      }
-      case xdr.ScValType.scvSymbol():
-        return val.sym().toString("utf8");
-      case xdr.ScValType.scvString():
-        return val.str().toString("utf8");
-      case xdr.ScValType.scvBytes():
-        return val.bytes(); // Returns Buffer; convert to hex if needed: val.bytes().toString('hex')
-      case xdr.ScValType.scvVec():
-        return val.vec()?.map((v) => this.decodeScVal(v)) ?? [];
-      case xdr.ScValType.scvMap(): {
-        const obj: Record<string, any> = {};
-        val.map()?.forEach((pair) => {
-          const key = this.decodeScVal(pair.key());
-          const keyStr =
-            typeof key === "string" || typeof key === "number"
-              ? key.toString()
-              : JSON.stringify(key);
-          obj[keyStr] = this.decodeScVal(pair.val());
-        });
-        return obj;
-      }
-      default:
-        console.warn(`Unsupported ScVal type: ${val.switch().name}`);
-        return val.value(); // Fallback
-    }
   }
 
   async insertEvents(tableName: string, data: any) {
