@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS "public"."cdp_event" (
     "lender" character varying(56) NOT NULL,
     "xlm_deposited" numeric(30,0) NOT NULL,
     "asset_lent" numeric(30,0) NOT NULL,
-    "status" "public"."cdp_event_status_enum" NOT NULL DEFAULT '0',
+    "status" "public"."cdps_status_enum" NOT NULL DEFAULT '0',
     "timestamp" bigint NOT NULL,
     "accrued_interest" numeric(30,0) NOT NULL,
     "interest_paid" numeric(30,0) NOT NULL,
