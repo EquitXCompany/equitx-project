@@ -17,9 +17,6 @@ export class LastQueriedTimestamp {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: "varchar", length: 32 })
-  wasm_hash!: string;
-
   @Column({
     type: "enum",
     enum: TableType,

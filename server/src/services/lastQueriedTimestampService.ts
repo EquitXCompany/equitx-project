@@ -16,30 +16,27 @@ export class LastQueriedTimestampService {
     return new LastQueriedTimestampService(AppDataSource);
   }
 
-  async findOne(wasmHash: string, tableType: TableType): Promise<LastQueriedTimestamp | null> {
+  async findOne(tableType: TableType): Promise<LastQueriedTimestamp | null> {
     return this.repository.findOne({
       where: {
-        wasm_hash: wasmHash,
         table_type: tableType,
       },
     });
   }
 
-  async getTimestamp(wasmHash: string, tableType: TableType): Promise<number> {
-    const record = await this.findOne(wasmHash, tableType);
+  async getTimestamp(tableType: TableType): Promise<number> {
+    const record = await this.findOne(tableType);
     return record?.timestamp || 0;
   }
 
   async updateTimestamp(
-    wasmHash: string,
     tableType: TableType,
     timestamp: number
   ): Promise<LastQueriedTimestamp> {
-    let record = await this.findOne(wasmHash, tableType);
+    let record = await this.findOne(tableType);
 
     if (!record) {
       record = this.repository.create({
-        wasm_hash: wasmHash,
         table_type: tableType,
         timestamp,
       });

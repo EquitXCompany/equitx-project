@@ -57,22 +57,36 @@ async function updateStakesInDatabase(
   }
 
   for (const stakeEvent of stakeEvents) {
-    console.log(`processing stake event at timestamp ${stakeEvent.timestamp}`)
-    const oldStaker = await stakerService.findOne(assetSymbol, stakeEvent.address);
-    const newStaker = await stakerService.upsert(assetSymbol, stakeEvent.address, {
-      address: stakeEvent.address,
-      xasset_deposit: stakeEvent.xasset_deposit,
-      product_constant: stakeEvent.product_constant,
-      compounded_constant: stakeEvent.compounded_constant,
-      total_rewards_claimed:
-        (BigNumber(oldStaker?.total_rewards_claimed ?? 0)).plus(BigNumber(stakeEvent.rewards_claimed)).toString(),
-      epoch: stakeEvent.epoch,
-      asset,
-      updated_at: new Date(Number(stakeEvent.timestamp * 1000)),
-      created_at: oldStaker ? oldStaker.created_at : new Date(Number(stakeEvent.timestamp * 1000)),
-    });
+    console.log(`processing stake event at timestamp ${stakeEvent.timestamp}`);
+    const oldStaker = await stakerService.findOne(
+      assetSymbol,
+      stakeEvent.address
+    );
+    const newStaker = await stakerService.upsert(
+      assetSymbol,
+      stakeEvent.address,
+      {
+        address: stakeEvent.address,
+        xasset_deposit: stakeEvent.xasset_deposit,
+        product_constant: stakeEvent.product_constant,
+        compounded_constant: stakeEvent.compounded_constant,
+        total_rewards_claimed: BigNumber(oldStaker?.total_rewards_claimed ?? 0)
+          .plus(BigNumber(stakeEvent.rewards_claimed))
+          .toString(),
+        epoch: stakeEvent.epoch,
+        asset,
+        updated_at: new Date(Number(stakeEvent.timestamp * 1000)),
+        created_at: oldStaker
+          ? oldStaker.created_at
+          : new Date(Number(stakeEvent.timestamp * 1000)),
+      }
+    );
 
-    const action = await determineStakeAction(oldStaker, newStaker, stakeEvent.rewards_claimed);
+    const action = await determineStakeAction(
+      oldStaker,
+      newStaker,
+      stakeEvent.rewards_claimed
+    );
     await stakerHistoryService.createHistoryEntry(
       newStaker.id,
       newStaker,
@@ -83,34 +97,30 @@ async function updateStakesInDatabase(
   }
 }
 
-async function getLastQueriedTimestamp(wasmHash: string): Promise<number> {
+async function getLastQueriedTimestamp(): Promise<number> {
   const timestampService = await LastQueriedTimestampService.create();
-  return timestampService.getTimestamp(wasmHash, TableType.STAKE);
+  return timestampService.getTimestamp(TableType.STAKE);
 }
 
-async function updateLastQueriedTimestamp(
-  wasmHash: string,
-  timestamp: number
-): Promise<void> {
+async function updateLastQueriedTimestamp(timestamp: number): Promise<void> {
   const timestampService = await LastQueriedTimestampService.create();
-  await timestampService.updateTimestamp(wasmHash, TableType.STAKE, timestamp);
+  await timestampService.updateTimestamp(TableType.STAKE, timestamp);
 }
 
-async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map<string, Map<string, string>>> {
-  const mapping = new Map<string, Map<string, string>>();
+async function getPoolSymbolMapping(
+  assetService: any
+): Promise<Map<string, string>> {
+  const mapping = new Map<string, string>();
   const assets = await assetService.findAllWithPools();
+
   assets.forEach((asset: any) => {
     if (!asset.liquidityPool) {
-      console.warn(`No pool address found for asset ${asset.symbol} in updateStakes`);
+      console.warn(
+        `No pool address found for asset ${asset.symbol} in updateStakes`
+      );
       return;
     }
-    if (!mapping.has(asset.liquidityPool.mercury_wasm_hash)) {
-      mapping.set(asset.liquidityPool.mercury_wasm_hash, new Map());
-    }
-    mapping.get(asset.liquidityPool.mercury_wasm_hash)!.set(
-      asset.liquidityPool.pool_address,
-      asset.symbol
-    );
+    mapping.set(asset.liquidityPool.pool_address, asset.symbol);
   });
 
   return mapping;
@@ -119,50 +129,49 @@ async function getWasmHashToLiquidityPoolMapping(assetService: any): Promise<Map
 async function updateStakes() {
   const assetService = await AssetService.create();
   const stakePositionEventService = await StakePositionEventService.create();
-  
+
   try {
-    const wasmHashMapping = await getWasmHashToLiquidityPoolMapping(assetService);
+    const contractMapping = await getPoolSymbolMapping(assetService);
 
-    for (const [wasmHash, contractMapping] of wasmHashMapping) {
-      const lastTimestamp = await getLastQueriedTimestamp(wasmHash);
-      console.log(
-        `Querying stakes from local events with timestamp ${lastTimestamp}`
-      );
+    const lastTimestamp = await getLastQueriedTimestamp();
+    console.log(
+      `Querying stakes from local events with timestamp ${lastTimestamp}`
+    );
 
-      const stakeEvents = await stakePositionEventService.findEventsAfterTimestamp(lastTimestamp);
+    const stakeEvents =
+      await stakePositionEventService.findEventsAfterTimestamp(lastTimestamp);
 
-      // Group events by asset symbol based on contract_id
-      const eventsByAsset = new Map<string, StakePositionEvent[]>();
-      for (const stakeEvent of stakeEvents) {
-        const assetSymbol = contractMapping.get(stakeEvent.contract_id);
-        if (!assetSymbol) {
-          console.warn(`No asset found for contract ID ${stakeEvent.contract_id}`);
-          continue;
-        }
-        
-        if (!eventsByAsset.has(assetSymbol)) {
-          eventsByAsset.set(assetSymbol, []);
-        }
-        eventsByAsset.get(assetSymbol)!.push(stakeEvent);
-      }
-
-      // Process events for each asset
-      for (const [assetSymbol, events] of eventsByAsset) {
-        await updateStakesInDatabase(events, assetSymbol);
-      }
-
-      if (stakeEvents.length > 0) {
-        const newLastTimestamp = Math.max(
-          ...stakeEvents.map((event) => Number(event.timestamp))
+    // Group events by asset symbol based on contract_id
+    const eventsByAsset = new Map<string, StakePositionEvent[]>();
+    for (const stakeEvent of stakeEvents) {
+      const assetSymbol = contractMapping.get(stakeEvent.contract_id);
+      if (!assetSymbol) {
+        console.warn(
+          `No asset found for contract ID ${stakeEvent.contract_id}`
         );
-        await updateLastQueriedTimestamp(wasmHash, newLastTimestamp);
-        console.log(
-          `Updated last queried timestamp for wasm hash ${wasmHash} with ${newLastTimestamp}`
-        );
+        continue;
       }
 
-      console.log(`Updated ${stakeEvents.length} stakes for wasm hash ${wasmHash}`);
+      if (!eventsByAsset.has(assetSymbol)) {
+        eventsByAsset.set(assetSymbol, []);
+      }
+      eventsByAsset.get(assetSymbol)!.push(stakeEvent);
     }
+
+    // Process events for each asset
+    for (const [assetSymbol, events] of eventsByAsset) {
+      await updateStakesInDatabase(events, assetSymbol);
+    }
+
+    if (stakeEvents.length > 0) {
+      const newLastTimestamp = Math.max(
+        ...stakeEvents.map((event) => Number(event.timestamp))
+      );
+      await updateLastQueriedTimestamp(newLastTimestamp);
+      console.log(`Updated last queried timestamp with ${newLastTimestamp}`);
+    }
+
+    console.log(`Updated ${stakeEvents.length} stakes`);
   } catch (error) {
     console.error("Error updating stakes:", error);
     throw error;

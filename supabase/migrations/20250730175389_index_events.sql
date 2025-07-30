@@ -67,3 +67,7 @@ CREATE TABLE IF NOT EXISTS "public"."stake_position_event" (
 
 -- Create index on stake_position_event
 CREATE INDEX "IDX_93250baaee6188d639e828587b" ON "public"."stake_position_event" USING "btree" ("timestamp");
+
+-- Remove hash columns migration (RemoveHash1753898238447)
+ALTER TABLE "liquidity_pools" DROP COLUMN IF EXISTS "mercury_wasm_hash";
+ALTER TABLE "last_queried_timestamps" DROP COLUMN IF EXISTS "wasm_hash";
