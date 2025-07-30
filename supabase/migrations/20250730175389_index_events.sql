@@ -71,3 +71,9 @@ CREATE INDEX "IDX_93250baaee6188d639e828587b" ON "public"."stake_position_event"
 -- Remove hash columns migration (RemoveHash1753898238447)
 ALTER TABLE "liquidity_pools" DROP COLUMN IF EXISTS "mercury_wasm_hash";
 ALTER TABLE "last_queried_timestamps" DROP COLUMN IF EXISTS "wasm_hash";
+
+-- Enable Row Level Security on new tables
+ALTER TABLE "public"."cdp_event" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."indexer_state" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."liquidation_event" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."stake_position_event" ENABLE ROW LEVEL SECURITY;
