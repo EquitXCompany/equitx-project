@@ -29,7 +29,6 @@ SELECT
     WHEN 'xDOT' THEN 'CDY6EUFFLVUC2F2LBJ5PDCIXBDXVXRMYXSVZRBFNRA7WFFRDS6XBTLUJ'
   END as pool_address,
   150 as minimum_collateralization_ratio,
-  '14d5bbeabb4dd7603b4f47bfaf4f2703' as mercury_wasm_hash,
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 FROM asset a
