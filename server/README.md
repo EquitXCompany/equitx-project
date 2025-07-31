@@ -53,7 +53,6 @@ DB_PORT=5432
 DB_USER=postgres 
 DB_PASSWORD=postgres
 PORT=3000
-MERCURY_KEY=[long lived API key](https://docs.mercurydata.app/get-started-with-mercury/authentication)
 ```
 
 3. Run database migrations:

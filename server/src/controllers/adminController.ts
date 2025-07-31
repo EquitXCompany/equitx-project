@@ -68,15 +68,6 @@ export const deployAsset: RequestHandler = async (req, res) => {
       return;
     }
 
-    const mercuryWasmPath = findPrebuiltContractsPath("xasset_mercury.wasm");
-
-    // Check if the prebuilt mercury wasm exists
-    if (!fs.existsSync(mercuryWasmPath)) {
-      throw new Error(
-        `Pre-built Mercury WASM file not found at ${mercuryWasmPath}`
-      );
-    }
-
     console.log("Contract ID: ", contractId);
     const { price } = await getLatestPriceData(
       symbol,
@@ -93,40 +84,6 @@ export const deployAsset: RequestHandler = async (req, res) => {
     console.log("DB contract IDs")
     console.log(contractIds)
     console.log("Includes contract ID: ", contractIds.includes(contractId))
-    // Deploy to Mercury with Mercury-enabled build
-    const mercuryArgs = [
-      "mercury-cli",
-      "--key",
-      process.env.MERCURY_KEY!,
-      "--mainnet",
-      isTestnet ? "false" : "true",
-      "retroshade",
-      "--project",
-      "equitx",
-      ...contractIds.flatMap((id) => ["--contracts", id]),
-      "--target",
-      mercuryWasmPath,
-    ];
-
-    console.log(mercuryArgs[0]);
-    console.log(mercuryArgs.slice(1));
-    const mercuryResult = spawnSync(mercuryArgs[0], mercuryArgs.slice(1), {
-      encoding: "utf8",
-    });
-
-    if (mercuryResult.error || mercuryResult.status !== 0) {
-      throw new Error(
-        `Mercury deployment failed: ${mercuryResult.stderr || mercuryResult.error}`
-      );
-    }
-
-    console.log(mercuryResult)
-
-    // Extract WASM hash from Mercury output
-    const wasmHash = mercuryResult.stdout.match(/wasm hash: ([a-f0-9]+)/)?.[1];
-    if (!wasmHash) {
-      throw new Error("Could not extract WASM hash from Mercury output");
-    }
 
     // Create Asset
     const existingAsset = await assetService.findOne(`x${symbol}`);
@@ -144,15 +101,7 @@ export const deployAsset: RequestHandler = async (req, res) => {
       liquidityPool.asset = asset;
       liquidityPool.pool_address = contractId;
       liquidityPool.minimum_collateralization_ratio = minCollateralRatio * 100;
-      liquidityPool.mercury_wasm_hash = wasmHash;
       await liquidityPoolService.insert(liquidityPool);
-    }
-
-    // Set the WASM hash in the database for the existing liquidity pools
-    for (const pool of existingLiquidityPools) {
-      // Update wasm hash for each pool
-      pool.mercury_wasm_hash = wasmHash;
-      await liquidityPoolService.update(pool.asset.symbol, pool);
     }
 
     res.status(200).json({

@@ -14,8 +14,6 @@ pub mod error;
 pub mod stability_pool;
 mod storage;
 pub mod token;
-
-#[cfg(feature = "mercury")]
 pub mod index_types;
 
 use crate::storage::InterestDetail;

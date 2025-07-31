@@ -89,7 +89,7 @@ done
 rm -f "$CONTRACTS_FILE.bak"
 
 # Print the asset-to-contract map
-# will need to update database and mercury
+# will need to update database
 echo "Asset-to-Contract Map:"
 for entry in "${asset_contract_map[@]}"; do
     IFS="=" read -r asset contract <<< "$entry"

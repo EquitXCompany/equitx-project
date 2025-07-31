@@ -99,7 +99,7 @@ export const deployAsset = async (
       throw new Error("Failed to deploy asset, no contract ID returned");
     }
 
-    // Call the server to update the database and update mercury
+    // Call the server to update the database
     const response = await apiClient.post<DeployAssetResponse>(
       "/api/admin/deploy",
       {
