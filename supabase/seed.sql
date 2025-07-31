@@ -15,8 +15,7 @@ VALUES
   ('XLM', 'CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63', '0.12', '0.12', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Insert corresponding liquidity pools
--- Note: Using placeholder values for pool_address and wasm_hash, replace with actual values from your config
-INSERT INTO liquidity_pools (asset_id, pool_address, minimum_collateralization_ratio, mercury_wasm_hash, created_at, updated_at)
+INSERT INTO liquidity_pools (asset_id, pool_address, minimum_collateralization_ratio, created_at, updated_at)
 SELECT 
   a.id,
   CASE a.symbol
@@ -29,7 +28,6 @@ SELECT
     WHEN 'xDOT' THEN 'CDY6EUFFLVUC2F2LBJ5PDCIXBDXVXRMYXSVZRBFNRA7WFFRDS6XBTLUJ'
   END as pool_address,
   150 as minimum_collateralization_ratio,
-  '14d5bbeabb4dd7603b4f47bfaf4f2703' as mercury_wasm_hash,
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 FROM asset a
