@@ -20,6 +20,7 @@ jobs:
       with:
           tag: testing
     - uses: actions/cache@v3
+      id: cargo-cache
       with:
           path: |
             ~/.cargo/bin/
@@ -37,6 +38,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libdbus-1-dev pkg-config libudev-dev
     - name: Install Stellar Scaffold CLI
+      if: steps.cargo-cache.outputs.cache-hit != 'true'
       run: |
         if ! command -v stellar-scaffold &> /dev/null; then
           cargo binstall stellar-scaffold-cli -y
