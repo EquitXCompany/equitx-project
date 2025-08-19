@@ -2,7 +2,8 @@ use core::cmp;
 
 use loam_sdk::loamstorage;
 use loam_sdk::soroban_sdk::{
-    self, env, panic_with_error, token, Address, InstanceItem, LoamKey, PersistentItem, PersistentMap, String, Symbol, Vec
+    self, env, panic_with_error, token, Address, InstanceItem, LoamKey, PersistentItem,
+    PersistentMap, String, Symbol, Vec,
 };
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
@@ -16,7 +17,11 @@ use crate::{
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     Contract,
 };
-
+const VERSION_STRING: &str = concat!(
+    env!("CARGO_PKG_VERSION_MAJOR"), ".",
+    env!("CARGO_PKG_VERSION_MINOR"), ".",
+    env!("CARGO_PKG_VERSION_PATCH")
+);
 const BASIS_POINTS: i128 = 10_000;
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 const DEPOSIT_FEE: i128 = 10_000_000;
@@ -469,10 +474,10 @@ impl IsCollateralized for Token {
         self.cdps.set(lender.clone(), &cdp.clone());
 
         env.events().publish(
-            (Symbol::new(&env, "CDP"), lender.clone()), 
+            (Symbol::new(&env, "CDP"), lender.clone()),
             crate::index_types::CDP {
                 id: lender.clone(),
-                xlm_deposited: cdp.xlm_deposited,  // From your existing cdp
+                xlm_deposited: cdp.xlm_deposited, // From your existing cdp
                 asset_lent: cdp.asset_lent,
                 accrued_interest: cdp.accrued_interest.amount,
                 interest_paid: cdp.accrued_interest.paid,
@@ -749,7 +754,7 @@ impl IsCollateralized for Token {
                 .map_err(|_| Error::XLMTransferFailed)?;
         }
         env().events().publish(
-        (Symbol::new(env(), "CDP"), lender.clone()),
+            (Symbol::new(env(), "CDP"), lender.clone()),
             crate::index_types::CDP {
                 id: lender.clone(),
                 xlm_deposited: cdp.xlm_deposited,
@@ -828,8 +833,8 @@ impl IsCDPAdmin for Token {
         self.get_total_interest_collected()
     }
 
-    fn version(&self) -> u32 {
-        1
+    fn version(&self) -> String {
+        String::from_str(env(), VERSION_STRING)
     }
 }
 
@@ -1146,7 +1151,7 @@ impl Token {
 
     fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDPContract) {
         env().events().publish(
-        (Symbol::new(env(), "CDP"), lender.clone()),
+            (Symbol::new(env(), "CDP"), lender.clone()),
             crate::index_types::CDP {
                 id: lender.clone(),
                 xlm_deposited: decorated_cdp.xlm_deposited,
