@@ -828,13 +828,6 @@ impl IsCDPAdmin for Token {
         self.get_total_interest_collected()
     }
 
-    fn upgrade(&mut self,wasm_hash:loam_sdk::soroban_sdk::BytesN<32>) -> Result<(),Error> {
-        self::Contract::require_auth();
-        let e = env();
-        e.deployer().update_current_contract_wasm(wasm_hash);
-        Ok(())
-    }
-
     fn version(&self) -> u32 {
         1
     }

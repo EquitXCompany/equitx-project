@@ -207,7 +207,4 @@ pub trait IsCDPAdmin {
     fn get_total_interest_collected(&self) -> i128;
 
     fn version(&self) -> u32;
-
-    /// Upgrade the xAsset contract to a new version
-    fn upgrade(&mut self, wasm_hash: loam_sdk::soroban_sdk::BytesN<32>) -> Result<(), Error>;
 }

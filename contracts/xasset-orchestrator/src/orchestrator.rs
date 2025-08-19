@@ -13,9 +13,7 @@ use loam_subcontract_core::Core;
 pub mod xasset {
     use loam_sdk::soroban_sdk;
 
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32v1-none/release/xasset.wasm"
-    );
+    soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
 }
 
 #[loamstorage]
@@ -78,7 +76,7 @@ pub trait IsOrchestratorTrait {
     // Upgrade an existing asset contract to the xasset wasm of the orchestrator.
     fn upgrade_existing_asset_contract(
         &mut self,
-        asset_symbol: loam_sdk::soroban_sdk::String
+        asset_symbol: loam_sdk::soroban_sdk::String,
     ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
 }
 
@@ -96,7 +94,10 @@ impl IsOrchestratorTrait for Storage {
         Ok(())
     }
 
-    fn update_xasset_wasm_hash(&mut self,xasset_wasm_hash:loam_sdk::soroban_sdk::BytesN<32> ,) -> Result<loam_sdk::soroban_sdk::BytesN<32>,Error> {
+    fn update_xasset_wasm_hash(
+        &mut self,
+        xasset_wasm_hash: loam_sdk::soroban_sdk::BytesN<32>,
+    ) -> Result<loam_sdk::soroban_sdk::BytesN<32>, Error> {
         Contract::require_auth();
         self.wasm_hash.set(&xasset_wasm_hash);
         Ok(xasset_wasm_hash)
@@ -180,10 +181,7 @@ impl IsOrchestratorTrait for Storage {
         Ok(())
     }
 
-    fn upgrade_existing_asset_contract(
-        &mut self,
-        asset_symbol: String,
-    ) -> Result<Address, Error> {
+    fn upgrade_existing_asset_contract(&mut self, asset_symbol: String) -> Result<Address, Error> {
         Contract::require_auth();
         if !self.assets.has(asset_symbol.clone()) {
             return Err(Error::NoSuchAsset);
@@ -192,7 +190,8 @@ impl IsOrchestratorTrait for Storage {
         let wasm_hash = self.wasm_hash.get().ok_or(Error::ContractNotInitalized)?;
         let env = env();
         let client = xasset::Client::new(env, &asset_contract);
-        client.try_redeploy(&wasm_hash)
+        let _ = client
+            .try_redeploy(&wasm_hash)
             .map_err(|_| Error::AssetUpgradeFailed)?;
         Ok(asset_contract)
     }
