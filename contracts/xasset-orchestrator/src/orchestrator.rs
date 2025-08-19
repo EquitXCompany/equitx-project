@@ -43,6 +43,10 @@ pub trait IsOrchestratorTrait {
         xlm_contract: loam_sdk::soroban_sdk::Address,
         xasset_wasm_hash: loam_sdk::soroban_sdk::BytesN<32>,
     ) -> Result<(), Error>;
+    fn update_xasset_wasm_hash(
+        &mut self,
+        xasset_wasm_hash: loam_sdk::soroban_sdk::BytesN<32>,
+    ) -> Result<loam_sdk::soroban_sdk::BytesN<32>, Error>;
     #[allow(clippy::too_many_arguments)]
     fn deploy_asset_contract(
         &mut self,
@@ -71,6 +75,11 @@ pub trait IsOrchestratorTrait {
         asset_symbol: loam_sdk::soroban_sdk::String,
         asset_contract: loam_sdk::soroban_sdk::Address,
     ) -> Result<(), Error>;
+    // Upgrade an existing asset contract to the xasset wasm of the orchestrator.
+    fn upgrade_existing_asset_contract(
+        &mut self,
+        asset_symbol: loam_sdk::soroban_sdk::String
+    ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
 }
 
 impl IsOrchestratorTrait for Storage {
@@ -85,6 +94,12 @@ impl IsOrchestratorTrait for Storage {
         self.xlm_contract.set(&xlm_contract);
         self.wasm_hash.set(&xasset_wasm_hash);
         Ok(())
+    }
+
+    fn update_xasset_wasm_hash(&mut self,xasset_wasm_hash:loam_sdk::soroban_sdk::BytesN<32> ,) -> Result<loam_sdk::soroban_sdk::BytesN<32>,Error> {
+        Contract::require_auth();
+        self.wasm_hash.set(&xasset_wasm_hash);
+        Ok(xasset_wasm_hash)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -163,6 +178,23 @@ impl IsOrchestratorTrait for Storage {
         Contract::require_auth();
         self.assets.set(asset_symbol, &asset_contract);
         Ok(())
+    }
+
+    fn upgrade_existing_asset_contract(
+        &mut self,
+        asset_symbol: String,
+    ) -> Result<Address, Error> {
+        Contract::require_auth();
+        if !self.assets.has(asset_symbol.clone()) {
+            return Err(Error::NoSuchAsset);
+        }
+        let asset_contract = self.assets.get(asset_symbol.clone()).unwrap();
+        let wasm_hash = self.wasm_hash.get().ok_or(Error::ContractNotInitalized)?;
+        let env = env();
+        let client = xasset::Client::new(env, &asset_contract);
+        client.try_redeploy(&wasm_hash)
+            .map_err(|_| Error::AssetUpgradeFailed)?;
+        Ok(asset_contract)
     }
 }
 

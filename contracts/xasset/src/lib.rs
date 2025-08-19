@@ -11,10 +11,10 @@ use token::Token;
 
 pub mod collateralized;
 pub mod error;
+pub mod index_types;
 pub mod stability_pool;
 mod storage;
 pub mod token;
-pub mod index_types;
 
 use crate::storage::InterestDetail;
 pub use error::Error;
@@ -29,9 +29,7 @@ pub struct PriceData {
 pub mod data_feed {
     use loam_sdk::soroban_sdk;
 
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32v1-none/release/data_feed.wasm"
-    );
+    soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/data_feed.wasm");
 }
 
 #[derive_contract(
@@ -40,7 +38,7 @@ pub mod data_feed {
     CDPAdmin(Token),
     Sep41(Token),
     Fungible(Token),
-    StabilityPool(Token)
+    StabilityPool(Token),
 )]
 pub struct Contract;
 
