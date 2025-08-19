@@ -18,4 +18,7 @@ pub enum Error {
 
     // "No such asset deployed"
     NoSuchAsset = 5,
+
+    // "Failed to upgrade asset contract"
+    AssetUpgradeFailed = 6,
 }

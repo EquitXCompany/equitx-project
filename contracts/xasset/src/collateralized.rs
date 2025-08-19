@@ -205,4 +205,6 @@ pub trait IsCDPAdmin {
 
     /// Get total interest collected
     fn get_total_interest_collected(&self) -> i128;
+
+    fn version(&self) -> String;
 }

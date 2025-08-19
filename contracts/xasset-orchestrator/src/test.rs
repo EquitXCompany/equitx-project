@@ -89,4 +89,9 @@ fn test_orchestrator() {
     let existing_updated_result = orchestrator.try_get_asset_contract(&existing_symbol);
     assert!(existing_updated_result.is_ok());
     assert_eq!(existing_updated_result.unwrap().unwrap(), existing_address);
+
+    // update the xasset wasm hash
+    let new_wasm_hash: BytesN<32> = e.deployer().upload_contract_wasm(xasset::WASM);
+    let result = orchestrator.try_update_xasset_wasm_hash(&new_wasm_hash);
+    assert_eq!(result.unwrap().unwrap(), new_wasm_hash);
 }
