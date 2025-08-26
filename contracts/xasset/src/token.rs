@@ -2,7 +2,7 @@ use core::cmp;
 
 use loam_sdk::loamstorage;
 use loam_sdk::soroban_sdk::{
-    self, env, panic_with_error, token, Address, InstanceItem, LoamKey, PersistentItem,
+    self, assert_with_error, env, token, Address, InstanceItem, LoamKey, PersistentItem,
     PersistentMap, String, Symbol, Vec,
 };
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
@@ -18,8 +18,10 @@ use crate::{
     Contract,
 };
 const VERSION_STRING: &str = concat!(
-    env!("CARGO_PKG_VERSION_MAJOR"), ".",
-    env!("CARGO_PKG_VERSION_MINOR"), ".",
+    env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
+    ".",
     env!("CARGO_PKG_VERSION_PATCH")
 );
 const BASIS_POINTS: i128 = 10_000;
@@ -31,6 +33,10 @@ const UNSTAKE_RETURN: i128 = 20_000_000;
 const SECONDS_PER_YEAR: u64 = 31_536_000; // 365 days
 const INTEREST_PRECISION: i128 = 1_000_000_000; // 9 decimal places for precision
 const DEFAULT_PRECISION: i128 = 10_000_000; // 7 decimal places for precision
+
+fn assert_positive(value: i128) {
+    assert_with_error!(env(), value > 0, Error::ValueNotPositive);
+}
 
 fn bankers_round(value: i128, precision: i128) -> i128 {
     let half = precision / 2;
@@ -197,9 +203,11 @@ impl IsSep41 for Token {
     fn approve(&mut self, from: Address, spender: Address, amount: i128, live_until_ledger: u32) {
         from.require_auth();
         let current_ledger = env().ledger().sequence();
-        assert!(
-            !(live_until_ledger < current_ledger && amount != 0),
-            "live_until_ledger must be greater than or equal to the current ledger number"
+        assert_positive(amount);
+        assert_with_error!(
+            env(),
+            live_until_ledger >= current_ledger,
+            Error::InvalidLedgerSequence
         );
         self.allowances.set(
             Txn(from, spender),
@@ -216,36 +224,42 @@ impl IsSep41 for Token {
 
     fn transfer(&mut self, from: Address, to: Address, amount: i128) {
         from.require_auth();
-        if self.balance(from.clone()) < amount {
-            panic_with_error!(env(), Error::InsufficientBalance);
-        }
+        assert_positive(amount);
+        assert_with_error!(
+            env(),
+            self.balance(from.clone()) >= amount,
+            Error::InsufficientBalance
+        );
         self.transfer_internal(from, to, amount);
     }
 
     fn transfer_from(&mut self, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
+        assert_positive(amount);
         let allowance = self.allowance(from.clone(), spender.clone());
-        if allowance >= amount {
-            self.transfer_internal(from.clone(), to, amount);
-            self.decrease_allowance(from, spender, amount);
-        }
+        assert_with_error!(env(), allowance >= amount, Error::InsufficientAllowance);
+        self.transfer_internal(from.clone(), to, amount);
+        self.decrease_allowance(from, spender, amount);
     }
 
     fn burn(&mut self, from: Address, amount: i128) {
         from.require_auth();
-        if self.balance(from.clone()) < amount {
-            panic_with_error!(env(), Error::InsufficientBalance);
-        }
+        assert_positive(amount);
+        assert_with_error!(
+            env(),
+            self.balance(from.clone()) >= amount,
+            Error::InsufficientBalance
+        );
         self.burn_internal(from, amount);
     }
 
     fn burn_from(&mut self, spender: Address, from: Address, amount: i128) {
         spender.require_auth();
+        assert_positive(amount);
         let allowance = self.allowance(from.clone(), spender.clone());
-        if allowance >= amount {
-            self.burn(from.clone(), amount);
-            self.decrease_allowance(from, spender, amount);
-        }
+        assert_with_error!(env(), allowance >= amount, Error::InsufficientAllowance);
+        self.burn(from.clone(), amount);
+        self.decrease_allowance(from, spender, amount);
     }
 
     fn decimals(&self) -> u32 {
@@ -272,6 +286,7 @@ impl IsSep41 for Token {
 impl IsFungible for Token {
     fn increase_allowance(&mut self, from: Address, spender: Address, amount: i128) {
         from.require_auth();
+        assert_positive(amount);
         let current_allowance = self.allowance(from.clone(), spender.clone());
         let new_amount = current_allowance + amount;
         let current_ledger = env().ledger().sequence();
@@ -286,6 +301,7 @@ impl IsFungible for Token {
 
     fn decrease_allowance(&mut self, from: Address, spender: Address, amount: i128) {
         from.require_auth();
+        assert_positive(amount);
         let current_allowance = self.allowance(from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
         let current_ledger = env().ledger().sequence();
@@ -312,11 +328,13 @@ impl IsFungible for Token {
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
+        assert_positive(amount);
         self::Contract::require_auth();
         self.mint_internal(to, amount);
     }
 
     fn clawback(&mut self, from: Address, amount: i128) {
+        assert_positive(amount);
         self::Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
         self.balances.set(from, &balance);
@@ -431,6 +449,8 @@ impl IsCollateralized for Token {
         collateral: i128,
         asset_lent: i128,
     ) -> Result<(), Error> {
+        assert_positive(collateral);
+        assert_positive(asset_lent);
         lender.require_auth();
 
         let env = env();
@@ -518,6 +538,7 @@ impl IsCollateralized for Token {
     }
 
     fn add_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
+        assert_positive(amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -537,6 +558,7 @@ impl IsCollateralized for Token {
     }
 
     fn withdraw_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
+        assert_positive(amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -579,6 +601,7 @@ impl IsCollateralized for Token {
     }
 
     fn borrow_xasset(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
+        assert_positive(amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -614,6 +637,7 @@ impl IsCollateralized for Token {
     }
 
     fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
+        assert_positive(amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -681,10 +705,11 @@ impl IsCollateralized for Token {
         lender: Address,
         amount_in_xasset: i128,
     ) -> Result<CDPContract, Error> {
+        assert_positive(amount_in_xasset);
         lender.require_auth();
 
         if amount_in_xasset <= 0 {
-            return Err(Error::InterestRepaidNotPositive);
+            return Err(Error::ValueNotPositive);
         }
         self.apply_interest_payment(lender, amount_in_xasset, |s, lender, amount_in_xlm| {
             match s
@@ -840,6 +865,7 @@ impl IsCDPAdmin for Token {
 
 impl IsStabilityPool for Token {
     fn deposit(&mut self, from: Address, amount: i128) -> Result<(), Error> {
+        assert_positive(amount);
         from.require_auth();
         // check if the user has sufficient xasset
         let balance = self.balance(from.clone());
@@ -878,6 +904,7 @@ impl IsStabilityPool for Token {
     }
 
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
+        assert_positive(amount);
         to.require_auth();
         self.withdraw_internal(to, amount, false)
     }
@@ -886,7 +913,7 @@ impl IsStabilityPool for Token {
         let mut cdp = self.cdp(lender.clone())?;
         let principal_debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
-        let mut interest = cdp.accrued_interest.clone();
+        let mut interest = cdp.accrued_interest;
 
         // Check if the CDP is frozen
         if !matches!(cdp.status, CDPStatus::Frozen) {
@@ -1029,6 +1056,8 @@ impl IsStabilityPool for Token {
 
     fn stake(&mut self, from: Address, amount: i128) -> Result<(), Error> {
         from.require_auth();
+
+        assert_positive(amount);
 
         // Check if the user already has a stake
         if self.get_deposit(from.clone()).is_some() {
@@ -1213,7 +1242,7 @@ impl Token {
     ) -> Result<(), Error> {
         let position = self
             .get_deposit(to.clone())
-            .ok_or_else(|| Error::StakeDoesntExist)?;
+            .ok_or(Error::StakeDoesntExist)?;
         let rewards = self.calculate_rewards(&position);
         if rewards > 0 {
             return Err(Error::ClaimRewardsFirst);
@@ -1307,7 +1336,7 @@ impl Token {
         }
     }
 
-    pub fn update_constants(&mut self, xasset_debited: i128, xlm_earned: i128) {
+    fn update_constants(&mut self, xasset_debited: i128, xlm_earned: i128) {
         // Check if total_xasset is zero prior to calculation
         let total_xasset = self.get_total_xasset();
         let product_constant = self.get_product_constant();
@@ -1329,7 +1358,7 @@ impl Token {
         }
     }
 
-    pub fn increment_epoch(&mut self) {
+    fn increment_epoch(&mut self) {
         let epoch = self.get_epoch();
         self.compound_record
             .set(epoch, &self.get_compounded_constant());
@@ -1338,11 +1367,11 @@ impl Token {
         self.set_compounded_constant(0);
     }
 
-    pub fn get_deposit(&self, address: Address) -> Option<StakerPosition> {
+    fn get_deposit(&self, address: Address) -> Option<StakerPosition> {
         self.deposits.get(address)
     }
 
-    pub fn set_deposit(&mut self, address: Address, position: StakerPosition, _rewards: i128) {
+    fn set_deposit(&mut self, address: Address, position: StakerPosition, _rewards: i128) {
         env().events().publish(
             (Symbol::new(env(), "StakePosition"), address.clone()),
             crate::index_types::StakePosition {
@@ -1359,125 +1388,114 @@ impl Token {
         self.deposits.set(address, &position);
     }
 
-    pub fn get_total_xasset(&self) -> i128 {
+    fn get_total_xasset(&self) -> i128 {
         self.total_xasset
             .get()
             .expect("Total xasset should be initialized")
     }
 
     // todo: many of these function shouldnt be exposed
-    pub fn add_total_xasset(&mut self, amount: i128) {
+    fn add_total_xasset(&mut self, amount: i128) {
         self.total_xasset.set(&(self.get_total_xasset() + amount));
     }
 
-    pub fn subtract_total_xasset(&mut self, amount: i128) {
+    fn subtract_total_xasset(&mut self, amount: i128) {
         self.total_xasset.set(&(self.get_total_xasset() - amount));
     }
 
-    pub fn get_total_collateral(&self) -> i128 {
+    fn get_total_collateral(&self) -> i128 {
         self.total_collateral
             .get()
             .expect("Total collateral should be initialized")
     }
 
-    pub fn add_total_collateral(&mut self, amount: i128) {
+    fn add_total_collateral(&mut self, amount: i128) {
         self.total_collateral
             .set(&(self.get_total_collateral() + amount));
     }
 
-    pub fn subtract_total_collateral(&mut self, amount: i128) {
+    fn subtract_total_collateral(&mut self, amount: i128) {
         self.total_collateral
             .set(&(self.get_total_collateral() - amount));
     }
 
-    pub fn get_product_constant(&self) -> i128 {
+    fn get_product_constant(&self) -> i128 {
         self.product_constant
             .get()
             .expect("Product constant should be intialized")
     }
 
-    pub fn set_product_constant(&mut self, value: i128) {
+    fn set_product_constant(&mut self, value: i128) {
         self.product_constant.set(&value);
     }
 
-    pub fn get_compounded_constant(&self) -> i128 {
+    fn get_compounded_constant(&self) -> i128 {
         self.compounded_constant
             .get()
             .expect("Compounded constant should be initialized")
     }
 
-    pub fn set_compounded_constant(&mut self, value: i128) {
+    fn set_compounded_constant(&mut self, value: i128) {
         self.compounded_constant.set(&value);
     }
 
-    pub fn get_epoch(&self) -> u64 {
+    fn get_epoch(&self) -> u64 {
         self.epoch.get().expect("Epoch should be initialized")
     }
 
-    pub fn get_compounded_epoch(&self, epoch: u64) -> Option<i128> {
+    fn get_compounded_epoch(&self, epoch: u64) -> Option<i128> {
         self.compound_record.get(epoch)
     }
 
-    pub fn get_fees_collected(&self) -> i128 {
+    fn get_fees_collected(&self) -> i128 {
         self.fees_collected
             .get()
             .expect("Fees collected should be initialized")
     }
 
-    pub fn add_fees_collected(&mut self, amount: i128) {
+    fn add_fees_collected(&mut self, amount: i128) {
         self.fees_collected
             .set(&(self.get_fees_collected() + amount));
     }
 
-    pub fn subtract_fees_collected(&mut self, amount: i128) {
+    fn subtract_fees_collected(&mut self, amount: i128) {
         self.fees_collected
             .set(&(self.get_fees_collected() - amount));
     }
 
-    pub fn get_stake_fee(&self) -> i128 {
+    fn get_stake_fee(&self) -> i128 {
         self.stake_fee
             .get()
             .expect("Stake fee should be initialized")
     }
 
-    pub fn get_deposit_fee(&self) -> i128 {
+    fn get_deposit_fee(&self) -> i128 {
         self.deposit_fee
             .get()
             .expect("Deposit fee should be initialized")
     }
 
-    pub fn set_stake_fee(&mut self, value: i128) {
-        self.stake_fee.set(&value);
-    }
-
-    pub fn get_unstake_return(&self) -> i128 {
+    fn get_unstake_return(&self) -> i128 {
         self.unstake_return
             .get()
             .expect("Unstake return should be initialized")
     }
 
-    pub fn set_unstake_return(&mut self, value: i128) {
-        self.unstake_return.set(&value);
-    }
-
-    pub fn remove_deposit(&mut self, address: Address) {
+    fn remove_deposit(&mut self, address: Address) {
         self.deposits.remove(address);
     }
 
-    pub fn get_annual_interest_rate(&self) -> u32 {
+    fn get_annual_interest_rate(&self) -> u32 {
         self.interest_rate
             .get()
             .expect("Interest rate should be initialized")
     }
 
-    pub fn set_annual_interest_rate(&mut self, rate: u32) {
+    fn set_annual_interest_rate(&mut self, rate: u32) {
         self.interest_rate.set(&rate);
     }
 
-    pub fn get_updated_accrued_interest(
-        &self,
-        cdp: &CDPInternal,
-    ) -> Result<(Interest, u64), Error> {
+    fn get_updated_accrued_interest(&self, cdp: &CDPInternal) -> Result<(Interest, u64), Error> {
         let now = env().ledger().timestamp();
         let last_time = cdp.last_interest_time;
 
@@ -1495,7 +1513,7 @@ impl Token {
         Ok((interest, now))
     }
 
-    pub fn get_total_interest_collected(&self) -> i128 {
+    fn get_total_interest_collected(&self) -> i128 {
         self.interest_collected
             .get()
             .expect("Total interest collected should be initialized")
