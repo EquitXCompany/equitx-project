@@ -2,28 +2,19 @@ use core::cmp;
 
 use loam_sdk::loamstorage;
 use loam_sdk::soroban_sdk::{
-    self, assert_with_error, env, token, Address, InstanceItem, LoamKey, PersistentItem,
-    PersistentMap, String, Symbol, Vec,
+    self, assert_with_error, env, token, Address, InstanceItem, LoamKey, PersistentMap, String,
+    Symbol, Vec,
 };
 use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
-use crate::storage::{Allowance, CDPInternal, Interest, InterestDetail};
-use crate::{collateralized::CDPStatus, data_feed, storage::Txn, Error};
 use crate::{
-    collateralized::{CDPContract, IsCDPAdmin, IsCollateralized},
-    PriceData,
-};
-use crate::{
+    collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
+    data_feed,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
-    Contract,
+    storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
+    Contract, Error, PersistentMapExt, PriceData,
 };
-const VERSION_STRING: &str = concat!(
-    env!("CARGO_PKG_VERSION_MAJOR"),
-    ".",
-    env!("CARGO_PKG_VERSION_MINOR"),
-    ".",
-    env!("CARGO_PKG_VERSION_PATCH")
-);
+const VERSION_STRING: &str = concat!();
 const BASIS_POINTS: i128 = 10_000;
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 const DEPOSIT_FEE: i128 = 10_000_000;
@@ -126,17 +117,17 @@ pub struct Token {
     /// stability pool interest collected records
     interest_record: PersistentMap<u64, i128>,
     /// total xasset in the stability pool
-    total_xasset: PersistentItem<i128>,
+    total_xasset: InstanceItem<i128>,
     /// total collateral in the stability pool
-    total_collateral: PersistentItem<i128>,
+    total_collateral: InstanceItem<i128>,
     /// current product constant of the stability pool
-    product_constant: PersistentItem<i128>,
+    product_constant: InstanceItem<i128>,
     /// current compounded constant of the stability pool
-    compounded_constant: PersistentItem<i128>,
+    compounded_constant: InstanceItem<i128>,
     /// current epoch of the stability pool
-    epoch: PersistentItem<u64>,
+    epoch: InstanceItem<u64>,
     /// current total of collected fees for stability pool
-    fees_collected: PersistentItem<i128>,
+    fees_collected: InstanceItem<i128>,
     /// stability pool deposit fee
     deposit_fee: InstanceItem<i128>,
     /// stability pool stake fee
@@ -209,7 +200,7 @@ impl IsSep41 for Token {
             live_until_ledger >= current_ledger,
             Error::InvalidLedgerSequence
         );
-        self.allowances.set(
+        self.allowances.set_and_extend(
             Txn(from, spender),
             &Allowance {
                 amount,
@@ -290,7 +281,7 @@ impl IsFungible for Token {
         let current_allowance = self.allowance(from.clone(), spender.clone());
         let new_amount = current_allowance + amount;
         let current_ledger = env().ledger().sequence();
-        self.allowances.set(
+        self.allowances.set_and_extend(
             Txn(from, spender),
             &Allowance {
                 amount: new_amount,
@@ -305,7 +296,7 @@ impl IsFungible for Token {
         let current_allowance = self.allowance(from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
         let current_ledger = env().ledger().sequence();
-        self.allowances.set(
+        self.allowances.set_and_extend(
             Txn(from, spender),
             &Allowance {
                 amount: new_amount,
@@ -324,7 +315,7 @@ impl IsFungible for Token {
 
     fn set_authorized(&mut self, id: Address, authorize: bool) {
         self::Contract::require_auth();
-        self.authorized.set(id, &authorize);
+        self.authorized.set_and_extend(id, &authorize);
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
@@ -337,7 +328,7 @@ impl IsFungible for Token {
         assert_positive(amount);
         self::Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
-        self.balances.set(from, &balance);
+        self.balances.set_and_extend(from, &balance);
     }
 
     fn set_admin(&mut self, new_admin: Address) {
@@ -491,7 +482,7 @@ impl IsCollateralized for Token {
         self.mint_internal(lender.clone(), asset_lent);
 
         // 5. create CDP
-        self.cdps.set(lender.clone(), &cdp.clone());
+        self.cdps.set_and_extend(lender.clone(), &cdp.clone());
 
         env.events().publish(
             (Symbol::new(&env, "CDP"), lender.clone()),
@@ -752,7 +743,7 @@ impl IsCollateralized for Token {
             last_interest_time: env().ledger().timestamp(),
         };
         let first_lender = lenders.get(0).unwrap();
-        self.cdps.set(first_lender.clone(), &merged_cdp);
+        self.cdps.set_and_extend(first_lender.clone(), &merged_cdp);
 
         // Remove other CDPs
         for lender in lenders.iter().skip(1) {
@@ -1193,7 +1184,7 @@ impl Token {
                 timestamp: env().ledger().timestamp(),
             },
         );
-        self.cdps.set(
+        self.cdps.set_and_extend(
             lender,
             &CDPInternal {
                 xlm_deposited: decorated_cdp.xlm_deposited,
@@ -1218,19 +1209,19 @@ impl Token {
     // convenience functions for internal minting / transfering of the ft asset
     fn mint_internal(&mut self, to: Address, amount: i128) {
         let balance = self.balance(to.clone()) + amount;
-        self.balances.set(to, &balance);
+        self.balances.set_and_extend(to, &balance);
     }
 
     fn transfer_internal(&mut self, from: Address, to: Address, amount: i128) {
         let from_balance = self.balance(from.clone()) - amount;
         let to_balance = self.balance(to.clone()) + amount;
-        self.balances.set(from, &from_balance);
-        self.balances.set(to, &to_balance);
+        self.balances.set_and_extend(from, &from_balance);
+        self.balances.set_and_extend(to, &to_balance);
     }
 
     fn burn_internal(&mut self, from: Address, amount: i128) {
         let balance = self.balance(from.clone()) - amount;
-        self.balances.set(from, &balance);
+        self.balances.set_and_extend(from, &balance);
     }
 
     // withdraw the amount specified unless full_withdrawal is true in which case withdraw remaining balance
@@ -1361,7 +1352,7 @@ impl Token {
     fn increment_epoch(&mut self) {
         let epoch = self.get_epoch();
         self.compound_record
-            .set(epoch, &self.get_compounded_constant());
+            .set_and_extend(epoch, &self.get_compounded_constant());
         self.epoch.set(&(epoch + 1));
         self.set_product_constant(PRODUCT_CONSTANT);
         self.set_compounded_constant(0);
@@ -1385,7 +1376,7 @@ impl Token {
                 timestamp: env().ledger().timestamp(),
             },
         );
-        self.deposits.set(address, &position);
+        self.deposits.set_and_extend(address, &position);
     }
 
     fn get_total_xasset(&self) -> i128 {
@@ -1614,12 +1605,8 @@ impl Token {
         let current_epoch = self.get_epoch();
         let current_interest = self.interest_record.get(current_epoch).unwrap_or_default();
         self.interest_record
-            .set(current_epoch, &(current_interest + amount));
+            .set_and_extend(current_epoch, &(current_interest + amount));
     }
-
-    /*fn get_interest_for_epoch(&self, epoch: u64) -> i128 {
-        self.interest_record.get(epoch).unwrap_or_default()
-    }*/
 
     // Helper to calculate projected interest at a future timestamp
     fn get_projected_interest(

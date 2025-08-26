@@ -2,8 +2,8 @@ use crate::{error::Error, Contract};
 use loam_sdk::{
     loamstorage,
     soroban_sdk::{
-        self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, Lazy, LoamKey,
-        PersistentMap, String, Symbol,
+        self, env, xdr::ToXdr, Address, Bytes, BytesN, Env, InstanceItem, InstanceMap, Lazy,
+        LoamKey, String, Symbol,
     },
     subcontract,
 };
@@ -30,7 +30,7 @@ pub struct Storage {
     /// This is used to check if a contract is a valid asset contract
     /// and to get the asset symbol from the contract address.
     /// The key is the asset symbol, the value is the asset contract address.
-    assets: PersistentMap<loam_sdk::soroban_sdk::String, loam_sdk::soroban_sdk::Address>,
+    assets: InstanceMap<loam_sdk::soroban_sdk::String, loam_sdk::soroban_sdk::Address>,
 }
 
 #[subcontract]

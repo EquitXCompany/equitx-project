@@ -12,9 +12,12 @@ use token::Token;
 pub mod collateralized;
 pub mod error;
 pub mod index_types;
+mod persistent_map_ext;
 pub mod stability_pool;
 mod storage;
 pub mod token;
+
+pub(crate) use persistent_map_ext::PersistentMapExt;
 
 use crate::storage::InterestDetail;
 pub use error::Error;
@@ -38,7 +41,7 @@ pub mod data_feed {
     CDPAdmin(Token),
     Sep41(Token),
     Fungible(Token),
-    StabilityPool(Token),
+    StabilityPool(Token)
 )]
 pub struct Contract;
 
