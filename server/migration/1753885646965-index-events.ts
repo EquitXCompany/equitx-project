@@ -4,6 +4,7 @@ export class IndexEvents1753885646965 implements MigrationInterface {
     name = 'IndexEvents1753885646965'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE TYPE "public"."cdp_event_status_enum" AS ENUM ('0', '1', '2')`);
         await queryRunner.query(`CREATE TABLE "cdp_event" ("id" SERIAL NOT NULL, "contract_id" character varying(56) NOT NULL, "lender" character varying(56) NOT NULL, "xlm_deposited" numeric(30,0) NOT NULL, "asset_lent" numeric(30,0) NOT NULL, "status" "public"."cdp_event_status_enum" NOT NULL DEFAULT '0', "timestamp" bigint NOT NULL, "accrued_interest" numeric(30,0) NOT NULL, "interest_paid" numeric(30,0) NOT NULL, "last_interest_time" bigint NOT NULL, "ledger" integer NOT NULL, "event_id" character varying(32) NOT NULL, CONSTRAINT "UQ_9a762b11c4344704d49b7a15b7e" UNIQUE ("event_id"), CONSTRAINT "PK_21bdebd12bfe1465dc6f5cd79f3" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_0cef95a9f834f8c61a2e2f1ecc" ON "cdp_event" ("timestamp") `);
         await queryRunner.query(`CREATE TABLE "indexer_state" ("id" SERIAL NOT NULL, "last_ledger" integer NOT NULL DEFAULT '0', CONSTRAINT "PK_186a04c706e20d425992635168a" PRIMARY KEY ("id"))`);
@@ -21,6 +22,7 @@ export class IndexEvents1753885646965 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "indexer_state"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_0cef95a9f834f8c61a2e2f1ecc"`);
         await queryRunner.query(`DROP TABLE "cdp_event"`);
+        await queryRunner.query(`DROP TYPE "public"."cdp_event_status_enum"`);
     }
 
 }
