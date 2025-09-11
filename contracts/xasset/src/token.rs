@@ -14,7 +14,11 @@ use crate::{
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
     Contract, Error, PersistentMapExt, PriceData,
 };
-const VERSION_STRING: &str = concat!();
+const VERSION_STRING: &str = concat!(
+    env!("CARGO_PKG_VERSION_MAJOR"), ".",
+    env!("CARGO_PKG_VERSION_MINOR"), ".",
+    env!("CARGO_PKG_VERSION_PATCH")
+);
 const BASIS_POINTS: i128 = 10_000;
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 const DEPOSIT_FEE: i128 = 10_000_000;
