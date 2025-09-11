@@ -9,9 +9,7 @@ use loam_sdk::soroban_sdk::{String, Symbol};
 pub mod xasset {
     use loam_sdk::soroban_sdk;
 
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32v1-none/release/xasset.wasm"
-    );
+    soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
 }
 
 fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
