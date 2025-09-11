@@ -240,7 +240,7 @@ export class EventIndexer {
           }
 
           if(eventsResponse.events.length > 0 && eventsResponse.events[-1]!!) {
-            cursor = eventsResponse.events[-1].pagingToken;
+            cursor = eventsResponse.cursor;
           }
           else {
             break;
