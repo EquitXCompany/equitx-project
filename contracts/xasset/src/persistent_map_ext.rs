@@ -11,8 +11,10 @@ where
     V: IntoVal<Env, Val> + TryFromVal<Env, Val>,
 {
     fn set_and_extend(&mut self, key: K, value: &V) {
-        let ttl = env().storage().max_ttl();
-        self.extend_ttl(key.clone(), ttl, ttl);
+        if self.get(key.clone()).is_some() {
+            let ttl = env().storage().max_ttl();
+            self.extend_ttl(key.clone(), ttl, ttl);
+        }
         self.set(key, value);
     }
 }
