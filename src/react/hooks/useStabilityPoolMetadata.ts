@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { getContractBySymbol } from '../../contracts/util';
 import { ErrorMessage, i128, Result } from '@stellar/stellar-sdk/contract';
 
-type lastPriceResult = {result: Result<{price: i128}, ErrorMessage>};
+type lastPriceResult = { result: Result<{ price: i128 }, ErrorMessage> };
 
 export interface StabilityPoolMetadata {
   lastpriceXLM: BigNumber;
@@ -24,9 +24,11 @@ export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: R
     const fetchData = async () => {
       try {
         const contract = getContractBySymbol(assetSymbol, contractMapping);
-        
+        console.log("getting minimum collateralization ratio");
         const tx = await contract.minimum_collateralization_ratio();
+        console.log("getting interest rate");
         const interestRate = await contract.get_interest_rate();
+        console.log("getting last price XLM");
         const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t: lastPriceResult) => {
           if (t.result.isOk()) {
             return t.result.unwrap().price.toString();
@@ -34,6 +36,7 @@ export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: R
             throw new Error("Failed to fetch XLM price");
           }
         })).div(10 ** 14);
+        console.log("getting last price asset");
 
         const lastpriceAsset = new BigNumber(await contract.lastprice_asset().then((t: lastPriceResult) => {
           if (t.result.isOk()) {
@@ -42,6 +45,7 @@ export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: R
             throw new Error("Failed to fetch asset price");
           }
         })).div(10 ** 14);
+        console.log("getting sac address");
         const sacAddress = await contract.xlm_sac();
 
         setData({
@@ -79,7 +83,7 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
   const fetchAllData = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const results = await Promise.all(
         Object.keys(contractMapping).map(async (symbol) => {
@@ -95,7 +99,7 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
           ]);
 
           const lastpriceXLM = new BigNumber(
-            ((xlmPrice as lastPriceResult).result.isOk() 
+            ((xlmPrice as lastPriceResult).result.isOk()
               ? (xlmPrice as lastPriceResult).result.unwrap().price.toString()
               : "0")
           ).div(10 ** 14);
@@ -137,7 +141,7 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
   // Call fetchAllData once on component mount
   useEffect(() => {
     fetchAllData();
-  }, []); 
+  }, []);
 
   // Return the refetch function along with the data
   return {
