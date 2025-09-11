@@ -19,7 +19,9 @@
     "test": "jest"
   },
   "dependencies": {
+    "@stellar/stellar-sdk": "14.1.1",
     "@types/cors": "^2.8.17",
+    "@types/json-schema": "^7.0.15",
     "axios": "^1.7.9",
     "bip39": "^3.1.0",
     "cors": "^2.8.5",
@@ -32,7 +34,6 @@
     "node-cron": "^3.0.3",
     "pg": "^8.13.1",
     "simple-git": "^3.27.0",
-    "@stellar/stellar-sdk": "14.1.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "typeorm": "^0.3.20",
