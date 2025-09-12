@@ -1,6 +1,7 @@
 #![cfg(test)]
 extern crate std;
 use crate::collateralized::CDPStatus;
+use crate::data_feed;
 use crate::{SorobanContract__, SorobanContract__Client};
 use data_feed::Asset;
 use loam_sdk::soroban_sdk::{
@@ -8,7 +9,6 @@ use loam_sdk::soroban_sdk::{
     token::{self, Client as TokenClient, StellarAssetClient},
     Address, Env, String, Symbol, Vec,
 };
-use crate::data_feed;
 
 fn create_sac_token_clients<'a>(
     e: &Env,

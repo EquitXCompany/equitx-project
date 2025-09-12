@@ -486,10 +486,10 @@ impl IsCollateralized for Token {
         self.mint_internal(lender.clone(), asset_lent);
 
         // 5. create CDP
-        self.cdps.set_and_extend(lender.clone(), &cdp.clone());
+        self.cdps.set(lender.clone(), &cdp.clone());
 
         env.events().publish(
-            (Symbol::new(&env, "CDP"), lender.clone()),
+            (Symbol::new(env, "CDP"), lender.clone()),
             crate::index_types::CDP {
                 id: lender.clone(),
                 xlm_deposited: cdp.xlm_deposited, // From your existing cdp
