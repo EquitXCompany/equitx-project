@@ -14,5 +14,8 @@ doctest = false
 soroban-sdk = { workspace = true }
 xasset = { path = "../xasset" }
 
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
 [package.metadata.stellar]
 contract = true
