@@ -114,8 +114,8 @@ impl IsOrchestratorTrait for Storage {
         decimals: u32,
         annual_interest_rate: u32,
     ) -> Result<Address, Error> {
-        let env = env();
         Contract::require_auth();
+        let env = env();
         // Check if the asset contract is already deployed
         if self.assets.has(symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
@@ -206,7 +206,7 @@ pub fn create_contract(
     salt.append(&asset_symbol.to_xdr(e));
     // owner is the admin of this orchestrator contract
     // TODO; in the future, the orchestrator (C... address) should own and administer all asset contracts
-    let owner = Contract::admin_get().expect("No admin! Call 'admin_set' first.");
+    let owner = Contract::admin_get().unwrap();
     let salt = e.crypto().sha256(&salt);
     let address = e
         .deployer()
