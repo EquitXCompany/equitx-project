@@ -1,15 +1,12 @@
 # Rust's output directory
 target
 
-# Local Soroban settings
-.soroban
-.stellar
+# Local Stellar config settings
+.config
 
-# The following is from the Frontend Template's .gitignore
 
-# soroban/Rust output
+# Rust output
 target
-.soroban
 
 # build output
 dist/

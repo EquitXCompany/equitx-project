@@ -1,7 +1,9 @@
 #!/bin/bash
 
+# Fresh deploy of mainnet contracts. To update mainnet contracts, use scripts/update-mainnet.sh
+
 export STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
-export STELLAR_RPC_URL="https://mainnet.sorobanrpc.com"
+export STELLAR_RPC_URL="https://rpc.lightsail.network/"
 export STELLAR_ACCOUNT=equitxmainnet
 export STELLAR_NETWORK=mainnet
 
