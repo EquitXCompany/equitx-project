@@ -4,12 +4,6 @@ use soroban_sdk::{
 
 use crate::error::Error;
 
-pub mod xasset {
-    soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
-}
-
-const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
-const STORAGE: Symbol = symbol_short!("STORAGE");
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,65 +23,27 @@ pub struct Storage {
     pub assets: Map<String, Address>,
 }
 
+pub mod xasset {
+    soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
+}
+
+const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
+const STORAGE: Symbol = symbol_short!("STORAGE");
+
+
 #[contract]
 pub struct OrchestratorContract;
-
-// #[subcontract]
-// pub trait IsOrchestratorTrait {
-//     fn init(
-//         &mut self,
-//         xlm_sac: loam_sdk::soroban_sdk::Address,
-//         xlm_contract: loam_sdk::soroban_sdk::Address,
-//         xasset_wasm_hash: loam_sdk::soroban_sdk::BytesN<32>,
-//     ) -> Result<(), Error>;
-//     fn update_xasset_wasm_hash(
-//         &mut self,
-//         xasset_wasm_hash: loam_sdk::soroban_sdk::BytesN<32>,
-//     ) -> Result<loam_sdk::soroban_sdk::BytesN<32>, Error>;
-//     #[allow(clippy::too_many_arguments)]
-//     fn deploy_asset_contract(
-//         &mut self,
-//         asset_contract: loam_sdk::soroban_sdk::Address,
-//         pegged_asset: loam_sdk::soroban_sdk::Symbol,
-//         min_collat_ratio: u32,
-//         name: loam_sdk::soroban_sdk::String,
-//         symbol: loam_sdk::soroban_sdk::String,
-//         decimals: u32,
-//         annual_interest_rate: u32,
-//     ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
-//     fn get_asset_contract(
-//         &self,
-//         asset_symbol: loam_sdk::soroban_sdk::String,
-//     ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
-//     // Manually set an asset symbol to an existing contract address
-//     fn set_asset_contract(
-//         &mut self,
-//         asset_symbol: loam_sdk::soroban_sdk::String,
-//         asset_contract: loam_sdk::soroban_sdk::Address,
-//     ) -> Result<(), Error>;
-//     // Manually set an existing asset symbol to an existing contract address. Dangerous!
-//     // This should only be used when needing to update an existing symbol's contract.
-//     fn set_existing_asset_contract(
-//         &mut self,
-//         asset_symbol: loam_sdk::soroban_sdk::String,
-//         asset_contract: loam_sdk::soroban_sdk::Address,
-//     ) -> Result<(), Error>;
-//     // Upgrade an existing asset contract to the xasset wasm of the orchestrator.
-//     fn upgrade_existing_asset_contract(
-//         &mut self,
-//         asset_symbol: loam_sdk::soroban_sdk::String,
-//     ) -> Result<loam_sdk::soroban_sdk::Address, Error>;
-// }
 
 #[contractimpl]
 impl OrchestratorContract {
     pub fn __constructor(
         env: &Env,
+        admin: Address,
         xlm_sac: Address,
         xlm_contract: Address,
         xasset_wasm_hash: BytesN<32>,
     ) -> Result<(), Error> {
-        Self::require_admin(env);
+        Self::set_admin(env, &admin);
         env.storage().instance().set(
             &STORAGE,
             &Storage {

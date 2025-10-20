@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use crate::error::Error;
-use crate::{SorobanContract__, SorobanContract__Client};
+use crate::orchestrator::OrchestratorContract;
 
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
 use soroban_sdk::{String, Symbol};
@@ -10,6 +10,10 @@ pub mod xasset {
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
 }
 
+fn generate_client<'a>(env: &Env, admin: &Address) -> OrchestratorContractClient<'a> {
+    let contract_id = env.register(OrchestratorContract, (admin,));
+    OrchestratorContractClient::new(env, &contract_id)
+}
 fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let orchestrator = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
     let admin: Address = Address::generate(e);
