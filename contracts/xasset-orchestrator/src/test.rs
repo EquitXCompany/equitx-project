@@ -3,12 +3,10 @@
 use crate::error::Error;
 use crate::{SorobanContract__, SorobanContract__Client};
 
-use loam_sdk::soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
-use loam_sdk::soroban_sdk::{String, Symbol};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
+use soroban_sdk::{String, Symbol};
 
 pub mod xasset {
-    use loam_sdk::soroban_sdk;
-
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
 }
 
