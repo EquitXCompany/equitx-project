@@ -1,5 +1,5 @@
 #![no_std]
 
-pub mod orchestrator;
 mod error;
+pub mod orchestrator;
 mod test;

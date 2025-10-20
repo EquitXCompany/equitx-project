@@ -3,7 +3,7 @@
 use crate::error::Error;
 use crate::orchestrator::{OrchestratorContract, OrchestratorContractClient};
 
-use soroban_sdk::testutils::{Address as _};
+use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, BytesN, Env, String, Symbol};
 pub mod xasset {
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");

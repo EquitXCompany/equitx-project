@@ -1,9 +1,9 @@
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env, Map, String, Symbol
+    contract, contractimpl, contracttype, symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env,
+    Map, String, Symbol,
 };
 
 use crate::error::Error;
-
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,7 +30,6 @@ pub mod xasset {
 const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
 const STORAGE: Symbol = symbol_short!("STORAGE");
 
-
 #[contract]
 pub struct OrchestratorContract;
 
@@ -56,6 +55,7 @@ impl OrchestratorContract {
         Ok(())
     }
 
+    /// Update the xasset wasm hash used to deploy assets, or referenced when upgrading assets. Only callable by admin.
     pub fn update_xasset_wasm_hash(
         env: &Env,
         xasset_wasm_hash: BytesN<32>,
@@ -63,12 +63,11 @@ impl OrchestratorContract {
         Self::require_admin(env);
         let mut storage = Self::get_state(env.clone());
         storage.wasm_hash = xasset_wasm_hash.clone();
-        env.storage()
-            .instance()
-            .set(&STORAGE, &storage);
+        env.storage().instance().set(&STORAGE, &storage);
         Ok(xasset_wasm_hash)
     }
 
+    /// Deploy a new xasset contract for the given asset symbol and parameters.
     #[allow(clippy::too_many_arguments)]
     pub fn deploy_asset_contract(
         env: &Env,
@@ -114,12 +113,13 @@ impl OrchestratorContract {
         Ok(contract_address)
     }
 
+    /// Get the asset contract address for a given asset symbol.
     pub fn get_asset_contract(env: &Env, asset_symbol: String) -> Result<Address, Error> {
         let storage = Self::get_state(env.clone());
         storage.assets.get(asset_symbol).ok_or(Error::NoSuchAsset)
     }
 
-    // Manually set a new asset symbol to a contract address. Dangerous!
+    // Manually set a new asset symbol to a contract address.
     // This should only be needed if there is a change in storage, or a situation where
     // manual intervention is required.
     pub fn set_asset_contract(
