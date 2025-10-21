@@ -23,6 +23,19 @@ pub struct Storage {
     pub assets: Map<String, Address>,
 }
 
+impl Storage {
+    /// Get current state of the contract
+    pub fn get_state(env: Env) -> Storage {
+        env.storage().instance().get(&STORAGE).unwrap()
+    }
+
+    /// Set the wasm hash on the object and in instance storage
+    pub fn set_wasm_hash(&mut self, env: &Env, wasm_hash: BytesN<32>) {
+        self.wasm_hash = wasm_hash.clone();
+        env.storage().instance().set(&STORAGE, self);
+    }
+}
+
 pub mod xasset {
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
 }
@@ -61,9 +74,7 @@ impl OrchestratorContract {
         xasset_wasm_hash: BytesN<32>,
     ) -> Result<BytesN<32>, Error> {
         Self::require_admin(env);
-        let mut storage = Self::get_state(env.clone());
-        storage.wasm_hash = xasset_wasm_hash.clone();
-        env.storage().instance().set(&STORAGE, &storage);
+        Storage::set_wasm_hash(&mut Storage::get_state(env.clone()), env, xasset_wasm_hash.clone());
         Ok(xasset_wasm_hash)
     }
 
@@ -80,7 +91,7 @@ impl OrchestratorContract {
         annual_interest_rate: u32,
     ) -> Result<Address, Error> {
         Self::require_admin(env);
-        let mut storage = Self::get_state(env.clone());
+        let mut storage = Storage::get_state(env.clone());
         // Check if the asset contract is already deployed
         if storage.assets.contains_key(symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
@@ -115,7 +126,7 @@ impl OrchestratorContract {
 
     /// Get the asset contract address for a given asset symbol.
     pub fn get_asset_contract(env: &Env, asset_symbol: String) -> Result<Address, Error> {
-        let storage = Self::get_state(env.clone());
+        let storage = Storage::get_state(env.clone());
         storage.assets.get(asset_symbol).ok_or(Error::NoSuchAsset)
     }
 
@@ -128,7 +139,7 @@ impl OrchestratorContract {
         asset_contract: Address,
     ) -> Result<(), Error> {
         Self::require_admin(env);
-        let mut storage = Self::get_state(env.clone());
+        let mut storage = Storage::get_state(env.clone());
         if storage.assets.contains_key(asset_symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
         }
@@ -144,7 +155,7 @@ impl OrchestratorContract {
         asset_contract: Address,
     ) -> Result<(), Error> {
         Self::require_admin(env);
-        let mut storage = Self::get_state(env.clone());
+        let mut storage = Storage::get_state(env.clone());
         storage.assets.set(asset_symbol, asset_contract);
         env.storage().instance().set(&STORAGE, &storage);
         Ok(())
@@ -155,7 +166,7 @@ impl OrchestratorContract {
         asset_symbol: String,
     ) -> Result<Address, Error> {
         Self::require_admin(env);
-        let storage = Self::get_state(env.clone());
+        let storage = Storage::get_state(env.clone());
         if !storage.assets.contains_key(asset_symbol.clone()) {
             return Err(Error::NoSuchAsset);
         }
@@ -165,11 +176,6 @@ impl OrchestratorContract {
             .try_redeploy(&storage.wasm_hash)
             .map_err(|_| Error::AssetUpgradeFailed)?;
         Ok(asset_contract)
-    }
-
-    /// Get current state of the contract
-    pub fn get_state(env: Env) -> Storage {
-        env.storage().instance().get(&STORAGE).unwrap()
     }
 
     /// Upgrade the contract to new wasm. Only callable by admin.
