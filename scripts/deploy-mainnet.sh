@@ -12,9 +12,7 @@ DATAFEED="CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN"
 echo "Uploading xasset contract..."
 xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.wasm --source equitxmainnet)
 echo "Deploying orchestrator contract..."
-contract_id=$(stellar contract deploy --wasm target/stellar/orchestrator.wasm --source equitxmainnet)
-stellar contract invoke --id $contract_id -- admin_set --new-admin equitxmainnet
-stellar contract invoke --id $contract_id -- init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --xasset_wasm_hash "$xasset_wasm_hash"
+contract_id=$(stellar contract deploy --wasm target/stellar/orchestrator.wasm --source equitxmainnet -- --admin equitxmainnet --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --xasset_wasm_hash "$xasset_wasm_hash")
 
 # Declare a regular array to store asset-to-contract mappings
 asset_contract_map=()
