@@ -68,7 +68,7 @@ impl OrchestratorContract {
         Ok(())
     }
 
-    /// Update the xasset wasm hash used to deploy assets, or referenced when upgrading assets. Only callable by admin.
+    /// Update the xasset wasm hash used to deploy assets, or referenced when upgrading assets. Admin-only.
     pub fn update_xasset_wasm_hash(
         env: &Env,
         xasset_wasm_hash: BytesN<32>,
@@ -78,7 +78,7 @@ impl OrchestratorContract {
         Ok(xasset_wasm_hash)
     }
 
-    /// Deploy a new xasset contract for the given asset symbol and parameters.
+    /// Deploy a new xasset contract for the given asset symbol and parameters. Admin-only.
     #[allow(clippy::too_many_arguments)]
     pub fn deploy_asset_contract(
         env: &Env,
@@ -130,9 +130,9 @@ impl OrchestratorContract {
         storage.assets.get(asset_symbol).ok_or(Error::NoSuchAsset)
     }
 
-    // Manually set a new asset symbol to a contract address.
-    // This should only be needed if there is a change in storage, or a situation where
-    // manual intervention is required.
+    /// Manually set a new asset symbol to a contract address. Admin-only.
+    /// This should only be needed if there is a change in storage, or a situation where
+    /// manual intervention is required.
     pub fn set_asset_contract(
         env: &Env,
         asset_symbol: String,
@@ -148,7 +148,7 @@ impl OrchestratorContract {
         Ok(())
     }
 
-    // Admin can manually set an existing asset symbol to an existing contract address.
+    /// Admin can manually set an existing asset symbol to an existing contract address.
     pub fn set_existing_asset_contract(
         env: &Env,
         asset_symbol: String,
@@ -161,6 +161,7 @@ impl OrchestratorContract {
         Ok(())
     }
 
+    /// Upgrade an existing asset contract to the current wasm hash. Admin-only.
     pub fn upgrade_existing_asset_contract(
         env: &Env,
         asset_symbol: String,
@@ -178,7 +179,7 @@ impl OrchestratorContract {
         Ok(asset_contract)
     }
 
-    /// Upgrade the contract to new wasm. Only callable by admin.
+    /// Upgrade the contract to new wasm. Admin-only.
     pub fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
         Self::require_admin(env);
         env.deployer().update_current_contract_wasm(new_wasm_hash);
