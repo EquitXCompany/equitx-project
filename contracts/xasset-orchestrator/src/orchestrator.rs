@@ -74,7 +74,11 @@ impl OrchestratorContract {
         xasset_wasm_hash: BytesN<32>,
     ) -> Result<BytesN<32>, Error> {
         Self::require_admin(env);
-        Storage::set_wasm_hash(&mut Storage::get_state(env.clone()), env, xasset_wasm_hash.clone());
+        Storage::set_wasm_hash(
+            &mut Storage::get_state(env.clone()),
+            env,
+            xasset_wasm_hash.clone(),
+        );
         Ok(xasset_wasm_hash)
     }
 
