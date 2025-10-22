@@ -25,7 +25,7 @@ pub struct Storage {
 
 impl Storage {
     /// Get current state of the contract
-    pub fn get_state(env: Env) -> Storage {
+    pub fn get_state(env: &Env) -> Storage {
         env.storage().instance().get(&STORAGE).unwrap()
     }
 
@@ -75,7 +75,7 @@ impl OrchestratorContract {
     ) -> Result<BytesN<32>, Error> {
         Self::require_admin(env);
         Storage::set_wasm_hash(
-            &mut Storage::get_state(env.clone()),
+            &mut Storage::get_state(env),
             env,
             xasset_wasm_hash.clone(),
         );
@@ -95,7 +95,7 @@ impl OrchestratorContract {
         annual_interest_rate: u32,
     ) -> Result<Address, Error> {
         Self::require_admin(env);
-        let mut storage = Storage::get_state(env.clone());
+        let mut storage = Storage::get_state(env);
         // Check if the asset contract is already deployed
         if storage.assets.contains_key(symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
@@ -130,7 +130,7 @@ impl OrchestratorContract {
 
     /// Get the asset contract address for a given asset symbol.
     pub fn get_asset_contract(env: &Env, asset_symbol: String) -> Result<Address, Error> {
-        let storage = Storage::get_state(env.clone());
+        let storage = Storage::get_state(env);
         storage.assets.get(asset_symbol).ok_or(Error::NoSuchAsset)
     }
 
@@ -143,7 +143,7 @@ impl OrchestratorContract {
         asset_contract: Address,
     ) -> Result<(), Error> {
         Self::require_admin(env);
-        let mut storage = Storage::get_state(env.clone());
+        let mut storage = Storage::get_state(env);
         if storage.assets.contains_key(asset_symbol.clone()) {
             return Err(Error::AssetAlreadyDeployed);
         }
@@ -159,7 +159,7 @@ impl OrchestratorContract {
         asset_contract: Address,
     ) -> Result<(), Error> {
         Self::require_admin(env);
-        let mut storage = Storage::get_state(env.clone());
+        let mut storage = Storage::get_state(env);
         storage.assets.set(asset_symbol, asset_contract);
         env.storage().instance().set(&STORAGE, &storage);
         Ok(())
@@ -171,7 +171,7 @@ impl OrchestratorContract {
         asset_symbol: String,
     ) -> Result<Address, Error> {
         Self::require_admin(env);
-        let storage = Storage::get_state(env.clone());
+        let storage = Storage::get_state(env);
         if !storage.assets.contains_key(asset_symbol.clone()) {
             return Err(Error::NoSuchAsset);
         }
