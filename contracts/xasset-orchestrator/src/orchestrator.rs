@@ -78,7 +78,7 @@ impl OrchestratorContract {
         xasset_wasm_hash: BytesN<32>,
     ) -> Result<BytesN<32>, Error> {
         Self::require_admin(env);
-        Storage::set_wasm_hash(&mut Storage::get_state(env), env, &xasset_wasm_hash);
+        Storage::get_state(env).set_wasm_hash(env, &xasset_wasm_hash);
         Ok(xasset_wasm_hash)
     }
 
@@ -123,8 +123,7 @@ impl OrchestratorContract {
 
         // Store the deployed contract address in the assets map
         storage.assets.set(symbol, contract_address.clone());
-        Storage::set_state(env, &storage)
-
+        Storage::set_state(env, &storage);
         Ok(contract_address)
     }
 
@@ -148,7 +147,7 @@ impl OrchestratorContract {
             return Err(Error::AssetAlreadyDeployed);
         }
         storage.assets.set(asset_symbol, asset_contract);
-        Storage::set_state(env, &storage)
+        Storage::set_state(env, &storage);
         Ok(())
     }
 
@@ -161,7 +160,7 @@ impl OrchestratorContract {
         Self::require_admin(env);
         let mut storage = Storage::get_state(env);
         storage.assets.set(asset_symbol, asset_contract);
-        Storage::set_state(env, &storage)
+        Storage::set_state(env, &storage);
         Ok(())
     }
 
