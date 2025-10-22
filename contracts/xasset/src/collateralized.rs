@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, String, Symbol, Vec};
+use soroban_sdk::{contracttype, Address, Env, String, Symbol, Vec};
 
 use crate::{
     storage::{Interest, InterestDetail},
@@ -53,21 +53,22 @@ pub trait IsCollateralized {
     fn minimum_collateralization_ratio(&self) -> u32;
 
     /// Get the most recent price for XLM
-    fn lastprice_xlm(&self) -> Result<PriceData, Error>;
+    fn lastprice_xlm(&self, env: &Env) -> Result<PriceData, Error>;
 
     /// Get the most recent price for the pegged asset
-    fn lastprice_asset(&self) -> Result<PriceData, Error>;
+    fn lastprice_asset(&self, env: &Env) -> Result<PriceData, Error>;
 
     /// Get the number of decimals used by the xlm oracle contract. This is NOT the same as the number of decimals used by the XLM Stellar Asset Contract.
-    fn decimals_xlm_feed(&self) -> Result<u32, Error>;
+    fn decimals_xlm_feed(&self, env: &Env) -> Result<u32, Error>;
 
     /// Get the number of decimals used by the asset oracle contract. This is NOT the same as the number of decimals used by the xAsset Fungible Token contract.
-    fn decimals_asset_feed(&self) -> Result<u32, Error>;
+    fn decimals_asset_feed(&self, env: &Env) -> Result<u32, Error>;
 
     /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
     /// The user who creates the CDP becomes the CDP's owner.
     fn open_cdp(
         &mut self,
+        env: &Env,
         lender: Address,
         collateral: i128,
         asset_lent: i128,
@@ -148,7 +149,7 @@ pub trait IsCollateralized {
     ///   approving and paying interest.
     ///
     /// Note: This function is for paying only the interest; to repay principal, use [`repay_debt`].
-    fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDPContract, Error>;
+    fn pay_interest(&mut self, env: &Env, lender: Address, amount: i128) -> Result<CDPContract, Error>;
 }
 
 // TODO was a subcontract

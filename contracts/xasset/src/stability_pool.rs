@@ -1,7 +1,4 @@
-use loam_sdk::{
-    soroban_sdk::{self, contracttype, Address, Lazy},
-    subcontract,
-};
+use soroban_sdk::{contractimpl, contracttype, Address};
 
 use crate::{collateralized::CDPStatus, Error};
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
@@ -32,7 +29,7 @@ impl Default for StakerPosition {
     }
 }
 
-#[subcontract]
+// TODO was a subcontract
 pub trait IsStabilityPool {
     /// Deposits xasset tokens into the Stability Pool.
     fn deposit(&mut self, from: Address, amount: i128) -> Result<(), Error>;

@@ -9,7 +9,7 @@ pub mod collateralized;
 pub mod error;
 pub mod index_types;
 mod persistent_map;
-// pub mod stability_pool;
+pub mod stability_pool;
 mod storage;
 pub mod token;
 

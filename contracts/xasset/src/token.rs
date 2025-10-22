@@ -11,7 +11,7 @@ use crate::{
     persistent_map::PersistentMap,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
-    Contract, Error, PriceData,
+     Error, PriceData,
 };
 const VERSION_STRING: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),
@@ -343,6 +343,7 @@ impl TokenInterface for TokenContract {
 
 impl IsCollateralized for TokenContract {
     fn xlm_contract(&self) -> Address {
+        // Get XLM contract out of storage
         self.xlm_contract
             .get()
             .expect("XLM contract address needs to be initialized")
@@ -350,6 +351,7 @@ impl IsCollateralized for TokenContract {
     }
 
     fn xlm_sac(&self) -> Address {
+        // Access storage
         self.xlm_sac
             .get()
             .expect("XLM stellar asset contract address needs to be initialized")
@@ -357,6 +359,7 @@ impl IsCollateralized for TokenContract {
     }
 
     fn asset_contract(&self) -> Address {
+        // Access Storage
         self.asset_contract
             .get()
             .expect("Asset contract address needs to be initialized")
@@ -376,8 +379,7 @@ impl IsCollateralized for TokenContract {
             .expect("Minimum collateralization ratio needs to be initialized")
     }
 
-    fn lastprice_xlm(&self) -> Result<PriceData, Error> {
-        let env = env();
+    fn lastprice_xlm(&self, env: &Env) -> Result<PriceData, Error> {
         let contract = &self.xlm_contract();
         let client = data_feed::Client::new(env, contract);
         match client.try_lastprice(&data_feed::Asset::Other(Symbol::new(env, "XLM"))) {
@@ -392,8 +394,7 @@ impl IsCollateralized for TokenContract {
         }
     }
 
-    fn lastprice_asset(&self) -> Result<PriceData, Error> {
-        let env = env();
+    fn lastprice_asset(&self, env: &Env) -> Result<PriceData, Error> {
         let contract = &self.asset_contract();
         let asset = &self.pegged_asset();
         let client = data_feed::Client::new(env, contract);
@@ -410,8 +411,7 @@ impl IsCollateralized for TokenContract {
         }
     }
 
-    fn decimals_xlm_feed(&self) -> Result<u32, Error> {
-        let env = env();
+    fn decimals_xlm_feed(&self, env: &Env) -> Result<u32, Error> {
         let contract = &self.xlm_contract();
         let client = data_feed::Client::new(env, contract);
 
@@ -424,8 +424,7 @@ impl IsCollateralized for TokenContract {
         }
     }
 
-    fn decimals_asset_feed(&self) -> Result<u32, Error> {
-        let env = env();
+    fn decimals_asset_feed(&self, env: &Env) -> Result<u32, Error> {
         let contract = &self.asset_contract();
         let client = data_feed::Client::new(env, contract);
 
@@ -440,6 +439,7 @@ impl IsCollateralized for TokenContract {
 
     fn open_cdp(
         &mut self,
+        env: &Env,
         lender: Address,
         collateral: i128,
         asset_lent: i128,
@@ -448,7 +448,7 @@ impl IsCollateralized for TokenContract {
         assert_positive(env, asset_lent);
         lender.require_auth();
 
-        let env = env();
+        let env = env;
 
         // 1. check if lender already has a CDP
         if self.cdps.has(lender.clone()) {
@@ -457,10 +457,10 @@ impl IsCollateralized for TokenContract {
 
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
         let cdp = CDPInternal::new(collateral, asset_lent, env.ledger().timestamp());
-        let xlm_price = self.lastprice_xlm()?;
-        let xlm_decimals = self.decimals_xlm_feed()?;
-        let xasset_price = self.lastprice_asset()?;
-        let xasset_decimals = self.decimals_asset_feed()?;
+        let xlm_price = self.lastprice_xlm(env)?;
+        let xlm_decimals = self.decimals_xlm_feed(env)?;
+        let xasset_price = self.lastprice_asset(env)?;
+        let xasset_decimals = self.decimals_asset_feed(env)?;
         let CDPContract {
             collateralization_ratio,
             ..
@@ -505,12 +505,12 @@ impl IsCollateralized for TokenContract {
         Ok(())
     }
 
-    fn cdp(&self, lender: Address) -> Result<CDPContract, Error> {
+    fn cdp(&self, lender: Address, env: &Env) -> Result<CDPContract, Error> {
         let cdp = self.cdps.get(lender.clone()).ok_or(Error::CDPNotFound)?;
-        let xlm_price = self.lastprice_xlm()?;
-        let xlm_decimals = self.decimals_xlm_feed()?;
-        let xasset_price = self.lastprice_asset()?;
-        let xasset_decimals = self.decimals_asset_feed()?;
+        let xlm_price = self.lastprice_xlm(env)?;
+        let xlm_decimals = self.decimals_xlm_feed(env)?;
+        let xasset_price = self.lastprice_asset(env)?;
+        let xasset_decimals = self.decimals_asset_feed(env)?;
         Ok(self.decorate(
             cdp,
             lender,
@@ -544,7 +544,7 @@ impl IsCollateralized for TokenContract {
         // Transfer XLM from lender to contract
         let _ = self
             .native()
-            .try_transfer(&lender, &env().current_contract_address(), &amount)
+            .try_transfer(&lender, &env.current_contract_address(), &amount)
             .map_err(|_| Error::XLMTransferFailed)?;
 
         cdp.xlm_deposited += amount;
@@ -587,7 +587,7 @@ impl IsCollateralized for TokenContract {
         // Transfer XLM from contract to lender
         let _ = self
             .native()
-            .try_transfer(&env().current_contract_address(), &lender, &amount)
+            .try_transfer(&env.current_contract_address(), &lender, &amount)
             .map_err(|_| Error::XLMTransferFailed)?;
 
         cdp.xlm_deposited -= amount;
@@ -675,7 +675,7 @@ impl IsCollateralized for TokenContract {
         let (interest, last_interest_time) = self.get_updated_accrued_interest(&cdp)?;
 
         // Calculate approvalAmount: Projected interest 5 minutes ahead
-        let now = env().ledger().timestamp();
+        let now = env.ledger().timestamp();
         let five_min_later = now + 300; // 5 minutes in seconds
 
         // Project interest 5 minutes ahead
@@ -697,6 +697,7 @@ impl IsCollateralized for TokenContract {
 
     fn pay_interest(
         &mut self,
+        env: &Env,
         lender: Address,
         amount_in_xasset: i128,
     ) -> Result<CDPContract, Error> {
@@ -709,7 +710,7 @@ impl IsCollateralized for TokenContract {
         self.apply_interest_payment(lender, amount_in_xasset, |s, lender, amount_in_xlm| {
             match s
                 .native()
-                .try_transfer(lender, &env().current_contract_address(), amount_in_xlm)
+                .try_transfer(lender, &env.current_contract_address(), amount_in_xlm)
             {
                 Ok(Ok(())) => Ok(()), // both contract invocation and logic succeeded
                 Ok(Err(_)) => Err(Error::XLMTransferFailed), // invocation succeeded but logic failed
@@ -744,7 +745,7 @@ impl IsCollateralized for TokenContract {
             asset_lent: total_asset,
             status: CDPStatus::Frozen,
             accrued_interest: total_interest,
-            last_interest_time: env().ledger().timestamp(),
+            last_interest_time: env.ledger().timestamp(),
         };
         let first_lender = lenders.get(0).unwrap();
         self.cdps.set_and_extend(first_lender.clone(), &merged_cdp);
@@ -767,14 +768,14 @@ impl IsCollateralized for TokenContract {
             let _ = self
                 .native()
                 .try_transfer(
-                    &env().current_contract_address(),
+                    &env.current_contract_address(),
                     &lender,
                     &cdp.xlm_deposited,
                 )
                 .map_err(|_| Error::XLMTransferFailed)?;
         }
-        env().events().publish(
-            (Symbol::new(env(), "CDP"), lender.clone()),
+        env.events().publish(
+            (Symbol::new(env, "CDP"), lender.clone()),
             crate::index_types::CDP {
                 id: lender.clone(),
                 xlm_deposited: cdp.xlm_deposited,
@@ -783,8 +784,8 @@ impl IsCollateralized for TokenContract {
                 interest_paid: cdp.accrued_interest.paid,
                 last_interest_time: cdp.last_interest_time,
                 status: CDPStatus::Closed,
-                ledger: env().ledger().sequence(),
-                timestamp: env().ledger().timestamp(),
+                ledger: env.ledger().sequence(),
+                timestamp: env.ledger().timestamp(),
             },
         );
         self.cdps.remove(lender);
@@ -854,7 +855,7 @@ impl IsCDPAdmin for TokenContract {
     }
 
     fn version(&self) -> String {
-        String::from_str(env(), VERSION_STRING)
+        String::from_str(env, VERSION_STRING)
     }
 }
 
@@ -882,7 +883,7 @@ impl IsStabilityPool for TokenContract {
         let _ = Self::native()
             .try_transfer(
                 &from.clone(),
-                &env().current_contract_address(),
+                &env.current_contract_address(),
                 &Self::get_deposit_fee(env),
             )
             .map_err(|_| Error::XLMTransferFailed)?;
@@ -891,7 +892,7 @@ impl IsStabilityPool for TokenContract {
         position.compounded_constant = Self::get_compounded_constant(env);
         position.product_constant = Self::get_product_constant(env);
         // transfer xasset from address to pool
-        Self::transfer_internal(env, from.clone(), env().current_contract_address(), amount);
+        Self::transfer_internal(env, from.clone(), env.current_contract_address(), amount);
         Self::set_deposit(env, from.clone(), position.clone(), 0);
         Self::add_total_xasset(env, amount);
         Ok(())
@@ -903,7 +904,7 @@ impl IsStabilityPool for TokenContract {
         Self::withdraw_internal(env, to, amount, false)
     }
 
-    fn liquidate(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
+    fn liquidate(self, env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         let mut cdp = Self::cdp(env, lender.clone())?;
         let principal_debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
@@ -963,8 +964,8 @@ impl IsStabilityPool for TokenContract {
         cdp.xlm_deposited -= liquidated_collateral;
         cdp.asset_lent -= liquidated_debt;
 
-        env().events().publish(
-            (Symbol::new(env(), "Liquidation"), lender.clone()),
+        env.events().publish(
+            (Symbol::new(env, "Liquidation"), lender.clone()),
             crate::index_types::Liquidation {
                 cdp_id: lender.clone(),
                 collateral_liquidated: liquidated_collateral,
@@ -973,24 +974,24 @@ impl IsStabilityPool for TokenContract {
                 collateral_applied_to_interest: interest_to_liquidate_xlm,
                 collateralization_ratio: calculate_collateralization_ratio(
                     cdp.asset_lent + liquidated_debt,
-                    self.lastprice_asset()?.price,
+                    self.lastprice_asset(env)?.price,
                     cdp.xlm_deposited + liquidated_collateral,
-                    self.lastprice_xlm()?.price,
-                    self.decimals_xlm_feed()?,
-                    self.decimals_asset_feed()?,
+                    self.lastprice_xlm(env)?.price,
+                    self.decimals_xlm_feed(env)?,
+                    self.decimals_asset_feed(env)?,
                     interest.amount + interest_to_liquidate_xasset,
                 ),
-                xlm_price: self.lastprice_xlm()?.price,
-                xasset_price: self.lastprice_asset()?.price,
-                ledger: env().ledger().sequence(),
-                timestamp: env().ledger().timestamp(),
+                xlm_price: self.lastprice_xlm(env)?.price,
+                xasset_price: self.lastprice_asset(env)?.price,
+                ledger: env.ledger().sequence(),
+                timestamp: env.ledger().timestamp(),
             },
         );
 
         // If all debt is repaid, close the CDP
         if cdp.asset_lent == 0 {
-            env().events().publish(
-                (Symbol::new(env(), "CDP"), lender.clone()),
+            env.events().publish(
+                (Symbol::new(env, "CDP"), lender.clone()),
                 crate::index_types::CDP {
                     id: lender.clone(),
                     xlm_deposited: cdp.xlm_deposited,
@@ -999,8 +1000,8 @@ impl IsStabilityPool for TokenContract {
                     interest_paid: cdp.accrued_interest.paid,
                     last_interest_time: cdp.last_interest_time,
                     status: CDPStatus::Closed,
-                    ledger: env().ledger().sequence(),
-                    timestamp: env().ledger().timestamp(),
+                    ledger: env.ledger().sequence(),
+                    timestamp: env.ledger().timestamp(),
                 },
             );
             Self::remove_cdp(env, lender);
@@ -1019,7 +1020,7 @@ impl IsStabilityPool for TokenContract {
 
         let xlm_reward = Self::calculate_rewards(env, &position);
 
-        let _ = Self::native()
+        let _ = Self::native(env)
             .try_transfer(env.current_contract_address(), &to, &xlm_reward)
             .map_err(|_| Error::XLMTransferFailed)?;
         Self::subtract_total_collateral(env, xlm_reward);
@@ -1061,10 +1062,10 @@ impl IsStabilityPool for TokenContract {
             return Err(Error::InsufficientBalance);
         }
 
-        let _ = Self::native()
+        let _ = Self::native(env)
             .try_transfer(
                 &from.clone(),
-                &env().current_contract_address(),
+                &env.current_contract_address(),
                 &Self::get_stake_fee(),
             )
             .map_err(|_| Error::XLMTransferFailed)?;
@@ -1079,7 +1080,7 @@ impl IsStabilityPool for TokenContract {
             epoch: Self::get_epoch(env),
         };
         // transfer xasset from address to pool
-        Self::transfer_internal(from.clone(), env().current_contract_address(), amount);
+        Self::transfer_internal(from.clone(), env.current_contract_address(), amount);
 
         // Set the new position in the stability pool
         Self::set_deposit(from.clone(), position.clone(), 0);
@@ -1180,8 +1181,8 @@ impl TokenContract {
                 interest_paid: decorated_cdp.accrued_interest.paid,
                 last_interest_time: decorated_cdp.last_interest_time,
                 status: decorated_cdp.status,
-                ledger: env().ledger().sequence(),
-                timestamp: env().ledger().timestamp(),
+                ledger: env.ledger().sequence(),
+                timestamp: env.ledger().timestamp(),
             },
         );
         Self::cdps.set_and_extend(
@@ -1250,7 +1251,7 @@ impl TokenContract {
             let _ = self
                 .native()
                 .try_transfer(
-                    &env().current_contract_address(),
+                    &env.current_contract_address(),
                     &to,
                     &self.get_unstake_return(),
                 )
@@ -1259,12 +1260,12 @@ impl TokenContract {
 
             // transfer xasset to address from pool
             self.transfer_internal(
-                env().current_contract_address(),
+                env.current_contract_address(),
                 to.clone(),
                 amount_to_withdraw,
             );
-            env().events().publish(
-                (Symbol::new(env(), "StakePosition"), to.clone()),
+            env.events().publish(
+                (Symbol::new(env, "StakePosition"), to.clone()),
                 crate::index_types::StakePosition {
                     id: to.clone(),
                     xasset_deposit: 0,
@@ -1272,8 +1273,8 @@ impl TokenContract {
                     compounded_constant: self.get_compounded_constant(),
                     rewards_claimed: 0,
                     epoch: self.get_epoch(),
-                    ledger: env().ledger().sequence(),
-                    timestamp: env().ledger().timestamp(),
+                    ledger: env.ledger().sequence(),
+                    timestamp: env.ledger().timestamp(),
                 },
             );
 
@@ -1289,7 +1290,7 @@ impl TokenContract {
         position.product_constant = self.get_product_constant();
         // transfer xasset from pool to address
         self.transfer_internal(
-            env().current_contract_address(),
+            env.current_contract_address(),
             to.clone(),
             amount_to_withdraw,
         );
@@ -1363,8 +1364,8 @@ impl TokenContract {
     }
 
     fn set_deposit(&mut self, address: Address, position: StakerPosition, _rewards: i128) {
-        env().events().publish(
-            (Symbol::new(env(), "StakePosition"), address.clone()),
+        env.events().publish(
+            (Symbol::new(env, "StakePosition"), address.clone()),
             crate::index_types::StakePosition {
                 id: address.clone(),
                 xasset_deposit: position.xasset_deposit,
@@ -1372,8 +1373,8 @@ impl TokenContract {
                 compounded_constant: position.compounded_constant,
                 rewards_claimed: _rewards,
                 epoch: position.epoch,
-                ledger: env().ledger().sequence(),
-                timestamp: env().ledger().timestamp(),
+                ledger: env.ledger().sequence(),
+                timestamp: env.ledger().timestamp(),
             },
         );
         self.deposits.set_and_extend(address, &position);
@@ -1487,7 +1488,7 @@ impl TokenContract {
     }
 
     fn get_updated_accrued_interest(&self, cdp: &CDPInternal) -> Result<(Interest, u64), Error> {
-        let now = env().ledger().timestamp();
+        let now = env.ledger().timestamp();
         let last_time = cdp.last_interest_time;
 
         // If this is a new CDP or first interest calculation
@@ -1574,9 +1575,9 @@ impl TokenContract {
     fn pay_interest_from(&mut self, approver: Address) -> Result<CDPContract, Error> {
         self.apply_interest_payment(approver, 0, |s, from, amount_in_xlm| {
             match s.native().try_transfer_from(
-                &env().current_contract_address(),
+                &env.current_contract_address(),
                 from,
-                &env().current_contract_address(),
+                &env.current_contract_address(),
                 amount_in_xlm,
             ) {
                 Ok(Ok(())) => Ok(()),

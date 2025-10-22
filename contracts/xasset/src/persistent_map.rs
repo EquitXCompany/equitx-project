@@ -57,10 +57,10 @@ where
     }
 
     fn set_and_extend(&mut self, key: K, value: &V) {
-        if self.has(key.clone()) {
+        if self.has(&key) {
             let ttl = self.env.storage().max_ttl();
-            self.extend_ttl(key.clone(), ttl, ttl);
+            self.extend_ttl(&key, ttl, ttl);
         }
-        self.set(key, value);
+        self.set(&key, value);
     }
 }
