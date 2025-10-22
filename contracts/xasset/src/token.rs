@@ -11,7 +11,7 @@ use crate::{
     persistent_map::PersistentMap,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
-    Contract, Error, PersistentMapExt, PriceData,
+    Contract, Error, PriceData,
 };
 const VERSION_STRING: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),

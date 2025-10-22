@@ -3,13 +3,14 @@ extern crate std;
 use crate::{collateralized::CDPStatus};
 use crate::data_feed;
 use data_feed::Asset;
+use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
     testutils::Address as _,
     token::{self, Client as TokenClient, StellarAssetClient},
     Address, Env, String, Symbol, Vec,
 };
 
-use crate::token::{TokenContract, TokenContractClient};
+use crate::contract::{XAssetContract, XAssetContractClient};
 
 
 fn create_sac_token_clients<'a>(
@@ -40,8 +41,8 @@ fn create_token_contract<'a>(
     admin: Address,
     datafeed: data_feed::Client<'_>,
     xlm_sac: Address,
-) -> TokenClient<'a> {
-    let token = TokenClient::new(e, &e.register(TokenContract, ()));
+) -> XAssetContractClient<'a> {
+    let token = XAssetContractClient::new(e, &e.register(XAssetContract, ()));
     let _ = token.try_admin_set(&admin);
 
     let pegged_asset = Symbol::new(e, "USDT");
@@ -371,7 +372,7 @@ fn test_cdp_operations_with_interest() {
 
     // Set initial timestamp
     let initial_time = 1700000000;
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time);
+    Ledger::set_timestamp(&e.ledger(), initial_time);
 
     // Open initial CDP
     token.open_cdp(&alice, &10_000_000_000, &500_000_000);
@@ -381,7 +382,7 @@ fn test_cdp_operations_with_interest() {
     assert_eq!(initial_cdp.accrued_interest.amount, 0);
 
     // Advance time by 1 year (31536000 seconds)
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 31536000);
+    Ledger::set_timestamp(&e.ledger(), initial_time + 31536000);
 
     // Check interest has accrued (11% annual rate)
     let cdp_after_year = token.cdp(&alice);
@@ -390,13 +391,13 @@ fn test_cdp_operations_with_interest() {
     assert!(cdp_after_year.accrued_interest.amount >= 54_000_000); // Allow for some rounding
 
     // Advance another 6 months
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 47304000);
+    Ledger::set_timestamp(&e.ledger(), initial_time + 47304000);
 
     // Borrow more
     token.borrow_xasset(&alice, &200_000_000);
 
     // Advance 3 more months
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 55944000);
+    Ledger::set_timestamp(&e.ledger(), initial_time + 55944000);
 
     // Check total debt (original + borrowed + accumulated interest)
     let cdp_before_repay = token.cdp(&alice);
@@ -423,7 +424,7 @@ fn test_cdp_operations_with_interest() {
     // test pay_interest
     // Advance time by 2 months
     let time_after_debt = initial_time + 55944000 + 5_184_000; // +60 days (2 months in seconds)
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), time_after_debt);
+    Ledger::set_timestamp(&e.ledger(), time_after_debt);
 
     // Get updated accrued interest
     let cdp_for_interest = token.cdp(&alice);
