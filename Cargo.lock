@@ -1855,15 +1855,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stellar-tokens"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68e41ef20c8d4f3c0b21b83a15c8e4c7e99462af020fc0f0dcd1d548a07812ea"
-dependencies = [
- "soroban-sdk 22.0.8",
-]
-
-[[package]]
 name = "stellar-xdr"
 version = "22.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2197,7 +2188,6 @@ version = "1.0.0"
 dependencies = [
  "data-feed",
  "soroban-sdk 23.0.3",
- "stellar-tokens",
 ]
 
 [[package]]

@@ -13,7 +13,6 @@ doctest = false
 
 [dependencies]
 soroban-sdk = { workspace = true }
-stellar-tokens = "0.4.1"
 data-feed = { path = "../data-feed" }
 
 [dev-dependencies]

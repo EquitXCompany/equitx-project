@@ -1,7 +1,7 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, assert_with_error, contract, contractimpl, contracttype, token, Address, Env, String,
+    self, assert_with_error, contract, contractimpl, contracttype, token::{self, TokenInterface}, Address, Env, String,
     Symbol, Vec,
 };
 
@@ -89,7 +89,7 @@ fn calculate_collateralization_ratio(
 
 #[contracttype]
 #[derive(Default)]
-pub struct Token {
+pub struct TokenStorage {
     /// Name of the token
     name: String,
     /// Mapping of account addresses to their token balances
@@ -183,114 +183,15 @@ impl TokenContract {
         token.interest_collected.set(&0);
         token.interest_rate.set(&annual_interest_rate);
     }
-}
 
-impl IsSep41 for Token {
-    fn allowance(&self, from: Address, spender: Address) -> i128 {
-        let allowance = self.allowances.get(Txn(from, spender));
-        match allowance {
-            Some(a) => {
-                if env().ledger().sequence() <= a.live_until_ledger {
-                    a.amount
-                } else {
-                    0
-                }
-            }
-            None => 0,
-        }
-    }
-
-    fn approve(&mut self, from: Address, spender: Address, amount: i128, live_until_ledger: u32) {
-        from.require_auth();
-        let current_ledger = env().ledger().sequence();
-        assert_positive(env, amount);
-        assert_with_error!(
-            env(),
-            live_until_ledger >= current_ledger,
-            Error::InvalidLedgerSequence
-        );
-        self.allowances.set_and_extend(
-            Txn(from, spender),
-            &Allowance {
-                amount,
-                live_until_ledger,
-            },
-        );
-    }
-
-    fn balance(&self, id: Address) -> i128 {
-        self.balances.get(id).unwrap_or_default()
-    }
-
-    fn transfer(&mut self, from: Address, to: Address, amount: i128) {
+    // Fungible
+    fn increase_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         assert_positive(env, amount);
-        assert_with_error!(
-            env(),
-            self.balance(from.clone()) >= amount,
-            Error::InsufficientBalance
-        );
-        self.transfer_internal(from, to, amount);
-    }
-
-    fn transfer_from(&mut self, spender: Address, from: Address, to: Address, amount: i128) {
-        spender.require_auth();
-        assert_positive(env, amount);
-        let allowance = self.allowance(from.clone(), spender.clone());
-        assert_with_error!(env(), allowance >= amount, Error::InsufficientAllowance);
-        self.transfer_internal(from.clone(), to, amount);
-        self.decrease_allowance(from, spender, amount);
-    }
-
-    fn burn(&mut self, from: Address, amount: i128) {
-        from.require_auth();
-        assert_positive(env, amount);
-        assert_with_error!(
-            env(),
-            self.balance(from.clone()) >= amount,
-            Error::InsufficientBalance
-        );
-        self.burn_internal(from, amount);
-    }
-
-    fn burn_from(&mut self, spender: Address, from: Address, amount: i128) {
-        spender.require_auth();
-        assert_positive(env, amount);
-        let allowance = self.allowance(from.clone(), spender.clone());
-        assert_with_error!(env(), allowance >= amount, Error::InsufficientAllowance);
-        self.burn(from.clone(), amount);
-        self.decrease_allowance(from, spender, amount);
-    }
-
-    fn decimals(&self) -> u32 {
-        self.decimals
-            .get()
-            .expect("Decimals need to be initialized")
-    }
-
-    fn name(&self) -> String {
-        self.name
-            .get()
-            .expect("Name needs to be initialized")
-            .clone()
-    }
-
-    fn symbol(&self) -> String {
-        self.symbol
-            .get()
-            .expect("Symbol needs to be initialized")
-            .clone()
-    }
-}
-
-impl IsFungible for Token {
-    fn increase_allowance(&mut self, from: Address, spender: Address, amount: i128) {
-        from.require_auth();
-        assert_positive(env, amount);
-        let current_allowance = self.allowance(from.clone(), spender.clone());
+        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
         let new_amount = current_allowance + amount;
-        let current_ledger = env().ledger().sequence();
-        self.allowances.set_and_extend(
+        let current_ledger = env.ledger().sequence();
+        Self::allowances.set_and_extend(
             Txn(from, spender),
             &Allowance {
                 amount: new_amount,
@@ -299,13 +200,13 @@ impl IsFungible for Token {
         );
     }
 
-    fn decrease_allowance(&mut self, from: Address, spender: Address, amount: i128) {
+    fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         assert_positive(env, amount);
-        let current_allowance = self.allowance(from.clone(), spender.clone());
+        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
-        let current_ledger = env().ledger().sequence();
-        self.allowances.set_and_extend(
+        let current_ledger = env.ledger().sequence();
+        Self::allowances.set_and_extend(
             Txn(from, spender),
             &Allowance {
                 amount: new_amount,
@@ -318,35 +219,129 @@ impl IsFungible for Token {
         self.balance(id)
     }
 
-    fn authorized(&self, id: Address) -> bool {
-        self.authorized.get(id).unwrap_or_default()
-    }
+    // fn authorized(&self, id: Address) -> bool {
+    //     self.authorized.get(id).unwrap_or_default()
+    // }
 
-    fn set_authorized(&mut self, id: Address, authorize: bool) {
+    // fn set_authorized(&mut self, id: Address, authorize: bool) {
+    //     self::Contract::require_auth();
+    //     self.authorized.set_and_extend(id, &authorize);
+    // }
+
+    fn mint(env: &Env, to: Address, amount: i128) {
         self::Contract::require_auth();
-        self.authorized.set_and_extend(id, &authorize);
+        assert_positive(env, amount);
+        Self::mint_internal(to, amount);
     }
 
-    fn mint(&mut self, to: Address, amount: i128) {
+    fn clawback(env: &Env, from: Address, amount: i128) {
         assert_positive(env, amount);
         self::Contract::require_auth();
-        self.mint_internal(to, amount);
-    }
-
-    fn clawback(&mut self, from: Address, amount: i128) {
-        assert_positive(env, amount);
-        self::Contract::require_auth();
-        let balance = self.balance(from.clone()) - amount;
-        self.balances.set_and_extend(from, &balance);
-    }
-
-    fn set_admin(&mut self, new_admin: Address) {
-        self::Contract::require_auth();
-        Contract::set_admin(new_admin);
+        let balance = Self::balance(env, from.clone()) - amount;
+        Self::balances.set_and_extend(from, &balance);
     }
 }
 
-impl IsCollateralized for Token {
+// Sep-41 implementation
+impl TokenInterface for TokenContract {
+    fn allowance(env: Env, from: Address, spender: Address) -> i128 {
+        let allowance = Self::allowances.get(Txn(from, spender));
+        match allowance {
+            Some(a) => {
+                if env.ledger().sequence() <= a.live_until_ledger {
+                    a.amount
+                } else {
+                    0
+                }
+            }
+            None => 0,
+        }
+    }
+
+    fn approve(env: Env, from: Address, spender: Address, amount: i128, live_until_ledger: u32) {
+        from.require_auth();
+        let current_ledger = env.ledger().sequence();
+        assert_positive(env, amount);
+        assert_with_error!(
+            env,
+            live_until_ledger >= current_ledger,
+            Error::InvalidLedgerSequence
+        );
+        Self::allowances.set_and_extend(
+            Txn(from, spender),
+            &Allowance {
+                amount,
+                live_until_ledger,
+            },
+        );
+    }
+
+    fn balance(env: Env, id: Address) -> i128 {
+        Self::balances.get(id).unwrap_or_default()
+    }
+
+    fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+        from.require_auth();
+        assert_positive(env, amount);
+        assert_with_error!(
+            env,
+            Self::balance(env, from.clone()) >= amount,
+            Error::InsufficientBalance
+        );
+        Self::transfer_internal(from, to, amount);
+    }
+
+    fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
+        spender.require_auth();
+        assert_positive(env, amount);
+        let allowance = Self::allowance(env, from.clone(), spender.clone());
+        assert_with_error!(env, allowance >= amount, Error::InsufficientAllowance);
+        Self::transfer_internal(from.clone(), to, amount);
+        Self::decrease_allowance(env, from, spender, amount);
+    }
+
+    fn burn(env: Env, from: Address, amount: i128) {
+        from.require_auth();
+        assert_positive(env, amount);
+        assert_with_error!(
+            env,
+            Self::balance(env, from.clone()) >= amount,
+            Error::InsufficientBalance
+        );
+        Self::burn_internal(from, amount);
+    }
+
+    fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
+        spender.require_auth();
+        assert_positive(env, amount);
+        let allowance = Self::allowance(env, from.clone(), spender.clone());
+        assert_with_error!(env, allowance >= amount, Error::InsufficientAllowance);
+        Self::burn(env, from.clone(), amount);
+        Self::decrease_allowance(env, from, spender, amount);
+    }
+
+    fn decimals(env: Env) -> u32 {
+        Self::decimals
+            .get()
+            .expect("Decimals need to be initialized")
+    }
+
+    fn name(env: Env) -> String {
+        Self::name
+            .get()
+            .expect("Name needs to be initialized")
+            .clone()
+    }
+
+    fn symbol(env: Env) -> String {
+        Self::symbol
+            .get()
+            .expect("Symbol needs to be initialized")
+            .clone()
+    }
+}
+
+impl IsCollateralized for TokenContract {
     fn xlm_contract(&self) -> Address {
         self.xlm_contract
             .get()
@@ -797,7 +792,7 @@ impl IsCollateralized for Token {
     }
 }
 
-impl IsCDPAdmin for Token {
+impl IsCDPAdmin for TokenContract {
     fn cdp_init(
         &self,
         xlm_sac: Address,
@@ -863,54 +858,53 @@ impl IsCDPAdmin for Token {
     }
 }
 
-impl IsStabilityPool for Token {
-    fn deposit(&mut self, from: Address, amount: i128) -> Result<(), Error> {
+impl IsStabilityPool for TokenContract {
+    fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         from.require_auth();
         // check if the user has sufficient xasset
-        let balance = self.balance(from.clone());
+        let balance = Self::balance(env, from.clone());
         if balance < amount {
             return Err(Error::InsufficientBalance);
         }
-        let current_position = self.get_staker_deposit_amount(from.clone())?;
-        let mut position = self.get_deposit(from.clone()).unwrap_or(StakerPosition {
+        let current_position = Self::get_staker_deposit_amount(env, from.clone())?;
+        let mut position = Self::get_deposit(env, from.clone()).unwrap_or(StakerPosition {
             xasset_deposit: 0,
-            product_constant: self.get_product_constant(),
-            compounded_constant: self.get_compounded_constant(),
-            epoch: self.get_epoch(),
+            product_constant: Self::get_product_constant(env),
+            compounded_constant: Self::get_compounded_constant(env),
+            epoch: Self::get_epoch(env),
         });
-        let xlm_reward = self.calculate_rewards(&position);
+        let xlm_reward = Self::calculate_rewards(env, &position);
         if xlm_reward > 0 {
             return Err(Error::ClaimRewardsFirst);
         }
         // Collect 1 XLM fee for each new deposit
-        let _ = self
-            .native()
+        let _ = Self::native()
             .try_transfer(
                 &from.clone(),
                 &env().current_contract_address(),
-                &self.get_deposit_fee(),
+                &Self::get_deposit_fee(env),
             )
             .map_err(|_| Error::XLMTransferFailed)?;
-        self.add_fees_collected(self.get_deposit_fee());
+        Self::add_fees_collected(env, Self::get_deposit_fee(env));
         position.xasset_deposit = current_position + amount;
-        position.compounded_constant = self.get_compounded_constant();
-        position.product_constant = self.get_product_constant();
+        position.compounded_constant = Self::get_compounded_constant(env);
+        position.product_constant = Self::get_product_constant(env);
         // transfer xasset from address to pool
-        self.transfer_internal(from.clone(), env().current_contract_address(), amount);
-        self.set_deposit(from.clone(), position.clone(), 0);
-        self.add_total_xasset(amount);
+        Self::transfer_internal(env, from.clone(), env().current_contract_address(), amount);
+        Self::set_deposit(env, from.clone(), position.clone(), 0);
+        Self::add_total_xasset(env, amount);
         Ok(())
     }
 
-    fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
+    fn withdraw(env: &Env, to: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         to.require_auth();
-        self.withdraw_internal(to, amount, false)
+        Self::withdraw_internal(env, to, amount, false)
     }
 
-    fn liquidate(&mut self, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
-        let mut cdp = self.cdp(lender.clone())?;
+    fn liquidate(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
+        let mut cdp = Self::cdp(env, lender.clone())?;
         let principal_debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
         let mut interest = cdp.accrued_interest;
@@ -925,28 +919,28 @@ impl IsStabilityPool for Token {
             return Err(Error::InvalidLiquidation);
         }
 
-        let total_xasset = self.get_total_xasset();
+        let total_xasset = Self::get_total_xasset(env);
 
         // Handle interest first - collect all accrued interest if possible
         let interest_to_liquidate_xasset = cmp::min(interest.amount, total_xasset);
-        let interest_to_liquidate_xlm = self.convert_xasset_to_xlm(interest_to_liquidate_xasset)?;
+        let interest_to_liquidate_xlm = Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
 
         if interest_to_liquidate_xlm > 0 {
             interest.amount -= interest_to_liquidate_xasset;
             interest.paid += interest_to_liquidate_xlm;
             cdp.accrued_interest = interest;
-            self.interest_collected
-                .set(&(self.get_total_interest_collected() + &interest_to_liquidate_xlm));
-            self.increment_interest_for_current_epoch(&interest_to_liquidate_xlm);
+            Self::interest_collected(env)
+                .set(&(Self::get_total_interest_collected(env) + &interest_to_liquidate_xlm));
+            Self::increment_interest_for_current_epoch(env, &interest_to_liquidate_xlm);
         }
 
         // if unable to cover all interest, go ahead and update rewards and return
         if interest.amount > 0 {
-            self.set_cdp_from_decorated(lender, cdp);
+            Self::set_cdp_from_decorated(env, lender, cdp);
             return Ok((0, 0, CDPStatus::Frozen));
         }
         // Now handle the principal debt with remaining available xasset
-        let remaining_xasset = self.get_total_xasset();
+        let remaining_xasset = Self::get_total_xasset(env);
         let liquidated_debt = cmp::min(principal_debt, remaining_xasset);
 
         // Calculate the proportional amount of collateral to withdraw based on principal repaid
@@ -956,14 +950,14 @@ impl IsStabilityPool for Token {
         );
 
         // Update constants for the stability pool
-        self.update_constants(liquidated_debt, liquidated_collateral);
+        Self::update_constants(env, liquidated_debt, liquidated_collateral);
 
         // Update the stability pool
-        self.subtract_total_xasset(liquidated_debt);
-        self.add_total_collateral(liquidated_collateral);
+        Self::subtract_total_xasset(env, liquidated_debt);
+        Self::add_total_collateral(env, liquidated_collateral);
 
         // Burn the liquidated debt
-        self.burn_internal(env().current_contract_address(), liquidated_debt);
+        Self::burn_internal(env, env.current_contract_address(), liquidated_debt);
 
         // Update the CDP
         cdp.xlm_deposited -= liquidated_collateral;
@@ -1009,39 +1003,37 @@ impl IsStabilityPool for Token {
                     timestamp: env().ledger().timestamp(),
                 },
             );
-            self.cdps.remove(lender);
+            Self::remove_cdp(env, lender);
             Ok((liquidated_debt, liquidated_collateral, CDPStatus::Closed))
         } else {
             // Otherwise, update the CDP
-            self.set_cdp_from_decorated(lender, cdp);
+            Self::set_cdp_from_decorated(env, lender, cdp);
             Ok((liquidated_debt, liquidated_collateral, CDPStatus::Frozen))
         }
     }
 
-    fn claim_rewards(&mut self, to: Address) -> Result<i128, Error> {
+    fn claim_rewards(env: &Env, to: Address) -> Result<i128, Error> {
         to.require_auth();
-        let mut position = self
-            .get_deposit(to.clone())
+            let mut position = Self::get_deposit(env, to.clone())
             .ok_or(Error::StakeDoesntExist)?;
 
-        let xlm_reward = self.calculate_rewards(&position);
+        let xlm_reward = Self::calculate_rewards(env, &position);
 
-        let _ = self
-            .native()
-            .try_transfer(&env().current_contract_address(), &to, &xlm_reward)
+        let _ = Self::native()
+            .try_transfer(env.current_contract_address(), &to, &xlm_reward)
             .map_err(|_| Error::XLMTransferFailed)?;
-        self.subtract_total_collateral(xlm_reward);
-        position.epoch = self.get_epoch();
-        position.xasset_deposit = self.get_staker_deposit_amount(to.clone())?;
-        position.compounded_constant = self.get_compounded_constant();
-        position.product_constant = self.get_product_constant();
-        self.set_deposit(to, position, xlm_reward);
+        Self::subtract_total_collateral(env, xlm_reward);
+        position.epoch = Self::get_epoch(env);
+        position.xasset_deposit = Self::get_staker_deposit_amount(env, to.clone())?;
+        position.compounded_constant = Self::get_compounded_constant(env);
+        position.product_constant = Self::get_product_constant(env);
+        Self::set_deposit(env, to, position, xlm_reward);
         Ok(xlm_reward)
     }
 
-    fn get_staker_deposit_amount(&self, address: Address) -> Result<i128, Error> {
-        match self.get_deposit(address) {
-            Some(position) => Ok(self.calculate_current_deposit(&position)),
+    fn get_staker_deposit_amount(env: &Env, address: Address) -> Result<i128, Error> {
+        match Self::get_deposit(env, address) {
+            Some(position) => Ok(Self::calculate_current_deposit(env, &position)),
             None => Err(Error::StakeDoesntExist),
         }
     }
@@ -1054,45 +1046,44 @@ impl IsStabilityPool for Token {
         self.get_total_collateral()
     }
 
-    fn stake(&mut self, from: Address, amount: i128) -> Result<(), Error> {
+    fn stake(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
         from.require_auth();
 
         assert_positive(env, amount);
 
         // Check if the user already has a stake
-        if self.get_deposit(from.clone()).is_some() {
+        if Self::get_deposit(from.clone()).is_some() {
             return Err(Error::StakeAlreadyExists);
         }
         // check if the user has sufficient xasset
-        let balance = self.balance(from.clone());
+        let balance = Self::balance(from.clone());
         if balance < amount {
             return Err(Error::InsufficientBalance);
         }
 
-        let _ = self
-            .native()
+        let _ = Self::native()
             .try_transfer(
                 &from.clone(),
                 &env().current_contract_address(),
-                &self.get_stake_fee(),
+                &Self::get_stake_fee(),
             )
             .map_err(|_| Error::XLMTransferFailed)?;
         // Add stake fee
-        self.add_fees_collected(self.get_stake_fee());
+        Self::add_fees_collected(env, Self::get_stake_fee());
 
         // Create new position
         let position = StakerPosition {
             xasset_deposit: amount,
-            product_constant: self.get_product_constant(),
-            compounded_constant: self.get_compounded_constant(),
-            epoch: self.get_epoch(),
+            product_constant: Self::get_product_constant(env),
+            compounded_constant: Self::get_compounded_constant(env),
+            epoch: Self::get_epoch(env),
         };
         // transfer xasset from address to pool
-        self.transfer_internal(from.clone(), env().current_contract_address(), amount);
+        Self::transfer_internal(from.clone(), env().current_contract_address(), amount);
 
         // Set the new position in the stability pool
-        self.set_deposit(from.clone(), position.clone(), 0);
-        self.add_total_xasset(amount);
+        Self::set_deposit(from.clone(), position.clone(), 0);
+        Self::add_total_xasset(amount);
         Ok(())
     }
 
@@ -1132,7 +1123,7 @@ impl IsStabilityPool for Token {
     }
 }
 
-impl Token {
+impl TokenContract {
     /// Decorate a CDPInternal with the collateralization ratio. Also check if the CDP is insolvent.
     fn decorate(
         &self,
@@ -1162,7 +1153,7 @@ impl Token {
             xlm_deposited: cdp.xlm_deposited,
             asset_lent: cdp.asset_lent,
             accrued_interest: interest,
-            last_interest_time: last_interest_time,
+            last_interest_time,
             collateralization_ratio,
             status: if matches!(cdp.status, CDPStatus::Open)
                 && collateralization_ratio < self.minimum_collateralization_ratio()
@@ -1178,9 +1169,9 @@ impl Token {
         }
     }
 
-    fn set_cdp_from_decorated(&mut self, lender: Address, decorated_cdp: CDPContract) {
-        env().events().publish(
-            (Symbol::new(env(), "CDP"), lender.clone()),
+    fn set_cdp_from_decorated(env: &Env, lender: Address, decorated_cdp: CDPContract) {
+        env.events().publish(
+            (Symbol::new(env, "CDP"), lender.clone()),
             crate::index_types::CDP {
                 id: lender.clone(),
                 xlm_deposited: decorated_cdp.xlm_deposited,
@@ -1193,7 +1184,7 @@ impl Token {
                 timestamp: env().ledger().timestamp(),
             },
         );
-        self.cdps.set_and_extend(
+        Self::cdps.set_and_extend(
             lender,
             &CDPInternal {
                 xlm_deposited: decorated_cdp.xlm_deposited,
@@ -1205,9 +1196,9 @@ impl Token {
         );
     }
 
-    fn native(&self) -> token::Client {
+    fn native(env: &Env) -> token::Client {
         token::Client::new(
-            env(),
+            env,
             &self
                 .xlm_sac
                 .get()
