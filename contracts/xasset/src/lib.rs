@@ -1,42 +1,36 @@
 #![no_std]
 use collateralized::{CDPAdmin, CDPContract, CDPStatus, Collateralized};
-use loam_sdk::{
-    derive_contract,
-    soroban_sdk::{self, Address, String, Symbol, Vec},
-};
-use loam_subcontract_core::{admin::Admin, Core};
-use loam_subcontract_ft::{Fungible, Sep41};
+use soroban_sdk::{self, contracttype, Address, String, Symbol, Vec};
+
+use stellar_tokens::fungible::{Base, FungibleToken}
 use stability_pool::{AvailableAssets, StabilityPool, StakerPosition};
 use token::Token;
 
 pub mod collateralized;
 pub mod error;
 pub mod index_types;
-mod persistent_map_ext;
+mod persistent_map;
 pub mod stability_pool;
 mod storage;
 pub mod token;
 
-pub(crate) use persistent_map_ext::PersistentMapExt;
+pub(crate) use persistent_map::PersistentMapExt;
 
 use crate::storage::InterestDetail;
 pub use error::Error;
 
 // FIXME: copied from data_feed; find way to reuse
-#[loam_sdk::soroban_sdk::contracttype]
+#[contracttype]
 pub struct PriceData {
     pub price: i128,    //asset price at given point in time
     pub timestamp: u64, //recording timestamp
 }
 
 pub mod data_feed {
-    use loam_sdk::soroban_sdk;
-
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/data_feed.wasm");
 }
 
 #[derive_contract(
-    Core(Admin),
     Collateralized(Token),
     CDPAdmin(Token),
     Sep41(Token),

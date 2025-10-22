@@ -1,22 +1,23 @@
 use core::cmp;
 
-use loam_sdk::loamstorage;
-use loam_sdk::soroban_sdk::{
-    self, assert_with_error, env, token, Address, InstanceItem, LoamKey, PersistentMap, String,
+use soroban_sdk::{
+    self, assert_with_error, contract, contractimpl, contracttype, token, Address, Env, String,
     Symbol, Vec,
 };
-use loam_subcontract_ft::{Fungible, IsFungible, IsSep41};
 
 use crate::{
     collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
     data_feed,
+    persistent_map::PersistentMap,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
     Contract, Error, PersistentMapExt, PriceData,
 };
 const VERSION_STRING: &str = concat!(
-    env!("CARGO_PKG_VERSION_MAJOR"), ".",
-    env!("CARGO_PKG_VERSION_MINOR"), ".",
+    env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
+    ".",
     env!("CARGO_PKG_VERSION_PATCH")
 );
 const BASIS_POINTS: i128 = 10_000;
@@ -29,8 +30,8 @@ const SECONDS_PER_YEAR: u64 = 31_536_000; // 365 days
 const INTEREST_PRECISION: i128 = 1_000_000_000; // 9 decimal places for precision
 const DEFAULT_PRECISION: i128 = 10_000_000; // 7 decimal places for precision
 
-fn assert_positive(value: i128) {
-    assert_with_error!(env(), value > 0, Error::ValueNotPositive);
+fn assert_positive(env: &Env, value: i128) {
+    assert_with_error!(env, value > 0, Error::ValueNotPositive);
 }
 
 fn bankers_round(value: i128, precision: i128) -> i128 {
@@ -86,31 +87,31 @@ fn calculate_collateralization_ratio(
     collateralization_ratio
 }
 
-#[loamstorage]
+#[contracttype]
 #[derive(Default)]
 pub struct Token {
     /// Name of the token
-    name: InstanceItem<String>,
+    name: String,
     /// Mapping of account addresses to their token balances
-    balances: PersistentMap<Address, i128>,
+    balances: PersistentMap<String, Address, i128>, // Persistent Map
     /// Mapping of transactions to their associated allowances
-    allowances: PersistentMap<Txn, Allowance>,
+    allowances: PersistentMap<String, Txn, Allowance>,
     /// Mapping of addresses to their authorization status
-    authorized: PersistentMap<Address, bool>,
+    authorized: PersistentMap<String, Address, bool>,
     /// Symbol of the token
-    symbol: InstanceItem<String>,
+    symbol: String,
     /// Number of decimal places for token amounts
-    decimals: InstanceItem<u32>,
+    decimals: u32,
     /// XLM Stellar Asset Contract address, for XLM transfers
-    xlm_sac: InstanceItem<Address>,
+    xlm_sac: Address,
     /// Oracle contract ID for XLM price feed
-    xlm_contract: InstanceItem<Address>,
+    xlm_contract: Address,
     /// Oracle contract ID for asset price feed
-    asset_contract: InstanceItem<Address>,
+    asset_contract: Address,
     /// Oracle asset ID this asset tracks.
-    pegged_asset: InstanceItem<Symbol>,
+    pegged_asset: Symbol,
     /// basis points; default 110%; updateable by admin
-    min_collat_ratio: InstanceItem<u32>,
+    min_collat_ratio: u32,
     /// each Address can only have one CDP per Asset
     cdps: PersistentMap<Address, CDPInternal>,
     /* stability pool fields */
@@ -121,32 +122,36 @@ pub struct Token {
     /// stability pool interest collected records
     interest_record: PersistentMap<u64, i128>,
     /// total xasset in the stability pool
-    total_xasset: InstanceItem<i128>,
+    total_xasset: i128,
     /// total collateral in the stability pool
-    total_collateral: InstanceItem<i128>,
+    total_collateral: i128,
     /// current product constant of the stability pool
-    product_constant: InstanceItem<i128>,
+    product_constant: i128,
     /// current compounded constant of the stability pool
-    compounded_constant: InstanceItem<i128>,
+    compounded_constant: i128,
     /// current epoch of the stability pool
-    epoch: InstanceItem<u64>,
+    epoch: u64,
     /// current total of collected fees for stability pool
-    fees_collected: InstanceItem<i128>,
+    fees_collected: i128,
     /// stability pool deposit fee
-    deposit_fee: InstanceItem<i128>,
+    deposit_fee: i128,
     /// stability pool stake fee
-    stake_fee: InstanceItem<i128>,
+    stake_fee: i128,
     /// stability pool fee amount returned upon unstaking
-    unstake_return: InstanceItem<i128>,
+    unstake_return: i128,
     /// Annual interest rate in basis points (e.g., 500 = 5%)
-    interest_rate: InstanceItem<u32>,
+    interest_rate: u32,
     /// Total interest collected (in XLM) by the protocol
-    interest_collected: InstanceItem<i128>,
+    interest_collected: i128,
 }
 
-impl Token {
+#[contract]
+pub struct TokenContract;
+
+#[contractimpl]
+impl TokenContract {
     #[allow(clippy::too_many_arguments)]
-    pub fn init(
+    pub fn __constructor(
         xlm_sac: Address,
         xlm_contract: Address,
         asset_contract: Address,
@@ -198,7 +203,7 @@ impl IsSep41 for Token {
     fn approve(&mut self, from: Address, spender: Address, amount: i128, live_until_ledger: u32) {
         from.require_auth();
         let current_ledger = env().ledger().sequence();
-        assert_positive(amount);
+        assert_positive(env, amount);
         assert_with_error!(
             env(),
             live_until_ledger >= current_ledger,
@@ -219,7 +224,7 @@ impl IsSep41 for Token {
 
     fn transfer(&mut self, from: Address, to: Address, amount: i128) {
         from.require_auth();
-        assert_positive(amount);
+        assert_positive(env, amount);
         assert_with_error!(
             env(),
             self.balance(from.clone()) >= amount,
@@ -230,7 +235,7 @@ impl IsSep41 for Token {
 
     fn transfer_from(&mut self, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
-        assert_positive(amount);
+        assert_positive(env, amount);
         let allowance = self.allowance(from.clone(), spender.clone());
         assert_with_error!(env(), allowance >= amount, Error::InsufficientAllowance);
         self.transfer_internal(from.clone(), to, amount);
@@ -239,7 +244,7 @@ impl IsSep41 for Token {
 
     fn burn(&mut self, from: Address, amount: i128) {
         from.require_auth();
-        assert_positive(amount);
+        assert_positive(env, amount);
         assert_with_error!(
             env(),
             self.balance(from.clone()) >= amount,
@@ -250,7 +255,7 @@ impl IsSep41 for Token {
 
     fn burn_from(&mut self, spender: Address, from: Address, amount: i128) {
         spender.require_auth();
-        assert_positive(amount);
+        assert_positive(env, amount);
         let allowance = self.allowance(from.clone(), spender.clone());
         assert_with_error!(env(), allowance >= amount, Error::InsufficientAllowance);
         self.burn(from.clone(), amount);
@@ -281,7 +286,7 @@ impl IsSep41 for Token {
 impl IsFungible for Token {
     fn increase_allowance(&mut self, from: Address, spender: Address, amount: i128) {
         from.require_auth();
-        assert_positive(amount);
+        assert_positive(env, amount);
         let current_allowance = self.allowance(from.clone(), spender.clone());
         let new_amount = current_allowance + amount;
         let current_ledger = env().ledger().sequence();
@@ -296,7 +301,7 @@ impl IsFungible for Token {
 
     fn decrease_allowance(&mut self, from: Address, spender: Address, amount: i128) {
         from.require_auth();
-        assert_positive(amount);
+        assert_positive(env, amount);
         let current_allowance = self.allowance(from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
         let current_ledger = env().ledger().sequence();
@@ -323,13 +328,13 @@ impl IsFungible for Token {
     }
 
     fn mint(&mut self, to: Address, amount: i128) {
-        assert_positive(amount);
+        assert_positive(env, amount);
         self::Contract::require_auth();
         self.mint_internal(to, amount);
     }
 
     fn clawback(&mut self, from: Address, amount: i128) {
-        assert_positive(amount);
+        assert_positive(env, amount);
         self::Contract::require_auth();
         let balance = self.balance(from.clone()) - amount;
         self.balances.set_and_extend(from, &balance);
@@ -444,8 +449,8 @@ impl IsCollateralized for Token {
         collateral: i128,
         asset_lent: i128,
     ) -> Result<(), Error> {
-        assert_positive(collateral);
-        assert_positive(asset_lent);
+        assert_positive(env, collateral);
+        assert_positive(env, asset_lent);
         lender.require_auth();
 
         let env = env();
@@ -533,7 +538,7 @@ impl IsCollateralized for Token {
     }
 
     fn add_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
-        assert_positive(amount);
+        assert_positive(env, amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -553,7 +558,7 @@ impl IsCollateralized for Token {
     }
 
     fn withdraw_collateral(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
-        assert_positive(amount);
+        assert_positive(env, amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -596,7 +601,7 @@ impl IsCollateralized for Token {
     }
 
     fn borrow_xasset(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
-        assert_positive(amount);
+        assert_positive(env, amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -632,7 +637,7 @@ impl IsCollateralized for Token {
     }
 
     fn repay_debt(&mut self, lender: Address, amount: i128) -> Result<(), Error> {
-        assert_positive(amount);
+        assert_positive(env, amount);
         lender.require_auth();
         let mut cdp = self.cdp(lender.clone())?;
 
@@ -700,7 +705,7 @@ impl IsCollateralized for Token {
         lender: Address,
         amount_in_xasset: i128,
     ) -> Result<CDPContract, Error> {
-        assert_positive(amount_in_xasset);
+        assert_positive(env, amount_in_xasset);
         lender.require_auth();
 
         if amount_in_xasset <= 0 {
@@ -860,7 +865,7 @@ impl IsCDPAdmin for Token {
 
 impl IsStabilityPool for Token {
     fn deposit(&mut self, from: Address, amount: i128) -> Result<(), Error> {
-        assert_positive(amount);
+        assert_positive(env, amount);
         from.require_auth();
         // check if the user has sufficient xasset
         let balance = self.balance(from.clone());
@@ -899,7 +904,7 @@ impl IsStabilityPool for Token {
     }
 
     fn withdraw(&mut self, to: Address, amount: i128) -> Result<(), Error> {
-        assert_positive(amount);
+        assert_positive(env, amount);
         to.require_auth();
         self.withdraw_internal(to, amount, false)
     }
@@ -1052,7 +1057,7 @@ impl IsStabilityPool for Token {
     fn stake(&mut self, from: Address, amount: i128) -> Result<(), Error> {
         from.require_auth();
 
-        assert_positive(amount);
+        assert_positive(env, amount);
 
         // Check if the user already has a stake
         if self.get_deposit(from.clone()).is_some() {

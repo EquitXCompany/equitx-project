@@ -1,14 +1,16 @@
 #![cfg(test)]
 extern crate std;
-use crate::collateralized::CDPStatus;
+use crate::{collateralized::CDPStatus};
 use crate::data_feed;
-use crate::{SorobanContract__, SorobanContract__Client};
 use data_feed::Asset;
-use loam_sdk::soroban_sdk::{
+use soroban_sdk::{
     testutils::Address as _,
     token::{self, Client as TokenClient, StellarAssetClient},
     Address, Env, String, Symbol, Vec,
 };
+
+use crate::token::{TokenContract, TokenContractClient};
+
 
 fn create_sac_token_clients<'a>(
     e: &Env,
@@ -38,8 +40,8 @@ fn create_token_contract<'a>(
     admin: Address,
     datafeed: data_feed::Client<'_>,
     xlm_sac: Address,
-) -> SorobanContract__Client<'a> {
-    let token = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
+) -> TokenClient<'a> {
+    let token = TokenClient::new(e, &e.register(TokenContract, ()));
     let _ = token.try_admin_set(&admin);
 
     let pegged_asset = Symbol::new(e, "USDT");

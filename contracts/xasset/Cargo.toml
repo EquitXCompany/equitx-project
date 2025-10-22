@@ -12,13 +12,12 @@ crate-type = ["cdylib"]
 doctest = false
 
 [dependencies]
-loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
-loam-subcontract-core = { workspace = true }
-loam-subcontract-ft = { workspace = true }
+soroban-sdk = { workspace = true }
+stellar-tokens = "0.4.1"
 data-feed = { path = "../data-feed" }
 
 [dev-dependencies]
-loam-sdk = { workspace = true, features = ["soroban-sdk-testutils"] }
+soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [package.metadata.stellar]
 contract = true
