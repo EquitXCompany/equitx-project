@@ -1,19 +1,21 @@
 [package]
 name = "orchestrator"
 version = "0.0.0"
-authors = ["Aha Labs <help@ahalabs.dev>"]
+authors = ["The Aha Co <help@theaha.co>"]
 license = "Apache-2.0"
-edition = "2021"
 publish = false
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
 doctest = false
 
 [dependencies]
-loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
-loam-subcontract-core = { workspace = true }
+soroban-sdk = { workspace = true }
 xasset = { path = "../xasset" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [package.metadata.stellar]
 contract = true

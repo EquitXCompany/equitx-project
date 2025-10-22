@@ -1,24 +1,27 @@
 #![cfg(test)]
 
 use crate::error::Error;
-use crate::{SorobanContract__, SorobanContract__Client};
+use crate::orchestrator::{OrchestratorContract, OrchestratorContractClient};
 
-use loam_sdk::soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
-use loam_sdk::soroban_sdk::{String, Symbol};
-
+use soroban_sdk::testutils::Address as _;
+use soroban_sdk::{Address, BytesN, Env, String, Symbol};
 pub mod xasset {
-    use loam_sdk::soroban_sdk;
-
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/xasset.wasm");
 }
 
-fn create_orchestrator_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
-    let orchestrator = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
-    let admin: Address = Address::generate(e);
-    let _ = orchestrator.try_admin_set(&admin);
-    let wasm_hash: BytesN<32> = e.deployer().upload_contract_wasm(xasset::WASM);
-    orchestrator.init(&Address::generate(e), &Address::generate(e), &wasm_hash);
-    orchestrator
+fn create_orchestrator_contract<'a>(env: &Env, admin: &Address) -> OrchestratorContractClient<'a> {
+    let wasm_hash: BytesN<32> = env.deployer().upload_contract_wasm(xasset::WASM);
+
+    let contract_id = env.register(
+        OrchestratorContract,
+        (
+            admin,
+            Address::generate(env), // xlm_sac
+            Address::generate(env), // xlm_contract
+            &wasm_hash,             // xasset_wasm_hash
+        ),
+    );
+    OrchestratorContractClient::new(env, &contract_id)
 }
 
 #[test]
@@ -26,11 +29,13 @@ fn test_orchestrator() {
     let e = Env::default();
     e.mock_all_auths();
 
+    let admin = Address::generate(&e);
+
     // Create test address to use as arguments
     let test_address = Address::generate(&e);
 
     // Create an orchestrator contract
-    let orchestrator = create_orchestrator_contract(&e);
+    let orchestrator = create_orchestrator_contract(&e, &admin);
 
     // Initialize the orchestrator with the test contract address
     let try_deploy_result = orchestrator.try_deploy_asset_contract(

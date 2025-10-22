@@ -4,10 +4,14 @@ members = [
   "contracts/*",
 ]
 
+[workspace.package]
+edition = "2021"
+
 [workspace.dependencies]
 loam-sdk = "0.6.16"
 loam-subcontract-core = "0.7.9"
 loam-subcontract-ft = "0.7.2"
+soroban-sdk = "23.0.3"
 
 [profile.release]
 opt-level = "z"

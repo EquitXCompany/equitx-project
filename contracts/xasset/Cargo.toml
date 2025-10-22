@@ -2,7 +2,7 @@
 name = "xasset"
 description = "Fungible Token that wraps another asset, creates a stability pool for it, and allows creating Collateralized Debt Positions (CDPs) against it."
 version = "1.0.0"
-authors = ["Aha Labs <help@ahalabs.dev>"]
+authors = ["The Aha Company <help@theaha.co>"]
 license = "Apache-2.0"
 edition = "2021"
 publish = false
