@@ -1,14 +1,11 @@
-use loam_sdk::{
-    soroban_sdk::{self, Address, Lazy, String, Symbol, Vec},
-    subcontract,
-};
+use soroban_sdk::{contracttype, Address, String, Symbol, Vec};
 
 use crate::{
     storage::{Interest, InterestDetail},
     Error, PriceData,
 };
 
-#[loam_sdk::soroban_sdk::contracttype]
+#[contracttype]
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Descriptions of these on page 5 of Indigo white paper
 pub enum CDPStatus {
@@ -23,7 +20,7 @@ pub enum CDPStatus {
     Closed,
 }
 
-#[loam_sdk::soroban_sdk::contracttype]
+#[contracttype]
 #[derive(Clone)]
 /// Collateralized Debt Position for a specific account
 pub struct CDPContract {
@@ -36,18 +33,18 @@ pub struct CDPContract {
     pub last_interest_time: u64,
 }
 
-#[subcontract]
+// TODO was a subcontract
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
 pub trait IsCollateralized {
     /// Oracle contract used for this contract's XLM price feed. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
-    fn xlm_contract(&self) -> loam_sdk::soroban_sdk::Address;
+    fn xlm_contract(&self) -> Address;
 
     /// Stellar asset contract address
-    fn xlm_sac(&self) -> loam_sdk::soroban_sdk::Address;
+    fn xlm_sac(&self) -> Address;
 
     /// Oracle contract used for this contract's pegged asset. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
-    fn asset_contract(&self) -> loam_sdk::soroban_sdk::Address;
+    fn asset_contract(&self) -> Address;
 
     /// Which asset from Oracle this tracks. For `--asset '{"Other":"USD"}'` on asset contract, set to `USD`
     fn pegged_asset(&self) -> Symbol;
@@ -154,7 +151,7 @@ pub trait IsCollateralized {
     fn pay_interest(&mut self, lender: Address, amount: i128) -> Result<CDPContract, Error>;
 }
 
-#[subcontract]
+// TODO was a subcontract
 /// Interface-only subcontract for a contract that implements an asset which can have
 /// Collateralized Debt Positions taken out against it.
 pub trait IsCDPAdmin {
@@ -183,13 +180,13 @@ pub trait IsCDPAdmin {
     );
 
     /// Set the address of the XLM contract
-    fn set_xlm_sac(&mut self, to: loam_sdk::soroban_sdk::Address);
+    fn set_xlm_sac(&mut self, to: Address);
 
     /// Set the oracle price feed contract for xlm. Only callable by admin.
-    fn set_xlm_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
+    fn set_xlm_contract(&mut self, to: Address);
 
     /// Set the oracle price feed contract for xAsset. Only callable by admin.
-    fn set_asset_contract(&mut self, to: loam_sdk::soroban_sdk::Address);
+    fn set_asset_contract(&mut self, to: Address);
 
     /// Set the asset the xAsset is pegged to. Only callable by admin.
     fn set_pegged_asset(&mut self, to: Symbol);
