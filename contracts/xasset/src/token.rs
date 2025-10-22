@@ -1,8 +1,9 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, assert_with_error, contract, contractimpl, contracttype, token::{self, TokenInterface}, Address, Env, String,
-    Symbol, Vec,
+    self, assert_with_error, contract, contractimpl, contracttype, symbol_short,
+    token::{self, TokenInterface},
+    Address, Env, String, Symbol, Vec,
 };
 
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
     persistent_map::PersistentMap,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
-     Error, PriceData,
+    Error, PriceData,
 };
 const VERSION_STRING: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),
@@ -88,7 +89,6 @@ fn calculate_collateralization_ratio(
 }
 
 #[contracttype]
-#[derive(Default)]
 pub struct TokenStorage {
     /// Name of the token
     name: String,
@@ -145,6 +145,28 @@ pub struct TokenStorage {
     interest_collected: i128,
 }
 
+const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
+
+// Instance storage
+const STORAGE: Symbol = symbol_short!("STORAGE");
+
+impl TokenStorage {
+    fn new() -> Self {
+        Self {}
+    }
+    
+
+        //     xlm_sac: Address,
+        // xlm_contract: Address,
+        // asset_contract: Address,
+        // pegged_asset: Symbol,
+        // min_collat_ratio: u32,
+        // name: String,
+        // symbol: String,
+        // decimals: u32,
+        // annual_interest_rate: u32,
+}
+
 #[contract]
 pub struct TokenContract;
 
@@ -152,6 +174,8 @@ pub struct TokenContract;
 impl TokenContract {
     #[allow(clippy::too_many_arguments)]
     pub fn __constructor(
+        env: &Env,
+        admin: Address,
         xlm_sac: Address,
         xlm_contract: Address,
         asset_contract: Address,
@@ -162,13 +186,14 @@ impl TokenContract {
         decimals: u32,
         annual_interest_rate: u32,
     ) {
-        let mut token = Token::default();
-        token.xlm_sac.set(&xlm_sac);
-        token.xlm_contract.set(&xlm_contract);
-        token.asset_contract.set(&asset_contract);
-        token.pegged_asset.set(&pegged_asset);
-        token.min_collat_ratio.set(&min_collat_ratio);
-        token.name.set(&name);
+        Self::set_admin(env, &admin);
+        let mut token = TokenStorage::new();
+        token.set_xlm_sac(&xlm_sac);
+        token.set_xlm_contract(&xlm_contract);
+        token.set_asset_contract(&asset_contract);
+        token.set_pegged_asset(&pegged_asset);
+        token.set_min_collat_ratio(&min_collat_ratio);
+        token.set_name(&name);
         token.symbol.set(&symbol);
         token.decimals.set(&decimals);
         token.total_xasset.set(&0);
@@ -182,6 +207,31 @@ impl TokenContract {
         token.unstake_return.set(&UNSTAKE_RETURN);
         token.interest_collected.set(&0);
         token.interest_rate.set(&annual_interest_rate);
+    }
+
+    /// Upgrade the contract to new wasm. Admin-only.
+    pub fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        Self::require_admin(env);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
+    /// Get the admin address
+    fn admin(env: &Env) -> Option<Address> {
+        env.storage().instance().get(&ADMIN_KEY)
+    }
+
+    /// Set the admin address. Can only be called once.
+    fn set_admin(env: &Env, admin: &Address) {
+        // Check if admin is already set
+        if env.storage().instance().has(&ADMIN_KEY) {
+            panic!("admin already set");
+        }
+        env.storage().instance().set(&ADMIN_KEY, admin);
+    }
+
+    fn require_admin(env: &Env) {
+        let admin = Self::admin(env).expect("admin not set");
+        admin.require_auth();
     }
 
     // Fungible
@@ -767,11 +817,7 @@ impl IsCollateralized for TokenContract {
         if cdp.xlm_deposited > 0 {
             let _ = self
                 .native()
-                .try_transfer(
-                    &env.current_contract_address(),
-                    &lender,
-                    &cdp.xlm_deposited,
-                )
+                .try_transfer(&env.current_contract_address(), &lender, &cdp.xlm_deposited)
                 .map_err(|_| Error::XLMTransferFailed)?;
         }
         env.events().publish(
@@ -924,7 +970,8 @@ impl IsStabilityPool for TokenContract {
 
         // Handle interest first - collect all accrued interest if possible
         let interest_to_liquidate_xasset = cmp::min(interest.amount, total_xasset);
-        let interest_to_liquidate_xlm = Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
+        let interest_to_liquidate_xlm =
+            Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
 
         if interest_to_liquidate_xlm > 0 {
             interest.amount -= interest_to_liquidate_xasset;
@@ -1015,8 +1062,7 @@ impl IsStabilityPool for TokenContract {
 
     fn claim_rewards(env: &Env, to: Address) -> Result<i128, Error> {
         to.require_auth();
-            let mut position = Self::get_deposit(env, to.clone())
-            .ok_or(Error::StakeDoesntExist)?;
+        let mut position = Self::get_deposit(env, to.clone()).ok_or(Error::StakeDoesntExist)?;
 
         let xlm_reward = Self::calculate_rewards(env, &position);
 
