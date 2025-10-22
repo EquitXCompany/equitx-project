@@ -30,7 +30,7 @@ impl Storage {
     }
 
     /// Set the wasm hash on the object and in instance storage
-    pub fn set_wasm_hash(&mut self, env: &Env, wasm_hash: BytesN<32>) {
+    pub fn set_wasm_hash(&mut self, env: &Env, wasm_hash: &BytesN<32>) {
         self.wasm_hash = wasm_hash.clone();
         env.storage().instance().set(&STORAGE, self);
     }
@@ -77,7 +77,7 @@ impl OrchestratorContract {
         Storage::set_wasm_hash(
             &mut Storage::get_state(env),
             env,
-            xasset_wasm_hash.clone(),
+            &xasset_wasm_hash,
         );
         Ok(xasset_wasm_hash)
     }
