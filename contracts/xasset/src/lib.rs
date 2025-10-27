@@ -27,6 +27,4 @@ pub mod data_feed {
     soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/data_feed.wasm");
 }
 
-pub mod contract;
-
 mod test;
