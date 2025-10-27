@@ -1,7 +1,8 @@
 #![cfg(test)]
 extern crate std;
-use crate::{collateralized::CDPStatus};
+use crate::collateralized::CDPStatus;
 use crate::data_feed;
+use crate::token::{TokenContract, TokenContractClient};
 use data_feed::Asset;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
@@ -9,9 +10,6 @@ use soroban_sdk::{
     token::{self, Client as TokenClient, StellarAssetClient},
     Address, Env, String, Symbol, Vec,
 };
-
-use crate::contract::{XAssetContract, XAssetContractClient};
-
 
 fn create_sac_token_clients<'a>(
     e: &Env,
@@ -41,30 +39,30 @@ fn create_token_contract<'a>(
     admin: Address,
     datafeed: data_feed::Client<'_>,
     xlm_sac: Address,
-) -> XAssetContractClient<'a> {
-    let token = XAssetContractClient::new(e, &e.register(XAssetContract, ()));
-    let _ = token.try_admin_set(&admin);
-
+) -> TokenContractClient<'a> {
     let pegged_asset = Symbol::new(e, "USDT");
     let min_collat_ratio = 11000;
     let name = String::from_str(e, "United States Dollar xAsset");
     let symbol = String::from_str(e, "xUSD");
     let decimals = 7;
     let annual_interest_rate: u32 = 11_00; // 11% interest rate
-
-    let _ = token.cdp_init(
-        &xlm_sac,
-        &datafeed.address,
-        &datafeed.address,
-        &pegged_asset,
-        &min_collat_ratio,
-        &name,
-        &symbol,
-        &decimals,
-        &annual_interest_rate,
+    let contract_id = e.register(
+        TokenContract,
+        (
+            admin,
+            &xlm_sac,
+            &datafeed.address,
+            &datafeed.address,
+            &pegged_asset,
+            &min_collat_ratio,
+            &name,
+            &symbol,
+            &decimals,
+            &annual_interest_rate,
+        ),
     );
 
-    token
+    TokenContractClient::new(e, &contract_id)
 }
 
 #[test]
