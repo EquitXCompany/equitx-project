@@ -102,23 +102,26 @@ impl OrchestratorContract {
         }
 
         // Deploy the contract, salting with the symbol
-        let deployed_contract = create_contract(env, &storage.wasm_hash, symbol.clone());
-
-        let contract_address = deployed_contract.map_err(|_| Error::XAssetDeployFailed)?;
-        // Create a client instance for this contract so we can initialize it
-        let client = xasset::Client::new(env, &contract_address);
-
-        // Initialize the contract
-        client.cdp_init(
-            &storage.xlm_sac,
-            &storage.xlm_contract,
-            &asset_contract,
-            &pegged_asset,
-            &min_collat_ratio,
-            &name,
-            &symbol,
-            &decimals,
-            &annual_interest_rate,
+        let mut salt = Bytes::new(env);
+        salt.append(&symbol.clone().to_xdr(env));
+        // owner is the admin of this orchestrator contract
+        // TODO; in the future, the orchestrator (C... address) should own and administer all asset contracts
+        let owner = OrchestratorContract::admin(env).unwrap();
+        let salt = env.crypto().sha256(&salt);
+        let contract_address = env.deployer().with_current_contract(salt).deploy_v2(
+            storage.wasm_hash.clone(),
+            (
+                owner,
+                storage.xlm_sac.clone(),
+                storage.xlm_contract.clone(),
+                asset_contract,
+                pegged_asset,
+                min_collat_ratio,
+                name,
+                &symbol,
+                &decimals,
+                &annual_interest_rate,
+            ),
         );
 
         // Store the deployed contract address in the assets map
@@ -206,26 +209,4 @@ impl OrchestratorContract {
         let admin = Self::admin(env).expect("admin not set");
         admin.require_auth();
     }
-}
-
-pub fn create_contract(
-    env: &Env,
-    token_wasm_hash: &BytesN<32>,
-    asset_symbol: String,
-) -> Result<Address, Error> {
-    let mut salt = Bytes::new(env);
-    salt.append(&asset_symbol.to_xdr(env));
-    // owner is the admin of this orchestrator contract
-    // TODO; in the future, the orchestrator (C... address) should own and administer all asset contracts
-    let owner = OrchestratorContract::admin(env).unwrap();
-    let salt = env.crypto().sha256(&salt);
-    let address = env
-        .deployer()
-        .with_current_contract(salt)
-        .deploy_v2(token_wasm_hash.clone(), ());
-    // Set the owner of the contract to this orchestrator
-    let _ = xasset::Client::new(env, &address)
-        .try_admin_set(&owner)
-        .map_err(|_| Error::AssetAdminSetFailed)?;
-    Ok(address)
 }
