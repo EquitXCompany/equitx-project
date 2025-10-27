@@ -1,9 +1,7 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, assert_with_error, contract, contractimpl, contracttype, symbol_short,
-    token::{self, TokenInterface},
-    Address, Env, String, Symbol, Vec,
+    self, assert_with_error, contract, contractimpl, contracttype, symbol_short, token::{self, TokenInterface}, Address, BytesN, Env, String, Symbol, Vec
 };
 
 use crate::{
@@ -89,15 +87,41 @@ fn calculate_collateralization_ratio(
 }
 
 #[contracttype]
+pub enum DataKey {
+    Balance(Address),
+    Allowance(Txn),
+    Authorized(Address),
+    CDP(Address),
+}
+
+
+// /// Mapping of account addresses to their token balances
+// balances: PersistentMap<String, Address, i128>, // Persistent Map
+// /// Mapping of transactions to their associated allowances
+// allowances: PersistentMap<Txn, Allowance>,
+// /// Mapping of addresses to their authorization status
+// authorized: PersistentMap<String, Address, bool>,
+//     /// each Address can only have one CDP per Asset
+// cdps: PersistentMap<Address, CDPInternal>,
+
+// TODO: figure out this storage
+// /* stability pool fields */
+// /// stability pool deposits
+// deposits: PersistentMap<Address, StakerPosition>,
+// /// stability pool compound records
+// compound_record: PersistentMap<u64, i128>,
+// /// stability pool interest collected records
+// interest_record: PersistentMap<u64, i128>,
+const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
+
+// Instance storage
+const STORAGE: Symbol = symbol_short!("STORAGE");
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TokenStorage {
     /// Name of the token
     name: String,
-    /// Mapping of account addresses to their token balances
-    balances: PersistentMap<String, Address, i128>, // Persistent Map
-    /// Mapping of transactions to their associated allowances
-    allowances: PersistentMap<String, Txn, Allowance>,
-    /// Mapping of addresses to their authorization status
-    authorized: PersistentMap<String, Address, bool>,
     /// Symbol of the token
     symbol: String,
     /// Number of decimal places for token amounts
@@ -112,15 +136,6 @@ pub struct TokenStorage {
     pegged_asset: Symbol,
     /// basis points; default 110%; updateable by admin
     min_collat_ratio: u32,
-    /// each Address can only have one CDP per Asset
-    cdps: PersistentMap<Address, CDPInternal>,
-    /* stability pool fields */
-    /// stability pool deposits
-    deposits: PersistentMap<Address, StakerPosition>,
-    /// stability pool compound records
-    compound_record: PersistentMap<u64, i128>,
-    /// stability pool interest collected records
-    interest_record: PersistentMap<u64, i128>,
     /// total xasset in the stability pool
     total_xasset: i128,
     /// total collateral in the stability pool
@@ -145,26 +160,15 @@ pub struct TokenStorage {
     interest_collected: i128,
 }
 
-const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
-
-// Instance storage
-const STORAGE: Symbol = symbol_short!("STORAGE");
-
 impl TokenStorage {
-    fn new() -> Self {
-        Self {}
+    /// Get current state of the contract
+    pub fn get_state(env: &Env) -> TokenStorage {
+        env.storage().instance().get(&STORAGE).unwrap()
     }
-    
 
-        //     xlm_sac: Address,
-        // xlm_contract: Address,
-        // asset_contract: Address,
-        // pegged_asset: Symbol,
-        // min_collat_ratio: u32,
-        // name: String,
-        // symbol: String,
-        // decimals: u32,
-        // annual_interest_rate: u32,
+    pub fn set_state(env: &Env, storage: &TokenStorage) {
+        env.storage().instance().set(&STORAGE, &storage);
+    }
 }
 
 #[contract]
@@ -187,26 +191,28 @@ impl Token {
         annual_interest_rate: u32,
     ) {
         Self::set_admin(env, &admin);
-        let mut token = TokenStorage::new();
-        token.set_xlm_sac(&xlm_sac);
-        token.set_xlm_contract(&xlm_contract);
-        token.set_asset_contract(&asset_contract);
-        token.set_pegged_asset(&pegged_asset);
-        token.set_min_collat_ratio(&min_collat_ratio);
-        token.set_name(&name);
-        token.symbol.set(&symbol);
-        token.decimals.set(&decimals);
-        token.total_xasset.set(&0);
-        token.total_collateral.set(&0);
-        token.product_constant.set(&PRODUCT_CONSTANT);
-        token.compounded_constant.set(&0);
-        token.epoch.set(&0);
-        token.fees_collected.set(&0);
-        token.deposit_fee.set(&DEPOSIT_FEE);
-        token.stake_fee.set(&STAKE_FEE);
-        token.unstake_return.set(&UNSTAKE_RETURN);
-        token.interest_collected.set(&0);
-        token.interest_rate.set(&annual_interest_rate);
+        let token = TokenStorage {
+            name,
+            symbol,
+            decimals,
+            xlm_sac,
+            xlm_contract,
+            asset_contract,
+            pegged_asset,
+            min_collat_ratio,
+            total_xasset: 0,
+            total_collateral: 0,
+            product_constant: PRODUCT_CONSTANT,
+            compounded_constant: 0,
+            epoch: 0,
+            fees_collected: 0,
+            deposit_fee: DEPOSIT_FEE,
+            stake_fee: STAKE_FEE,
+            unstake_return: UNSTAKE_RETURN,
+            interest_rate: annual_interest_rate,
+            interest_collected: 0,
+        };
+        TokenStorage::set_state(env, &token);
     }
 
     /// Upgrade the contract to new wasm. Admin-only.
@@ -238,7 +244,7 @@ impl Token {
 // Sep-41 implementation
 impl TokenInterface for Token {
     fn allowance(env: Env, from: Address, spender: Address) -> i128 {
-        let allowance = Self::allowances.get(Txn(from, spender));
+        let allowance: Option<Allowance> = env.storage().persistent().get(&Txn(from, spender));
         match allowance {
             Some(a) => {
                 if env.ledger().sequence() <= a.live_until_ledger {
@@ -254,23 +260,27 @@ impl TokenInterface for Token {
     fn approve(env: Env, from: Address, spender: Address, amount: i128, live_until_ledger: u32) {
         from.require_auth();
         let current_ledger = env.ledger().sequence();
-        assert_positive(env, amount);
+        assert_positive(&env, amount);
         assert_with_error!(
             env,
             live_until_ledger >= current_ledger,
             Error::InvalidLedgerSequence
         );
-        Self::allowances.set_and_extend(
-            Txn(from, spender),
+        let max_ttl = env.storage().max_ttl();
+        env.storage().persistent().set(
+            &Txn(from.clone(), spender.clone()),
             &Allowance {
                 amount,
                 live_until_ledger,
             },
         );
+        env.storage()
+            .persistent()
+            .extend_ttl(&Txn(from, spender), max_ttl, max_ttl);
     }
 
     fn balance(env: Env, id: Address) -> i128 {
-        Self::balances.get(id).unwrap_or_default()
+        env.storage().persistent().get(&DataKey::Balance(id)).unwrap_or(0)
     }
 
     fn transfer(env: Env, from: Address, to: Address, amount: i128) {
@@ -306,7 +316,7 @@ impl TokenInterface for Token {
 
     fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
         spender.require_auth();
-        assert_positive(env, amount);
+        assert_positive(&env, amount);
         let allowance = Self::allowance(env, from.clone(), spender.clone());
         assert_with_error!(env, allowance >= amount, Error::InsufficientAllowance);
         Self::burn(env, from.clone(), amount);
