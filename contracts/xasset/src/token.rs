@@ -712,7 +712,7 @@ impl TokenContract {
     fn borrow_xasset(&mut self, env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
-        let mut cdp = self
+        let cdp = self
             .get_cdp(env, lender.clone())
             .ok_or(Error::CDPNotFound)?
             .clone();
@@ -1832,7 +1832,7 @@ impl TokenContract {
         self.set_cdp_from_decorated(env, lender, decorated_cdp.clone());
         self.set_interest_collected(
             env,
-            (self.get_total_interest_collected(env) + amount_in_xlm),
+            self.get_total_interest_collected(env) + amount_in_xlm,
         );
         self.increment_interest_for_current_epoch(env, &amount_in_xlm);
 
