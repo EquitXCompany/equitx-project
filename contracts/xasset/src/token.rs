@@ -960,7 +960,8 @@ impl TokenContract {
 
 
     // IsStabilityPool
-    fn deposit(&self, env: &Env, from: Address, amount: i128) -> Result<(), Error> {
+    /// Deposits xasset tokens into the Stability Pool.
+    pub fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         from.require_auth();
         // check if the user has sufficient xasset
@@ -969,35 +970,33 @@ impl TokenContract {
             return Err(Error::InsufficientBalance);
         }
         let current_position = Self::get_staker_deposit_amount(env, from.clone())?;
-        let mut position = self
-            .get_deposit(env, from.clone())
+        let mut position = Self::get_deposit(&Self, env, from.clone())
             .unwrap_or(StakerPosition {
                 xasset_deposit: 0,
-                product_constant: self.get_product_constant(env),
-                compounded_constant: self.get_compounded_constant(env),
-                epoch: self.get_epoch(env),
+                product_constant: Self::get_product_constant(&Self, env),
+                compounded_constant: Self::get_compounded_constant(&Self, env),
+                epoch: Self::get_epoch(&Self, env),
             });
-        let xlm_reward = self.calculate_rewards(env, &position);
+        let xlm_reward = Self::calculate_rewards(&Self, env, &position);
         if xlm_reward > 0 {
             return Err(Error::ClaimRewardsFirst);
         }
         // Collect 1 XLM fee for each new deposit
-        let _ = self
-            .native(env)
+        let _ = Self::native(&Self, env)
             .try_transfer(
                 &from.clone(),
                 &env.current_contract_address(),
-                &self.get_deposit_fee(env),
+                &Self::get_deposit_fee(&Self, env),
             )
             .map_err(|_| Error::XLMTransferFailed)?;
-        self.add_fees_collected(env, self.get_deposit_fee(env));
+        Self::add_fees_collected(&Self, env, Self::get_deposit_fee(&Self, env));
         position.xasset_deposit = current_position + amount;
-        position.compounded_constant = self.get_compounded_constant(env);
-        position.product_constant = self.get_product_constant(env);
+        position.compounded_constant = Self::get_compounded_constant(&Self, env);
+        position.product_constant = Self::get_product_constant(&Self, env);
         // transfer xasset from address to pool
-        self.transfer_internal(env, from.clone(), env.current_contract_address(), amount);
-        self.set_deposit(env, from.clone(), position.clone(), 0);
-        self.add_total_xasset(env, amount);
+        Self::transfer_internal(&Self, env, from.clone(), env.current_contract_address(), amount);
+        Self::set_deposit(&Self, env, from.clone(), position.clone(), 0);
+        Self::add_total_xasset(&Self, env, amount);
         Ok(())
     }
 
