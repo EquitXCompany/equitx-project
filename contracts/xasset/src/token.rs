@@ -439,28 +439,35 @@ impl TokenContract {
     }
 
     // IsCollateralized
+
+    /// Oracle contract used for this contract's XLM price feed. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
     pub fn xlm_contract(env: &Env) -> Address {
         // Get XLM contract out of storage
         TokenStorage::get_state(env).xlm_contract.clone()
     }
 
+    /// Stellar asset contract address
     pub fn xlm_sac(env: &Env) -> Address {
         TokenStorage::get_state(env).xlm_sac.clone()
     }
 
+    /// Oracle contract used for this contract's pegged asset. Example: `CBJSHY5PQQ4LS7VMHI4BJODEDP5MLANRNUSHKNSVKK7BQ4Y6LSTBDGMR`
     pub fn asset_contract(env: &Env) -> Address {
         // Access Storage
         TokenStorage::get_state(env).asset_contract.clone()
     }
 
+    /// Which asset from Oracle this tracks. For `--asset '{"Other":"USD"}'` on asset contract, set to `USD`
     pub fn pegged_asset(env: &Env) -> Symbol {
         TokenStorage::get_state(env).pegged_asset.clone()
     }
 
+    /// Basis points. Default: 110%
     pub fn minimum_collateralization_ratio(env: &Env) -> u32 {
-        TokenStorage::get_state(env).min_collat_ratio.clone()
+        TokenStorage::get_state(env).min_collat_ratio
     }
 
+    /// Get the most recent price for XLM
     fn lastprice_xlm(env: &Env) -> Result<PriceData, Error> {
         let contract = &Self::xlm_contract(env);
         let client = data_feed::Client::new(env, contract);
@@ -476,6 +483,7 @@ impl TokenContract {
         }
     }
 
+    /// Get the most recent price for the pegged asset
     fn lastprice_asset(env: &Env) -> Result<PriceData, Error> {
         let contract = Self::asset_contract(env);
         let asset = Self::pegged_asset(env);
@@ -493,6 +501,7 @@ impl TokenContract {
         }
     }
 
+    /// Get the number of decimals used by the xlm oracle contract. This is NOT the same as the number of decimals used by the XLM Stellar Asset Contract.
     fn decimals_xlm_feed(env: &Env) -> Result<u32, Error> {
         let contract = &Self::xlm_contract(env);
         let client = data_feed::Client::new(env, contract);
@@ -506,6 +515,7 @@ impl TokenContract {
         }
     }
 
+    /// Get the number of decimals used by the asset oracle contract. This is NOT the same as the number of decimals used by the xAsset Fungible Token contract.
     fn decimals_asset_feed(env: &Env) -> Result<u32, Error> {
         let contract = &Self::asset_contract(env);
         let client = data_feed::Client::new(env, contract);
@@ -519,6 +529,8 @@ impl TokenContract {
         }
     }
 
+    /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
+    /// The user who creates the CDP becomes the CDP's owner.
     pub fn open_cdp(
         env: &Env,
         lender: Address,
@@ -600,7 +612,7 @@ impl TokenContract {
             .get(&DataKey::CDP(lender.clone()))
     }
 
-    /// Retrieve a CDPContract for a given lender
+    /// Retrieves the CDP information for a specific lender
     pub fn cdp(env: &Env, lender: Address) -> Result<CDPContract, Error> {
         let cdp = Self::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
         let xlm_price = Self::lastprice_xlm(env)?;
@@ -619,6 +631,8 @@ impl TokenContract {
         ))
     }
 
+    /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
+    /// A frozen CDP is no longer usable or interactable by its former owner.
     pub fn freeze_cdp(env: &Env, lender: Address) -> Result<(), Error> {
         let mut cdp = Self::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
         if matches!(cdp.status, CDPStatus::Insolvent) {
@@ -630,7 +644,8 @@ impl TokenContract {
         }
     }
 
-    fn add_collateral(&mut self, env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
+    /// Increases the Collateralization Ratio (CR) by depositing more collateral to an existing CDP.
+    pub fn add_collateral(env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
         let mut cdp: CDPInternal = Self::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
@@ -640,22 +655,18 @@ impl TokenContract {
         }
 
         // Transfer XLM from lender to contract
-        let _ = self
-            .native(env)
-            .try_transfer(&lender, &env.current_contract_address(), &amount)
+        let _ = Self::native(&Self, env)
+            .try_transfer(&lender, env.current_contract_address(), &amount)
             .map_err(|_| Error::XLMTransferFailed)?;
 
         cdp.xlm_deposited += amount;
-        self.set_cdp(env, lender, cdp);
+        Self::set_cdp(&Self, env, lender, cdp);
         Ok(())
     }
 
-    fn withdraw_collateral(
-        &mut self,
-        env: &Env,
-        lender: Address,
-        amount: i128,
-    ) -> Result<(), Error> {
+    /// Lowers the Collateralization Ratio (CR) by withdrawing part or all of the collateral from a CDP.
+    /// Collateral cannot be withdrawn if it brings CR below the xAsset's MCR.
+    pub fn withdraw_collateral(env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
         let mut cdp = Self::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
@@ -668,7 +679,8 @@ impl TokenContract {
             return Err(Error::InsufficientCollateral);
         }
 
-        let new_cdp = self.decorate(
+        let new_cdp = Self::decorate(
+            &Self,
             env,
             CDPInternal {
                 xlm_deposited: cdp.xlm_deposited - amount,
@@ -689,13 +701,12 @@ impl TokenContract {
         }
 
         // Transfer XLM from contract to lender
-        let _ = self
-            .native(env)
+        let _ = Self::native(&Self, env)
             .try_transfer(&env.current_contract_address(), &lender, &amount)
             .map_err(|_| Error::XLMTransferFailed)?;
 
         cdp.xlm_deposited -= amount;
-        self.set_cdp(env, lender, cdp);
+        Self::set_cdp(&Self, env, lender, cdp);
         Ok(())
     }
 
@@ -958,7 +969,6 @@ impl TokenContract {
         String::from_str(env, VERSION_STRING)
     }
 
-
     // IsStabilityPool
     /// Deposits xasset tokens into the Stability Pool.
     pub fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
@@ -970,13 +980,12 @@ impl TokenContract {
             return Err(Error::InsufficientBalance);
         }
         let current_position = Self::get_staker_deposit_amount(env, from.clone())?;
-        let mut position = Self::get_deposit(&Self, env, from.clone())
-            .unwrap_or(StakerPosition {
-                xasset_deposit: 0,
-                product_constant: Self::get_product_constant(&Self, env),
-                compounded_constant: Self::get_compounded_constant(&Self, env),
-                epoch: Self::get_epoch(&Self, env),
-            });
+        let mut position = Self::get_deposit(&Self, env, from.clone()).unwrap_or(StakerPosition {
+            xasset_deposit: 0,
+            product_constant: Self::get_product_constant(&Self, env),
+            compounded_constant: Self::get_compounded_constant(&Self, env),
+            epoch: Self::get_epoch(&Self, env),
+        });
         let xlm_reward = Self::calculate_rewards(&Self, env, &position);
         if xlm_reward > 0 {
             return Err(Error::ClaimRewardsFirst);
@@ -994,7 +1003,13 @@ impl TokenContract {
         position.compounded_constant = Self::get_compounded_constant(&Self, env);
         position.product_constant = Self::get_product_constant(&Self, env);
         // transfer xasset from address to pool
-        Self::transfer_internal(&Self, env, from.clone(), env.current_contract_address(), amount);
+        Self::transfer_internal(
+            &Self,
+            env,
+            from.clone(),
+            env.current_contract_address(),
+            amount,
+        );
         Self::set_deposit(&Self, env, from.clone(), position.clone(), 0);
         Self::add_total_xasset(&Self, env, amount);
         Ok(())
@@ -1189,7 +1204,13 @@ impl TokenContract {
             epoch: current_state.epoch,
         };
         // transfer xasset from address to pool
-        Self::transfer_internal(&Self, env, from.clone(), env.current_contract_address(), amount);
+        Self::transfer_internal(
+            &Self,
+            env,
+            from.clone(),
+            env.current_contract_address(),
+            amount,
+        );
 
         // Set the new position in the stability pool
         Self::set_deposit(&Self, env, from.clone(), position.clone(), 0);
