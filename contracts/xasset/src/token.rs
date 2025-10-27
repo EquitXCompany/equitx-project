@@ -168,10 +168,10 @@ impl TokenStorage {
 }
 
 #[contract]
-pub struct TokenContract;
+pub struct Token;
 
 #[contractimpl]
-impl TokenContract {
+impl Token {
     #[allow(clippy::too_many_arguments)]
     pub fn __constructor(
         env: &Env,
@@ -233,67 +233,10 @@ impl TokenContract {
         let admin = Self::admin(env).expect("admin not set");
         admin.require_auth();
     }
-
-    // Fungible
-    fn increase_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
-        from.require_auth();
-        assert_positive(env, amount);
-        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
-        let new_amount = current_allowance + amount;
-        let current_ledger = env.ledger().sequence();
-        Self::allowances.set_and_extend(
-            Txn(from, spender),
-            &Allowance {
-                amount: new_amount,
-                live_until_ledger: current_ledger + 1000, // Example: set to expire after 1000 ledgers
-            },
-        );
-    }
-
-    fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
-        from.require_auth();
-        assert_positive(env, amount);
-        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
-        let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
-        let current_ledger = env.ledger().sequence();
-        Self::allowances.set_and_extend(
-            Txn(from, spender),
-            &Allowance {
-                amount: new_amount,
-                live_until_ledger: current_ledger + 1000, // Example: set to expire after 1000 ledgers
-            },
-        );
-    }
-
-    fn spendable_balance(&self, id: Address) -> i128 {
-        self.balance(id)
-    }
-
-    // fn authorized(&self, id: Address) -> bool {
-    //     self.authorized.get(id).unwrap_or_default()
-    // }
-
-    // fn set_authorized(&mut self, id: Address, authorize: bool) {
-    //     self::Contract::require_auth();
-    //     self.authorized.set_and_extend(id, &authorize);
-    // }
-
-    fn mint(env: &Env, to: Address, amount: i128) {
-        self::Contract::require_auth();
-        assert_positive(env, amount);
-        Self::mint_internal(to, amount);
-    }
-
-    fn clawback(env: &Env, from: Address, amount: i128) {
-        assert_positive(env, amount);
-        self::Contract::require_auth();
-        let balance = Self::balance(env, from.clone()) - amount;
-        Self::balances.set_and_extend(from, &balance);
-    }
 }
 
 // Sep-41 implementation
-impl TokenInterface for TokenContract {
+impl TokenInterface for Token {
     fn allowance(env: Env, from: Address, spender: Address) -> i128 {
         let allowance = Self::allowances.get(Txn(from, spender));
         match allowance {
@@ -391,7 +334,67 @@ impl TokenInterface for TokenContract {
     }
 }
 
-impl IsCollateralized for TokenContract {
+// Fungible implementation. Implemented in a second impl block to reduce code diff in loam-migration
+#[contractimpl]
+impl Token {
+    fn increase_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
+        from.require_auth();
+        assert_positive(env, amount);
+        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
+        let new_amount = current_allowance + amount;
+        let current_ledger = env.ledger().sequence();
+        Self::allowances.set_and_extend(
+            Txn(from, spender),
+            &Allowance {
+                amount: new_amount,
+                live_until_ledger: current_ledger + 1000, // Example: set to expire after 1000 ledgers
+            },
+        );
+    }
+
+    fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
+        from.require_auth();
+        assert_positive(env, amount);
+        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
+        let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
+        let current_ledger = env.ledger().sequence();
+        Self::allowances.set_and_extend(
+            Txn(from, spender),
+            &Allowance {
+                amount: new_amount,
+                live_until_ledger: current_ledger + 1000, // Example: set to expire after 1000 ledgers
+            },
+        );
+    }
+
+    fn spendable_balance(&self, id: Address) -> i128 {
+        self.balance(id)
+    }
+
+    // fn authorized(&self, id: Address) -> bool {
+    //     self.authorized.get(id).unwrap_or_default()
+    // }
+
+    // fn set_authorized(&mut self, id: Address, authorize: bool) {
+    //     self::Contract::require_auth();
+    //     self.authorized.set_and_extend(id, &authorize);
+    // }
+
+    fn mint(env: &Env, to: Address, amount: i128) {
+        self::Contract::require_auth();
+        assert_positive(env, amount);
+        Self::mint_internal(to, amount);
+    }
+
+    fn clawback(env: &Env, from: Address, amount: i128) {
+        assert_positive(env, amount);
+        self::Contract::require_auth();
+        let balance = Self::balance(env, from.clone()) - amount;
+        Self::balances.set_and_extend(from, &balance);
+    }
+}
+
+impl IsCollateralized for Token {
     fn xlm_contract(&self) -> Address {
         // Get XLM contract out of storage
         self.xlm_contract
@@ -839,7 +842,7 @@ impl IsCollateralized for TokenContract {
     }
 }
 
-impl IsCDPAdmin for TokenContract {
+impl IsCDPAdmin for Token {
     fn cdp_init(
         &self,
         xlm_sac: Address,
@@ -905,7 +908,7 @@ impl IsCDPAdmin for TokenContract {
     }
 }
 
-impl IsStabilityPool for TokenContract {
+impl IsStabilityPool for Token {
     fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         from.require_auth();
@@ -1170,7 +1173,7 @@ impl IsStabilityPool for TokenContract {
     }
 }
 
-impl TokenContract {
+impl Token {
     /// Decorate a CDPInternal with the collateralization ratio. Also check if the CDP is insolvent.
     fn decorate(
         &self,
