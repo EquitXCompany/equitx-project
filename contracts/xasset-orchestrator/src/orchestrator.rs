@@ -180,7 +180,7 @@ impl OrchestratorContract {
         let asset_contract = storage.assets.get(asset_symbol).unwrap();
         let client = xasset::Client::new(env, &asset_contract);
         let _ = client
-            .try_redeploy(&storage.wasm_hash)
+            .try_upgrade(&storage.wasm_hash)
             .map_err(|_| Error::AssetUpgradeFailed)?;
         Ok(asset_contract)
     }
