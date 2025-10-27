@@ -1,7 +1,7 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, assert_with_error, contract, contractimpl, contracttype, symbol_short, token::{self, TokenInterface}, Address, BytesN, Env, String, Symbol, Vec
+    self, assert_with_error, contract, contractimpl, contracttype, symbol_short, token::{self, TokenInterface}, Address, BytesN, Env, MuxedAddress, String, Symbol, Vec
 };
 
 use crate::{
@@ -86,32 +86,26 @@ fn calculate_collateralization_ratio(
     collateralization_ratio
 }
 
+// Persistent storage keys
 #[contracttype]
 pub enum DataKey {
+    /// Mapping of account addresses to their token balances
     Balance(Address),
+    /// Mapping of transactions to their associated allowances
     Allowance(Txn),
+    /// Mapping of addresses to their authorization status
     Authorized(Address),
+    /// Mapping of addresses to their CDP; each address can only have one CDP
     CDP(Address),
+    /* Stability pool fields */
+    /// Stability pool deposits
+    StakerPosition(Address),
+    /// Stability pool compound records
+    CompoundRecord(Address),
+    /// Stability pool interest collected records
+    InterestRecord(Address),
 }
 
-
-// /// Mapping of account addresses to their token balances
-// balances: PersistentMap<String, Address, i128>, // Persistent Map
-// /// Mapping of transactions to their associated allowances
-// allowances: PersistentMap<Txn, Allowance>,
-// /// Mapping of addresses to their authorization status
-// authorized: PersistentMap<String, Address, bool>,
-//     /// each Address can only have one CDP per Asset
-// cdps: PersistentMap<Address, CDPInternal>,
-
-// TODO: figure out this storage
-// /* stability pool fields */
-// /// stability pool deposits
-// deposits: PersistentMap<Address, StakerPosition>,
-// /// stability pool compound records
-// compound_record: PersistentMap<u64, i128>,
-// /// stability pool interest collected records
-// interest_record: PersistentMap<u64, i128>,
 const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
 
 // Instance storage
@@ -162,11 +156,16 @@ pub struct TokenStorage {
 
 impl TokenStorage {
     /// Get current state of the contract
-    pub fn get_state(env: &Env) -> TokenStorage {
+    fn get_state(env: &Env) -> TokenStorage {
         env.storage().instance().get(&STORAGE).unwrap()
     }
 
-    pub fn set_state(env: &Env, storage: &TokenStorage) {
+    fn get_xlm_sac(&self) -> &Address {
+        &self.xlm_sac
+    }
+
+
+    fn set_state(env: &Env, storage: &TokenStorage) {
         env.storage().instance().set(&STORAGE, &storage);
     }
 }
@@ -283,23 +282,23 @@ impl TokenInterface for Token {
         env.storage().persistent().get(&DataKey::Balance(id)).unwrap_or(0)
     }
 
-    fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+    fn transfer(env: Env, from: Address, to: MuxedAddress, amount: i128) {
         from.require_auth();
-        assert_positive(env, amount);
+        assert_positive(&env, amount);
         assert_with_error!(
             env,
             Self::balance(env, from.clone()) >= amount,
             Error::InsufficientBalance
         );
-        Self::transfer_internal(from, to, amount);
+        Self::transfer_internal(&env, from, to, amount);
     }
 
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
-        assert_positive(env, amount);
+        assert_positive(&env, amount);
         let allowance = Self::allowance(env, from.clone(), spender.clone());
         assert_with_error!(env, allowance >= amount, Error::InsufficientAllowance);
-        Self::transfer_internal(from.clone(), to, amount);
+        Self::transfer_internal(env, from.clone(), to, amount);
         Self::decrease_allowance(env, from, spender, amount);
     }
 
@@ -365,7 +364,7 @@ impl Token {
     fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         assert_positive(env, amount);
-        let current_allowance = Self::allowance(env, from.clone(), spender.clone());
+        let current_allowance = Self::allowance(env.clone(), from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
         let current_ledger = env.ledger().sequence();
         Self::allowances.set_and_extend(
@@ -377,8 +376,8 @@ impl Token {
         );
     }
 
-    fn spendable_balance(&self, id: Address) -> i128 {
-        self.balance(id)
+    fn spendable_balance(env: &Env, id: Address) -> i128 {
+        Self::balance(env.clone(), id)
     }
 
     // fn authorized(&self, id: Address) -> bool {
@@ -391,59 +390,51 @@ impl Token {
     // }
 
     fn mint(env: &Env, to: Address, amount: i128) {
-        self::Contract::require_auth();
+        Self::require_admin(env);
         assert_positive(env, amount);
-        Self::mint_internal(to, amount);
+        Self::mint_internal(env, to, amount);
     }
 
     fn clawback(env: &Env, from: Address, amount: i128) {
         assert_positive(env, amount);
-        self::Contract::require_auth();
-        let balance = Self::balance(env, from.clone()) - amount;
-        Self::balances.set_and_extend(from, &balance);
+        Self::require_admin(env);
+        let balance = Self::balance(env.clone(), from.clone()) - amount;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Balance(from.clone()), &balance);
+        let ttl = env.storage().max_ttl();
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Balance(from), ttl, ttl);
     }
 }
 
-impl IsCollateralized for Token {
-    fn xlm_contract(&self) -> Address {
+// IsCollateralized
+impl Token {
+    fn xlm_contract(env: &Env) -> Address {
         // Get XLM contract out of storage
-        self.xlm_contract
-            .get()
-            .expect("XLM contract address needs to be initialized")
-            .clone()
+        TokenStorage::get_state(env).xlm_contract.clone()
     }
 
-    fn xlm_sac(&self) -> Address {
-        // Access storage
-        self.xlm_sac
-            .get()
-            .expect("XLM stellar asset contract address needs to be initialized")
-            .clone()
+    fn xlm_sac(env: &Env) -> Address {
+        TokenStorage::get_state(env).xlm_sac.clone()
     }
 
-    fn asset_contract(&self) -> Address {
+    fn asset_contract(env: &Env) -> Address {
         // Access Storage
-        self.asset_contract
-            .get()
-            .expect("Asset contract address needs to be initialized")
-            .clone()
+        TokenStorage::get_state(env).asset_contract.clone()
     }
 
-    fn pegged_asset(&self) -> Symbol {
-        self.pegged_asset
-            .get()
-            .expect("Pegged asset needs to be initialized")
-            .clone()
+    fn pegged_asset(env: &Env) -> Symbol {
+        TokenStorage::get_state(env).pegged_asset.clone()
     }
 
-    fn minimum_collateralization_ratio(&self) -> u32 {
-        self.min_collat_ratio
-            .get()
-            .expect("Minimum collateralization ratio needs to be initialized")
+    fn minimum_collateralization_ratio(env: &Env) -> u32 {
+        TokenStorage::get_state(env).min_collat_ratio.clone()
     }
 
-    fn lastprice_xlm(&self, env: &Env) -> Result<PriceData, Error> {
-        let contract = &self.xlm_contract();
+    fn lastprice_xlm(env: &Env) -> Result<PriceData, Error> {
+        let contract = &Self::xlm_contract(env);
         let client = data_feed::Client::new(env, contract);
         match client.try_lastprice(&data_feed::Asset::Other(Symbol::new(env, "XLM"))) {
             Ok(price_data_option) => match price_data_option {
@@ -457,9 +448,9 @@ impl IsCollateralized for Token {
         }
     }
 
-    fn lastprice_asset(&self, env: &Env) -> Result<PriceData, Error> {
-        let contract = &self.asset_contract();
-        let asset = &self.pegged_asset();
+    fn lastprice_asset(env: &Env) -> Result<PriceData, Error> {
+        let contract = &Self::asset_contract(env);
+        let asset = &Self::pegged_asset(env);
         let client = data_feed::Client::new(env, contract);
 
         match client.try_lastprice(&data_feed::Asset::Other(asset.clone())) {
@@ -474,8 +465,8 @@ impl IsCollateralized for Token {
         }
     }
 
-    fn decimals_xlm_feed(&self, env: &Env) -> Result<u32, Error> {
-        let contract = &self.xlm_contract();
+    fn decimals_xlm_feed(env: &Env) -> Result<u32, Error> {
+        let contract = &Self::xlm_contract(env);
         let client = data_feed::Client::new(env, contract);
 
         match client.try_decimals() {
@@ -487,8 +478,8 @@ impl IsCollateralized for Token {
         }
     }
 
-    fn decimals_asset_feed(&self, env: &Env) -> Result<u32, Error> {
-        let contract = &self.asset_contract();
+    fn decimals_asset_feed(env: &Env) -> Result<u32, Error> {
+        let contract = &Self::asset_contract(env);
         let client = data_feed::Client::new(env, contract);
 
         match client.try_decimals() {
@@ -514,16 +505,16 @@ impl IsCollateralized for Token {
         let env = env;
 
         // 1. check if lender already has a CDP
-        if self.cdps.has(lender.clone()) {
+        if env.storage().persistent().get(&DataKey::CDP(lender.clone())).is_some() {
             return Err(Error::CDPAlreadyExists);
         }
 
         // 2. check that `lastprice` gives collateralization ratio over `min_collat_ratio`
         let cdp = CDPInternal::new(collateral, asset_lent, env.ledger().timestamp());
-        let xlm_price = self.lastprice_xlm(env)?;
-        let xlm_decimals = self.decimals_xlm_feed(env)?;
-        let xasset_price = self.lastprice_asset(env)?;
-        let xasset_decimals = self.decimals_asset_feed(env)?;
+        let xlm_price = Self::lastprice_xlm(env)?;
+        let xlm_decimals = Self::decimals_xlm_feed(env)?;
+        let xasset_price = Self::lastprice_asset(env)?;
+        let xasset_decimals = Self::decimals_asset_feed(env)?;
         let CDPContract {
             collateralization_ratio,
             ..
@@ -535,21 +526,22 @@ impl IsCollateralized for Token {
             xasset_price.price,
             xasset_decimals,
         );
-        if collateralization_ratio < self.minimum_collateralization_ratio() {
+        if collateralization_ratio < Self::minimum_collateralization_ratio(env) {
             return Err(Error::InsufficientCollateralization);
         }
 
         // 3. transfer attached XLM to this contract
-        let _ = self
-            .native()
+        let _ = Self::native(env)
             .try_transfer(&lender, &env.current_contract_address(), &collateral)
             .map_err(|_| Error::XLMTransferFailed)?;
 
         // 4. mint `asset_lent` of this token to `address`
-        self.mint_internal(lender.clone(), asset_lent);
+        Self::mint_internal(env, lender.clone(), asset_lent);
 
         // 5. create CDP
-        self.cdps.set(lender.clone(), &cdp.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::CDP(lender.clone()), &cdp);
 
         env.events().publish(
             (Symbol::new(env, "CDP"), lender.clone()),
@@ -639,11 +631,11 @@ impl IsCollateralized for Token {
             lender.clone(),
             self.lastprice_xlm()?.price,
             self.decimals_xlm_feed()?,
-            self.lastprice_asset()?.price,
-            self.decimals_asset_feed()?,
+            self.lastprice_asset(env)?.price,
+            self.decimals_asset_feed(env)?,
         );
 
-        if new_cdp.collateralization_ratio < self.minimum_collateralization_ratio() {
+        if new_cdp.collateralization_ratio < self.minimum_collateralization_ratio(env) {
             return Err(Error::InvalidWithdrawal);
         }
 
@@ -852,68 +844,54 @@ impl IsCollateralized for Token {
     }
 }
 
-impl IsCDPAdmin for Token {
-    fn cdp_init(
-        &self,
-        xlm_sac: Address,
-        xlm_contract: Address,
-        asset_contract: Address,
-        pegged_asset: Symbol,
-        min_collat_ratio: u32,
-        name: String,
-        symbol: String,
-        decimals: u32,
-        annual_interest_rate: u32,
-    ) {
-        self::Contract::require_auth();
-        Token::init(
-            xlm_sac,
-            xlm_contract,
-            asset_contract,
-            pegged_asset,
-            min_collat_ratio,
-            name,
-            symbol,
-            decimals, // FIXME: we should use this instead of the data feed to get xasset decimals?
-            annual_interest_rate,
-        );
+// CDPAdmin
+impl Token {
+    fn set_xlm_sac(env: &Env, to: Address) {
+        Self::require_admin(env);
+        let mut state = TokenStorage::get_state(env);
+        state.xlm_sac = to;
+        TokenStorage::set_state(env, &state);
     }
-    fn set_xlm_sac(&mut self, to: Address) {
-        self::Contract::require_auth();
-        self.xlm_sac.set(&to);
+    fn set_xlm_contract(env: &Env, to: Address) {
+        Self::require_admin(env);
+                let mut state = TokenStorage::get_state(env);
+        state.xlm_sac = to;
+        TokenStorage::set_state(env, &state);
     }
-    fn set_xlm_contract(&mut self, to: Address) {
-        self::Contract::require_auth();
-        self.xlm_contract.set(&to);
+    fn set_asset_contract(env: &Env, to: Address) {
+        Self::require_admin(env);
+                let mut state = TokenStorage::get_state(env);
+        state.asset_contract = to;
+        TokenStorage::set_state(env, &state);
     }
-    fn set_asset_contract(&mut self, to: Address) {
-        self::Contract::require_auth();
-        self.asset_contract.set(&to);
+    fn set_pegged_asset(env: &Env, to: Symbol) {
+        Self::require_admin(env);
+                let mut state = TokenStorage::get_state(env);
+        state.pegged_asset = to;
+        TokenStorage::set_state(env, &state);
     }
-    fn set_pegged_asset(&mut self, to: Symbol) {
-        self::Contract::require_auth();
-        self.pegged_asset.set(&to);
-    }
-    fn set_min_collat_ratio(&mut self, to: u32) -> u32 {
-        self::Contract::require_auth();
-        self.min_collat_ratio.set(&to);
+    fn set_min_collat_ratio(env: &Env, to: u32) -> u32 {
+        Self::require_admin(env);
+                let mut state = TokenStorage::get_state(env);
+        state.min_collat_ratio = to;
+        TokenStorage::set_state(env, &state);
         to
     }
-    fn set_interest_rate(&mut self, new_rate: u32) -> u32 {
-        self::Contract::require_auth();
+    fn set_interest_rate(env: &Env, new_rate: u32) -> u32 {
+        Self::require_admin(env);
         self.set_annual_interest_rate(new_rate);
         new_rate
     }
 
-    fn get_interest_rate(&self) -> u32 {
+    fn get_interest_rate(env: &Env) -> u32 {
         self.get_annual_interest_rate()
     }
 
-    fn get_total_interest_collected(&self) -> i128 {
+    fn get_total_interest_collected(env: &Env) -> i128 {
         self.get_total_interest_collected()
     }
 
-    fn version(&self) -> String {
+    fn version(env: &Env) -> String {
         String::from_str(env, VERSION_STRING)
     }
 }
@@ -1186,7 +1164,7 @@ impl IsStabilityPool for Token {
 impl Token {
     /// Decorate a CDPInternal with the collateralization ratio. Also check if the CDP is insolvent.
     fn decorate(
-        &self,
+        env: &Env,
         cdp: CDPInternal,
         lender: Address,
         xlm_price: i128,
@@ -1196,7 +1174,7 @@ impl Token {
     ) -> CDPContract {
         // Update accrued interest first
         let (interest, last_interest_time) =
-            self.get_updated_accrued_interest(&cdp).unwrap_or_default();
+            Self::get_updated_accrued_interest(&cdp).unwrap_or_default();
 
         let collateralization_ratio = calculate_collateralization_ratio(
             cdp.asset_lent,
@@ -1216,11 +1194,11 @@ impl Token {
             last_interest_time,
             collateralization_ratio,
             status: if matches!(cdp.status, CDPStatus::Open)
-                && collateralization_ratio < self.minimum_collateralization_ratio()
+                && collateralization_ratio < Self::minimum_collateralization_ratio(env)
             {
                 CDPStatus::Insolvent
             } else if matches!(cdp.status, CDPStatus::Insolvent)
-                && collateralization_ratio >= self.minimum_collateralization_ratio()
+                && collateralization_ratio >= Self::minimum_collateralization_ratio(env)
             {
                 CDPStatus::Open
             } else {
@@ -1256,45 +1234,45 @@ impl Token {
         );
     }
 
-    fn native(env: &Env) -> token::Client {
-        token::Client::new(
+    fn native(env: &Env) -> TokenClient {
+        TokenClient::new(
             env,
-            &self
-                .xlm_sac
-                .get()
-                .expect("XLM Stellar Asset Contract should be initialized"),
+            &Self::xlm_sac(env)
         )
     }
 
     // convenience functions for internal minting / transfering of the ft asset
-    fn mint_internal(&mut self, to: Address, amount: i128) {
-        let balance = self.balance(to.clone()) + amount;
-        self.balances.set_and_extend(to, &balance);
+    fn mint_internal(env: &Env, to: Address, amount: i128) {
+        let balance = env.storage().persistent().get(&DataKey::Balance(to.clone())).unwrap_or(0) + amount;
+        let new_balance = balance + amount;
+        env.storage().persistent().set(&DataKey::Balance(to.clone()), &new_balance);
     }
 
-    fn transfer_internal(&mut self, from: Address, to: Address, amount: i128) {
-        let from_balance = self.balance(from.clone()) - amount;
-        let to_balance = self.balance(to.clone()) + amount;
-        self.balances.set_and_extend(from, &from_balance);
-        self.balances.set_and_extend(to, &to_balance);
+    fn transfer_internal(env: &Env, from: Address, to: Address, amount: i128) {
+        let curr_from_balance: Option<i128> = env.storage().persistent().get(&DataKey::Balance(from.clone()));
+        let from_balance = curr_from_balance.unwrap_or(0) - amount;
+        let curr_to_balance: Option<i128> = env.storage().persistent().get(&DataKey::Balance(to.clone()));
+        let to_balance = curr_to_balance.unwrap_or(0) + amount;
+        env.storage().persistent().set(&DataKey::Balance(from.clone()), from_balance);
+        env.storage().persistent().set(&DataKey::Balance(to.clone()), to_balance);
     }
 
-    fn burn_internal(&mut self, from: Address, amount: i128) {
-        let balance = self.balance(from.clone()) - amount;
-        self.balances.set_and_extend(from, &balance);
+    fn burn_internal(env: &Env, from: Address, amount: i128) {
+        let balance = env.storage().persistent().get(&DataKey::Balance(from.clone())).unwrap_or(0);
+        let new_balance = balance - amount;
+        env.storage().persistent().set(&DataKey::Balance(from.clone()), &new_balance);
     }
 
     // withdraw the amount specified unless full_withdrawal is true in which case withdraw remaining balance
     fn withdraw_internal(
-        &mut self,
+        env: &Env,
         to: Address,
         amount: i128,
         full_withdrawal: bool,
     ) -> Result<(), Error> {
-        let position = self
-            .get_deposit(to.clone())
+        let position = Self::get_deposit(to.clone())
             .ok_or(Error::StakeDoesntExist)?;
-        let rewards = self.calculate_rewards(&position);
+        let rewards = Self::calculate_rewards(&position);
         if rewards > 0 {
             return Err(Error::ClaimRewardsFirst);
         }
@@ -1307,18 +1285,18 @@ impl Token {
             //close the position
 
             // Return 2 XLM fee upon closing the SP account
-            let _ = self
-                .native()
+            let _ = Self::native(env)
                 .try_transfer(
                     &env.current_contract_address(),
                     &to,
-                    &self.get_unstake_return(),
+                    &Self::get_unstake_return(env),
                 )
                 .map_err(|_| Error::XLMTransferFailed)?;
-            self.subtract_fees_collected(self.get_unstake_return());
+            Self::subtract_fees_collected(env, Self::get_unstake_return());
 
             // transfer xasset to address from pool
-            self.transfer_internal(
+            Self::transfer_internal(
+                env,
                 env.current_contract_address(),
                 to.clone(),
                 amount_to_withdraw,
@@ -1454,82 +1432,76 @@ impl Token {
         self.total_xasset.set(&(self.get_total_xasset() - amount));
     }
 
-    fn get_total_collateral(&self) -> i128 {
-        self.total_collateral
-            .get()
-            .expect("Total collateral should be initialized")
+    fn get_total_collateral(env: &Env) -> i128 {
+        TokenStorage::get_state(env).total_collateral.clone()
     }
 
-    fn add_total_collateral(&mut self, amount: i128) {
-        self.total_collateral
-            .set(&(self.get_total_collateral() + amount));
+    fn add_total_collateral(env: &Env, amount: i128) {
+        let mut state = TokenStorage::get_state(env);
+        state.total_collateral += amount;
+        TokenStorage::set_state(env, &state);
     }
 
-    fn subtract_total_collateral(&mut self, amount: i128) {
-        self.total_collateral
-            .set(&(self.get_total_collateral() - amount));
+    fn subtract_total_collateral(env: &Env, amount: i128) {
+        let mut state = TokenStorage::get_state(env);
+        state.total_collateral -= amount;
+        TokenStorage::set_state(env, &state);
     }
 
-    fn get_product_constant(&self) -> i128 {
-        self.product_constant
-            .get()
-            .expect("Product constant should be intialized")
+    fn get_product_constant(env: &Env) -> i128 {
+        TokenStorage::get_state(env).product_constant.clone()
     }
 
-    fn set_product_constant(&mut self, value: i128) {
-        self.product_constant.set(&value);
+    fn set_product_constant(env: &Env, value: i128) {
+        let mut state = TokenStorage::get_state(env);
+        state.product_constant = value;
+        TokenStorage::set_state(env, &state);
     }
 
-    fn get_compounded_constant(&self) -> i128 {
-        self.compounded_constant
-            .get()
-            .expect("Compounded constant should be initialized")
+    fn get_compounded_constant(env: &Env) -> i128 {
+        TokenStorage::get_state(env).compounded_constant.clone()
     }
 
-    fn set_compounded_constant(&mut self, value: i128) {
-        self.compounded_constant.set(&value);
+    fn set_compounded_constant(env: &Env, value: i128) {
+        let mut state = TokenStorage::get_state(env);
+        state.compounded_constant = value;
+        TokenStorage::set_state(env, &state);
     }
 
-    fn get_epoch(&self) -> u64 {
-        self.epoch.get().expect("Epoch should be initialized")
+    fn get_epoch(env: &Env) -> u64 {
+        TokenStorage::get_state(env).epoch.clone()
     }
 
-    fn get_compounded_epoch(&self, epoch: u64) -> Option<i128> {
-        self.compound_record.get(epoch)
+    fn get_compounded_epoch(env: &Env, epoch: u64) -> Option<i128> {
+        TokenStorage::get_state(env).compound_record.get(epoch)
     }
 
-    fn get_fees_collected(&self) -> i128 {
-        self.fees_collected
-            .get()
-            .expect("Fees collected should be initialized")
+    fn get_fees_collected(env: &Env) -> i128 {
+        TokenStorage::get_state(env).fees_collected.clone()
     }
 
-    fn add_fees_collected(&mut self, amount: i128) {
-        self.fees_collected
-            .set(&(self.get_fees_collected() + amount));
+    fn add_fees_collected(env: &Env, amount: i128) {
+        let mut state = TokenStorage::get_state(env);
+        state.fees_collected += amount;
+        TokenStorage::set_state(env, &state);
     }
 
-    fn subtract_fees_collected(&mut self, amount: i128) {
-        self.fees_collected
-            .set(&(self.get_fees_collected() - amount));
+    fn subtract_fees_collected(env: &Env, amount: i128) {
+        let mut state = TokenStorage::get_state(env);
+        state.fees_collected -= amount;
+        TokenStorage::set_state(env, &state);
     }
 
-    fn get_stake_fee(&self) -> i128 {
-        self.stake_fee
-            .get()
-            .expect("Stake fee should be initialized")
+    fn get_stake_fee(env: &Env) -> i128 {
+        TokenStorage::get_state(env).stake_fee.clone()
     }
 
-    fn get_deposit_fee(&self) -> i128 {
-        self.deposit_fee
-            .get()
-            .expect("Deposit fee should be initialized")
+    fn get_deposit_fee(env: &Env) -> i128 {
+        TokenStorage::get_state(env).deposit_fee.clone()
     }
 
-    fn get_unstake_return(&self) -> i128 {
-        self.unstake_return
-            .get()
-            .expect("Unstake return should be initialized")
+    fn get_unstake_return(env: &Env) -> i128 {
+        TokenStorage::get_state(env).unstake_return.clone()
     }
 
     fn remove_deposit(&mut self, address: Address) {
@@ -1546,7 +1518,7 @@ impl Token {
         self.interest_rate.set(&rate);
     }
 
-    fn get_updated_accrued_interest(&self, cdp: &CDPInternal) -> Result<(Interest, u64), Error> {
+    fn get_updated_accrued_interest(env: &Env, cdp: &CDPInternal) -> Result<(Interest, u64), Error> {
         let now = env.ledger().timestamp();
         let last_time = cdp.last_interest_time;
 
@@ -1559,7 +1531,7 @@ impl Token {
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Ok((cdp.accrued_interest, now));
         }
-        let interest = self.get_projected_interest(cdp, last_time, now)?;
+        let interest = Self::get_projected_interest(cdp, last_time, now)?;
 
         Ok((interest, now))
     }
@@ -1646,11 +1618,11 @@ impl Token {
         })
     }
 
-    fn convert_xasset_to_xlm(&self, amount_in_xasset: i128) -> Result<i128, Error> {
-        let price = self.lastprice_asset().unwrap();
-        let xlmprice = self.lastprice_xlm().unwrap();
-        let xasset_decimals = self.decimals_asset_feed()?;
-        let xlm_decimals = self.decimals_xlm_feed()?;
+    fn convert_xasset_to_xlm(env: &Env, amount_in_xasset: i128) -> Result<i128, Error> {
+        let price = Self::lastprice_asset(env).unwrap();
+        let xlmprice = Self::lastprice_xlm(env).unwrap();
+        let xasset_decimals = Self::decimals_asset_feed(env)?;
+        let xlm_decimals = Self::decimals_xlm_feed(env)?;
         Ok(bankers_round(
             (DEFAULT_PRECISION
                 * amount_in_xasset
@@ -1661,16 +1633,16 @@ impl Token {
         ))
     }
 
-    fn increment_interest_for_current_epoch(&mut self, amount: &i128) {
-        let current_epoch = self.get_epoch();
-        let current_interest = self.interest_record.get(current_epoch).unwrap_or_default();
-        self.interest_record
+    fn increment_interest_for_current_epoch(env: &Env, amount: &i128) {
+        let current_epoch = Self::get_epoch(env);
+        let current_interest = Self::interest_record.get(current_epoch).unwrap_or_default();
+        Self::interest_record
             .set_and_extend(current_epoch, &(current_interest + amount));
     }
 
     // Helper to calculate projected interest at a future timestamp
     fn get_projected_interest(
-        &self,
+        env: &Env,
         cdp: &CDPInternal,
         from_time: u64,
         to_time: u64,
@@ -1679,7 +1651,7 @@ impl Token {
             return Ok(Interest::default());
         }
 
-        let annual_rate = self.get_annual_interest_rate() as i128;
+        let annual_rate = Self::get_annual_interest_rate(env) as i128;
         let time_elapsed = to_time.saturating_sub(from_time);
         if time_elapsed == 0 {
             return Ok(cdp.accrued_interest);
