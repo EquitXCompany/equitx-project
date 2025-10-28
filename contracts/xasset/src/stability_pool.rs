@@ -29,7 +29,6 @@ impl Default for StakerPosition {
     }
 }
 
-// TODO was a subcontract
 pub trait IsStabilityPool {
     /// Deposits xasset tokens into the Stability Pool.
     fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error>;
