@@ -634,10 +634,10 @@ impl TokenContract {
     /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
     /// A frozen CDP is no longer usable or interactable by its former owner.
     pub fn freeze_cdp(env: &Env, lender: Address) -> Result<(), Error> {
-        let mut cdp = Self::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let mut cdp = Self::cdp(env, lender.clone())?;
         if matches!(cdp.status, CDPStatus::Insolvent) {
             cdp.status = CDPStatus::Frozen;
-            Self::set_cdp(&Self, env, lender, cdp);
+            Self::set_cdp_from_decorated(&Self, env, lender, cdp);
             Ok(())
         } else {
             Err(Error::CDPNotInsolvent)
