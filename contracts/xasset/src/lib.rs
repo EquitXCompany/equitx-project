@@ -1,18 +1,13 @@
 #![no_std]
-// use collateralized::{CDPAdmin, CDPContract, CDPStatus, Collateralized};
 use soroban_sdk::{self, contracttype};
 
-// use stability_pool::{AvailableAssets, StabilityPool, StakerPosition};
-// use token::Token;
-
-pub mod collateralized;
-pub mod error;
-pub mod index_types;
-pub mod stability_pool;
+mod collateralized;
+mod error;
+mod index_types;
+mod stability_pool;
 mod storage;
 pub mod token;
 
-// use crate::storage::InterestDetail;
 pub use error::Error;
 
 // FIXME: copied from data_feed; find way to reuse
