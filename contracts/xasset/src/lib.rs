@@ -8,7 +8,6 @@ use soroban_sdk::{self, contracttype};
 pub mod collateralized;
 pub mod error;
 pub mod index_types;
-mod persistent_map;
 pub mod stability_pool;
 mod storage;
 pub mod token;
