@@ -41,24 +41,24 @@ fn create_token_contract<'a>(
     xlm_sac: Address,
 ) -> TokenContractClient<'a> {
     let pegged_asset = Symbol::new(e, "USDT");
-    let min_collat_ratio = 11000;
+    let min_collat_ratio: u32 = 11000; // 110%
     let name = String::from_str(e, "United States Dollar xAsset");
     let symbol = String::from_str(e, "xUSD");
-    let decimals = 7;
+    let decimals: u32 = 7;
     let annual_interest_rate: u32 = 11_00; // 11% interest rate
     let contract_id = e.register(
         TokenContract,
         (
             admin,
-            &xlm_sac,
-            &datafeed.address,
-            &datafeed.address,
-            &pegged_asset,
-            &min_collat_ratio,
-            &name,
-            &symbol,
-            &decimals,
-            &annual_interest_rate,
+            xlm_sac, // xlm_sac
+            datafeed.address.clone(), //xlm_contract
+            datafeed.address.clone(), // asset_contract
+            pegged_asset, // pegged_asset
+            min_collat_ratio, // min_collat_ratio
+            name, // name
+            symbol, // asset symbol
+            decimals,
+            annual_interest_rate,
         ),
     );
 
