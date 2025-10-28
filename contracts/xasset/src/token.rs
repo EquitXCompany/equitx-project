@@ -1384,8 +1384,7 @@ impl TokenContract {
             .storage()
             .persistent()
             .get(&DataKey::Balance(to.clone()))
-            .unwrap_or(0)
-            + amount;
+            .unwrap_or(0);
         let new_balance = balance + amount;
         env.storage()
             .persistent()
