@@ -735,7 +735,7 @@ impl TokenContract {
     }
 
     fn get_product_constant(env: &Env) -> i128 {
-        TokenStorage::get_state(env).product_constant.clone()
+        TokenStorage::get_state(env).product_constant
     }
 
     fn set_product_constant(env: &Env, value: i128) {
@@ -745,7 +745,7 @@ impl TokenContract {
     }
 
     fn get_compounded_constant(env: &Env) -> i128 {
-        TokenStorage::get_state(env).compounded_constant.clone()
+        TokenStorage::get_state(env).compounded_constant
     }
 
     fn set_compounded_constant(env: &Env, value: i128) {
@@ -755,7 +755,7 @@ impl TokenContract {
     }
 
     fn get_epoch(env: &Env) -> u64 {
-        TokenStorage::get_state(env).epoch.clone()
+        TokenStorage::get_state(env).epoch
     }
 
     fn set_epoch(env: &Env, value: u64) {
@@ -771,7 +771,7 @@ impl TokenContract {
     }
 
     fn get_fees_collected(env: &Env) -> i128 {
-        TokenStorage::get_state(env).fees_collected.clone()
+        TokenStorage::get_state(env).fees_collected
     }
 
     fn add_fees_collected(env: &Env, amount: i128) {
@@ -787,15 +787,15 @@ impl TokenContract {
     }
 
     fn get_stake_fee(env: &Env) -> i128 {
-        TokenStorage::get_state(env).stake_fee.clone()
+        TokenStorage::get_state(env).stake_fee
     }
 
     fn get_deposit_fee(env: &Env) -> i128 {
-        TokenStorage::get_state(env).deposit_fee.clone()
+        TokenStorage::get_state(env).deposit_fee
     }
 
     fn get_unstake_return(env: &Env) -> i128 {
-        TokenStorage::get_state(env).unstake_return.clone()
+        TokenStorage::get_state(env).unstake_return
     }
 
     fn remove_deposit(env: &Env, address: Address) {
@@ -805,7 +805,7 @@ impl TokenContract {
     }
 
     fn get_annual_interest_rate(env: &Env) -> u32 {
-        TokenStorage::get_state(env).interest_rate.clone()
+        TokenStorage::get_state(env).interest_rate
     }
 
     fn set_annual_interest_rate(env: &Env, rate: u32) {
