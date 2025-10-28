@@ -340,11 +340,11 @@ impl TokenContract {
         );
     }
 
-    fn spendable_balance(env: &Env, id: Address) -> i128 {
+    pub fn spendable_balance(env: &Env, id: Address) -> i128 {
         Self::balance(env.clone(), id)
     }
 
-    fn authorized(env: &Env, id: Address) -> bool {
+    pub fn authorized(env: &Env, id: Address) -> bool {
         env.storage()
             .persistent()
             .get(&DataKey::Authorized(id))
@@ -361,7 +361,7 @@ impl TokenContract {
             .extend_ttl(&DataKey::Authorized(id), max_ttl, max_ttl);
     }
 
-    fn set_authorized(env: &Env, id: Address, authorize: bool) {
+    pub fn set_authorized(env: &Env, id: Address, authorize: bool) {
         Self::require_admin(env);
         Self::set_and_extend_authorized(env, id, authorize);
     }
@@ -842,7 +842,7 @@ impl TokenContract {
         pay_fn: F,
     ) -> Result<CDPContract, Error>
     where
-        F: FnOnce(&Self, &Address, &i128) -> Result<(), Error>,
+        F: FnOnce(&Address, &i128) -> Result<(), Error>,
     {
         let cdp = Self::cdp(env, lender.clone()).unwrap();
         let mut interest = cdp.accrued_interest;
@@ -867,7 +867,7 @@ impl TokenContract {
             return Err(Error::InsufficientXLMForInterest);
         }
 
-        pay_fn(&Self, &lender, &amount_in_xlm)?;
+        pay_fn(&lender, &amount_in_xlm)?;
 
         interest.amount -= amount_to_pay;
         interest.paid += amount_in_xlm;
@@ -1344,7 +1344,7 @@ impl IsCollateralized for TokenContract {
 
         // Pay off any interest first
         // cdp = Self::pay_interest_from(env, lender.clone())?;
-        Self::apply_interest_payment(env, lender.clone(), 0, |s, from, amount_in_xlm| {
+        Self::apply_interest_payment(env, lender.clone(), 0, |from, amount_in_xlm| {
             match Self::native(env).try_transfer_from(
                 &env.current_contract_address(),
                 from,
@@ -1420,7 +1420,7 @@ impl IsCollateralized for TokenContract {
         if amount_in_xasset <= 0 {
             return Err(Error::ValueNotPositive);
         }
-        Self::apply_interest_payment(env, lender, amount_in_xasset, |s, lender, amount_in_xlm| {
+        Self::apply_interest_payment(env, lender, amount_in_xasset, |lender, amount_in_xlm| {
             match Self::native(env).try_transfer(
                 lender,
                 &env.current_contract_address(),
