@@ -1547,7 +1547,7 @@ impl IsCDPAdmin for TokenContract {
     }
 
     fn get_total_interest_collected(env: &Env) -> i128 {
-        TokenStorage::get_state(env).interest_collected.clone()
+        TokenStorage::get_state(env).interest_collected
     }
 
     fn version(env: &Env) -> String {
