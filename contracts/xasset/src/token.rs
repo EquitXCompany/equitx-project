@@ -1419,12 +1419,12 @@ impl IsCollateralized for TokenContract {
         Ok(())
     }
 
-    /// Liquidate a frozen CDP. Upon liquidation, CDP debt is repaid by withdrawing xAsset from a Stability Pool.
+    /// Liquidate a frozen CDP. Upon liquidation, CDP debt is repaid by withdrawing xAsset from a Stability Pool
     fn liquidate_cdp(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         Self::liquidate(env, lender)
     }
 
-    /// Merge two or more frozen CDPs into one CDP.
+    /// Merge two or more frozen CDPs into one CDP
     fn merge_cdps(env: &Env, lenders: Vec<Address>) -> Result<(), Error> {
         if lenders.len() < 2 {
             return Err(Error::InvalidMerge);
@@ -1463,7 +1463,7 @@ impl IsCollateralized for TokenContract {
         Ok(())
     }
 
-    /// Close a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt.
+    /// Close a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt
     fn close_cdp(env: &Env, lender: Address) -> Result<(), Error> {
         let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
         if cdp.asset_lent > 0 {
@@ -1494,7 +1494,7 @@ impl IsCollateralized for TokenContract {
         Ok(())
     }
 
-    /// Update and return the accrued interest on a CDP.
+    /// Update and return the accrued interest on a CDP
     fn get_accrued_interest(env: &Env, lender: Address) -> Result<InterestDetail, Error> {
         let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
         let (interest, last_interest_time) = Self::get_updated_accrued_interest(env, &cdp)?;
@@ -1556,7 +1556,7 @@ impl IsCDPAdmin for TokenContract {
         TokenStorage::set_state(env, &state);
     }
 
-    /// Set the oracle price feed contract for xlm. Only callable by admin.
+    /// Set the oracle price feed contract for xlm
     fn set_xlm_contract(env: &Env, to: Address) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
@@ -1564,7 +1564,7 @@ impl IsCDPAdmin for TokenContract {
         TokenStorage::set_state(env, &state);
     }
 
-    /// Set the oracle price feed contract for xAsset. Only callable by admin.
+    /// Set the oracle price feed contract for xAsset
     fn set_asset_contract(env: &Env, to: Address) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
@@ -1572,7 +1572,7 @@ impl IsCDPAdmin for TokenContract {
         TokenStorage::set_state(env, &state);
     }
 
-    /// Set the asset the xAsset is pegged to. Only callable by admin.
+    /// Set the asset the xAsset is pegged to
     fn set_pegged_asset(env: &Env, to: Symbol) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
@@ -1580,7 +1580,7 @@ impl IsCDPAdmin for TokenContract {
         TokenStorage::set_state(env, &state);
     }
 
-    /// Set minimum collateralization ration. Only callable by admin.
+    /// Set minimum collateralization ratio
     fn set_min_collat_ratio(env: &Env, to: u32) -> u32 {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
