@@ -76,14 +76,14 @@ pub trait IsCollateralized {
     /// Retrieves the CDP information for a specific lender
     fn cdp(env: &Env, lender: Address) -> Result<CDPContract, Error>;
 
-    /// Freezes a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
+    /// Freeze a CDP if its Collateralization Ratio (CR) is below the xAsset's Minimum Collateralization Ratio (MCR).
     /// A frozen CDP is no longer usable or interactable by its former owner.
     fn freeze_cdp(env: &Env, lender: Address) -> Result<(), Error>;
 
-    /// Increases the Collateralization Ratio (CR) by depositing more collateral to an existing CDP.
+    /// Increase the Collateralization Ratio (CR) by depositing more collateral to an existing CDP.
     fn add_collateral(env: &Env, lender: Address, amount: i128) -> Result<(), Error>;
 
-    /// Lowers the Collateralization Ratio (CR) by withdrawing part or all of the collateral from a CDP.
+    /// Lower the Collateralization Ratio (CR) by withdrawing part or all of the collateral from a CDP.
     /// Collateral cannot be withdrawn if it brings CR below the xAsset's MCR.
     fn withdraw_collateral(env: &Env, lender: Address, amount: i128) -> Result<(), Error>;
 
@@ -91,7 +91,7 @@ pub trait IsCollateralized {
     /// More xAsset cannot be minted if it brings CR below the xAsset's MCR.
     fn borrow_xasset(env: &Env, lender: Address, amount: i128) -> Result<(), Error>;
 
-    /// Increases the Collateralization Ratio (CR) by repaying debt in the form of xAsset.
+    /// Increase the Collateralization Ratio (CR) by repaying debt in the form of xAsset
     /// When the debt is repaid, the xAsset is burned (i.e., destroyed).
     /// More xAsset cannot be burned than debt owed by the CDP.
     ///
@@ -121,15 +121,15 @@ pub trait IsCollateralized {
     /// If all debt is repaid, then all collateral is withdrawn, and the CDP is closed.
     fn liquidate_cdp(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error>;
 
-    /// Merges two or more frozen CDPs into one CDP.
+    /// Merge two or more frozen CDPs into one CDP.
     /// Upon merging, all but one of the CDPs are closed, and their debt and collateral are transferred into a single CDP.
     fn merge_cdps(env: &Env, lenders: Vec<Address>) -> Result<(), Error>;
 
-    /// Closes a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt.
+    /// Close a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt.
     /// A CDP is closed after all its debt is repaid and its collateral is withdrawn.
     fn close_cdp(env: &Env, lender: Address) -> Result<(), Error>;
 
-    /// Updates and returns the accrued interest on a CDP.
+    /// Update and returns the accrued interest on a CDP.
     ///
     /// Returns an [`InterestDetail`] struct, including:
     /// - `amount`: total interest accrued;
@@ -139,7 +139,7 @@ pub trait IsCollateralized {
     /// - `last_interest_time`: timestamp of last calculation.
     fn get_accrued_interest(env: &Env, lender: Address) -> Result<InterestDetail, Error>;
 
-    /// Pays the accrued interest (but not principal) on a CDP.
+    /// Pay the accrued interest (but not principal) on a CDP.
     ///
     /// - Interest is paid in XLM, not in the principal token.
     /// - To determine the current interest due (in both principal token and XLM),
