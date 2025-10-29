@@ -310,6 +310,7 @@ impl TokenContract {
             .extend_ttl(&Txn(from, spender), max_ttl, max_ttl);
     }
 
+    /// Increases the allowance that one address can spend on behalf of another address.
     pub fn increase_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         assert_positive(env, amount);
@@ -325,8 +326,24 @@ impl TokenContract {
         );
     }
 
-    fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
+    /// Decreases the allowance that one address can spend on behalf of another address.
+    pub fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
+        assert_positive(env, amount);
+        let current_allowance = Self::allowance(env.clone(), from.clone(), spender.clone());
+        let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
+        let current_ledger = env.ledger().sequence();
+        Self::set_and_extend_allowance(
+            env,
+            from,
+            spender,
+            new_amount,
+            current_ledger + 1000, // Example: set to expire after 1000 ledgers
+        );
+    }
+
+    /// Internal form of decrease_allowance that does not require auth
+    fn decrease_allowance_internal(env: &Env, from: Address, spender: Address, amount: i128) {
         assert_positive(env, amount);
         let current_allowance = Self::allowance(env.clone(), from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
@@ -994,6 +1011,7 @@ impl TokenInterface for TokenContract {
             .unwrap_or(0)
     }
 
+    /// Transfer `amount` from `from` to `to`.
     fn transfer(env: Env, from: Address, to: MuxedAddress, amount: i128) {
         from.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
@@ -1002,6 +1020,7 @@ impl TokenInterface for TokenContract {
         Self::transfer_internal(&env, from, to.address(), amount);
     }
 
+    /// Transfer `amount` from `from` to `to`, consuming the allowance of `spender`.
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
@@ -1012,7 +1031,7 @@ impl TokenInterface for TokenContract {
             Error::InsufficientAllowance
         );
         Self::transfer_internal(&env, from.clone(), to, amount);
-        Self::decrease_allowance(&env, from, spender, amount);
+        Self::decrease_allowance_internal(&env, from, spender, amount);
     }
 
     fn burn(env: Env, from: Address, amount: i128) {
@@ -1029,7 +1048,7 @@ impl TokenInterface for TokenContract {
         let allowance = Self::allowance(env.clone(), from.clone(), spender.clone());
         assert_with_error!(&env, allowance >= amount, Error::InsufficientAllowance);
         Self::burn(env.clone(), from.clone(), amount);
-        Self::decrease_allowance(&env, from, spender, amount);
+        Self::decrease_allowance_internal(&env, from, spender, amount);
     }
 
     fn decimals(env: Env) -> u32 {
@@ -1550,6 +1569,7 @@ impl IsCDPAdmin for TokenContract {
         TokenStorage::get_state(env).interest_collected
     }
 
+    /// Report the version of this contract
     fn version(env: &Env) -> String {
         String::from_str(env, VERSION_STRING)
     }
