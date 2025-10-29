@@ -1604,6 +1604,7 @@ impl IsCDPAdmin for TokenContract {
 
 #[contractimpl]
 impl IsStabilityPool for TokenContract {
+    /// Deposit xasset tokens into the Stability Pool
     fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         from.require_auth();
@@ -1642,12 +1643,14 @@ impl IsStabilityPool for TokenContract {
         Ok(())
     }
 
+    /// Withdraw xasset tokens from the Stability Pool
     fn withdraw(env: &Env, to: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         to.require_auth();
         Self::withdraw_internal(env, to, amount, false)
     }
 
+    /// Process a liquidation event for a CDP
     fn liquidate(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         let mut cdp = TokenStorage::get_cdp(env, lender.clone())
             .ok_or(Error::CDPNotFound)
@@ -1767,6 +1770,7 @@ impl IsStabilityPool for TokenContract {
         }
     }
 
+    /// Claim a user's share of collateral rewards
     fn claim_rewards(env: &Env, to: Address) -> Result<i128, Error> {
         to.require_auth();
         let mut position = Self::get_deposit(env, to.clone()).ok_or(Error::StakeDoesntExist)?;
@@ -1785,6 +1789,7 @@ impl IsStabilityPool for TokenContract {
         Ok(xlm_reward)
     }
 
+    /// Retrieve the current deposit amount for a given address
     fn get_staker_deposit_amount(env: &Env, address: Address) -> Result<i128, Error> {
         match Self::get_deposit(env, address) {
             Some(position) => Ok(Self::calculate_current_deposit(env, &position)),
@@ -1792,14 +1797,17 @@ impl IsStabilityPool for TokenContract {
         }
     }
 
+    /// Retrieve the total amount of xasset tokens in the Stability Pool
     fn get_total_xasset(env: &Env) -> i128 {
-        TokenStorage::get_state(env).total_xasset.clone()
+        TokenStorage::get_state(env).total_xasset
     }
 
+    /// Retrieve the total amount of collateral rewards in the Stability Pool
     fn get_total_collateral(env: &Env) -> i128 {
-        TokenStorage::get_state(env).total_collateral.clone()
+        TokenStorage::get_state(env).total_collateral
     }
 
+    /// Add a stake to the pool
     fn stake(env: &Env, from: Address, amount: i128) -> Result<(), Error> {
         from.require_auth();
 
@@ -1844,11 +1852,13 @@ impl IsStabilityPool for TokenContract {
         Ok(())
     }
 
+    /// Remove a user's stake from the pool
     fn unstake(env: &Env, staker: Address) -> Result<(), Error> {
         staker.require_auth();
         Self::withdraw_internal(env, staker, 0, true)
     }
 
+    /// View a user's available xasset and rewards
     fn get_available_assets(env: &Env, staker: Address) -> Result<AvailableAssets, Error> {
         match Self::get_deposit(env, staker) {
             Some(position) => {
@@ -1863,6 +1873,7 @@ impl IsStabilityPool for TokenContract {
         }
     }
 
+    /// View a user's current position
     fn get_position(env: &Env, staker: Address) -> Result<StakerPosition, Error> {
         let deposit = env
             .storage()
@@ -1874,6 +1885,7 @@ impl IsStabilityPool for TokenContract {
         }
     }
 
+    /// View the stability pool's current constants
     fn get_constants(env: &Env) -> StakerPosition {
         let current_state = TokenStorage::get_state(env);
         StakerPosition {
