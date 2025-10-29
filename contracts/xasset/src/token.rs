@@ -357,10 +357,12 @@ impl TokenContract {
         );
     }
 
+    /// Return the spendable balance of tokens for a specific address
     pub fn spendable_balance(env: &Env, id: Address) -> i128 {
         Self::balance(env.clone(), id)
     }
 
+    /// Check if a specific address is authorized
     pub fn authorized(env: &Env, id: Address) -> bool {
         env.storage()
             .persistent()
@@ -481,6 +483,7 @@ impl TokenContract {
         TokenClient::new(env, &Self::xlm_sac(env))
     }
 
+    /// Mint a specified amount of tokens to a specific address
     pub fn mint(env: &Env, to: Address, amount: i128) {
         Self::require_admin(env);
         assert_positive(env, amount);
@@ -1005,7 +1008,7 @@ impl TokenInterface for TokenContract {
             .extend_ttl(&Txn(from, spender), max_ttl, max_ttl);
     }
 
-    /// Returns the balance of `id`
+    /// Return the balance of `id`
     fn balance(env: Env, id: Address) -> i128 {
         env.storage()
             .persistent()
@@ -1065,7 +1068,7 @@ impl TokenInterface for TokenContract {
         TokenStorage::get_state(&env).name
     }
 
-    /// Returns the symbol for this token
+    /// Return the symbol for this token
     fn symbol(env: Env) -> String {
         TokenStorage::get_state(&env).symbol
     }
@@ -1491,7 +1494,7 @@ impl IsCollateralized for TokenContract {
         Ok(())
     }
 
-    /// Update and returns the accrued interest on a CDP.
+    /// Update and return the accrued interest on a CDP.
     fn get_accrued_interest(env: &Env, lender: Address) -> Result<InterestDetail, Error> {
         let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
         let (interest, last_interest_time) = Self::get_updated_accrued_interest(env, &cdp)?;
