@@ -310,7 +310,7 @@ impl TokenContract {
             .extend_ttl(&Txn(from, spender), max_ttl, max_ttl);
     }
 
-    /// Increases the allowance that one address can spend on behalf of another address.
+    /// Increase the allowance that one address can spend on behalf of another address.
     pub fn increase_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         assert_positive(env, amount);
@@ -326,7 +326,7 @@ impl TokenContract {
         );
     }
 
-    /// Decreases the allowance that one address can spend on behalf of another address.
+    /// Decrease the allowance that one address can spend on behalf of another address.
     pub fn decrease_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         from.require_auth();
         assert_positive(env, amount);
@@ -967,7 +967,7 @@ impl TokenContract {
 
 #[contractimpl]
 impl TokenInterface for TokenContract {
-    // Sep-41 implementation
+    /// Return the allowance for `spender` to transfer from `from`.
     fn allowance(env: Env, from: Address, spender: Address) -> i128 {
         let allowance: Option<Allowance> = env.storage().persistent().get(&Txn(from, spender));
         match allowance {
@@ -982,6 +982,7 @@ impl TokenInterface for TokenContract {
         }
     }
 
+    /// Set the allowance by `amount` for `spender` to transfer/burn from `from`
     fn approve(env: Env, from: Address, spender: Address, amount: i128, live_until_ledger: u32) {
         from.require_auth();
         let current_ledger = env.ledger().sequence();
@@ -1004,6 +1005,7 @@ impl TokenInterface for TokenContract {
             .extend_ttl(&Txn(from, spender), max_ttl, max_ttl);
     }
 
+    /// Returns the balance of `id`
     fn balance(env: Env, id: Address) -> i128 {
         env.storage()
             .persistent()
@@ -1011,7 +1013,7 @@ impl TokenInterface for TokenContract {
             .unwrap_or(0)
     }
 
-    /// Transfer `amount` from `from` to `to`.
+    /// Transfer `amount` from `from` to `to`
     fn transfer(env: Env, from: Address, to: MuxedAddress, amount: i128) {
         from.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
@@ -1020,7 +1022,7 @@ impl TokenInterface for TokenContract {
         Self::transfer_internal(&env, from, to.address(), amount);
     }
 
-    /// Transfer `amount` from `from` to `to`, consuming the allowance of `spender`.
+    /// Transfer `amount` from `from` to `to`, consuming the allowance of `spender`
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
@@ -1034,6 +1036,7 @@ impl TokenInterface for TokenContract {
         Self::decrease_allowance_internal(&env, from, spender, amount);
     }
 
+    /// Burn `amount` from `from`
     fn burn(env: Env, from: Address, amount: i128) {
         from.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
@@ -1042,6 +1045,7 @@ impl TokenInterface for TokenContract {
         Self::burn_internal(&env, from, amount);
     }
 
+    /// Burn `amount` from `from`, consuming the allowance of `spender`
     fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
         spender.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
@@ -1051,14 +1055,17 @@ impl TokenInterface for TokenContract {
         Self::decrease_allowance_internal(&env, from, spender, amount);
     }
 
+    /// Return the number of decimals used to represent amounts of this token
     fn decimals(env: Env) -> u32 {
         TokenStorage::get_state(&env).decimals
     }
 
+    /// Return the name for this token
     fn name(env: Env) -> String {
         TokenStorage::get_state(&env).name
     }
 
+    /// Returns the symbol for this token
     fn symbol(env: Env) -> String {
         TokenStorage::get_state(&env).symbol
     }
