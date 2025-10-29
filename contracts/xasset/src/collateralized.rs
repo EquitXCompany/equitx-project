@@ -178,5 +178,6 @@ pub trait IsCDPAdmin {
     /// Get total interest collected
     fn get_total_interest_collected(env: &Env) -> i128;
 
+    /// Report the version of this contract
     fn version(env: &Env) -> String;
 }

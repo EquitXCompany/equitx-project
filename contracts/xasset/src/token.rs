@@ -1523,30 +1523,39 @@ impl IsCollateralized for TokenContract {
 
 #[contractimpl]
 impl IsCDPAdmin for TokenContract {
+    /// Set the address of the XLM contract
     fn set_xlm_sac(env: &Env, to: Address) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
         state.xlm_sac = to;
         TokenStorage::set_state(env, &state);
     }
+
+    /// Set the oracle price feed contract for xlm. Only callable by admin.
     fn set_xlm_contract(env: &Env, to: Address) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
         state.xlm_sac = to;
         TokenStorage::set_state(env, &state);
     }
+
+    /// Set the oracle price feed contract for xAsset. Only callable by admin.
     fn set_asset_contract(env: &Env, to: Address) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
         state.asset_contract = to;
         TokenStorage::set_state(env, &state);
     }
+
+    /// Set the asset the xAsset is pegged to. Only callable by admin.
     fn set_pegged_asset(env: &Env, to: Symbol) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
         state.pegged_asset = to;
         TokenStorage::set_state(env, &state);
     }
+
+    /// Set minimum collateralization ration. Only callable by admin.
     fn set_min_collat_ratio(env: &Env, to: u32) -> u32 {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
@@ -1555,16 +1564,19 @@ impl IsCDPAdmin for TokenContract {
         to
     }
 
+    /// Set annual interest rate
     fn set_interest_rate(env: &Env, new_rate: u32) -> u32 {
         Self::require_admin(env);
         Self::set_annual_interest_rate(env, new_rate);
         new_rate
     }
 
+    /// Get annual interest rate
     fn get_interest_rate(env: &Env) -> u32 {
         Self::get_annual_interest_rate(env)
     }
 
+    /// Get total interest collected
     fn get_total_interest_collected(env: &Env) -> i128 {
         TokenStorage::get_state(env).interest_collected
     }
