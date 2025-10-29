@@ -5,6 +5,7 @@ authors = ["The Aha Co <help@theaha.co>"]
 license = "Apache-2.0"
 publish = false
 edition.workspace = true
+repository.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
@@ -19,3 +20,4 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [package.metadata.stellar]
 contract = true
+cargo_inherit = true

@@ -6,6 +6,7 @@ members = [
 
 [workspace.package]
 edition = "2021"
+repository = "github:EquitXCompany/equitx-project"
 
 [workspace.dependencies]
 loam-sdk = "0.6.16"

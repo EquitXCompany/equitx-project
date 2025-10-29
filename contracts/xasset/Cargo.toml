@@ -5,6 +5,7 @@ version = "1.0.0"
 authors = ["The Aha Company <help@theaha.co>"]
 license = "Apache-2.0"
 edition = "2021"
+repository.workspace = true
 publish = false
 
 [lib]
@@ -20,3 +21,4 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [package.metadata.stellar]
 contract = true
+cargo_inherit = true

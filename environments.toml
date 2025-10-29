@@ -16,9 +16,17 @@ set_asset_price --price 100000000000000 --asset '{"Other":"USDT"}' --timestamp "
 
 [development.contracts.xasset]
 client = true
+constructor_args = """
+--admin equitx
+--xlm_sac "$(stellar contract id asset --asset native)"
+--xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")"
+--asset_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")" 
+--pegged_asset USDT --min_collat_ratio 11000
+--symbol xUSD --name "United States Dollar xAsset"
+--decimals 7
+--annual_interest_rate 100
+"""
 init = """
-admin_set --new-admin equitx
-cdp_init --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$(stellar contract alias show data_feed)" --asset_contract "$(stellar contract alias show data_feed)" --pegged_asset USDT --min_collat_ratio 11000 --symbol xUSD --name "United States Dollar xAsset" --decimals 7 --annual_interest_rate 100
 STELLAR_ACCOUNT=alice open_cdp --lender alice --collateral 1700000000 --asset-lent 100000000
 STELLAR_ACCOUNT=bob open_cdp --lender bob --collateral 1300000000 --asset-lent 100000000
 set_min_collat_ratio --to 15000
@@ -26,9 +34,14 @@ set_min_collat_ratio --to 15000
 
 [development.contracts.orchestrator]
 client = true
+constructor_args = """
+--admin equitx  
+--xlm_sac "$(stellar contract id asset --asset native)"
+--xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")"
+--xasset_wasm_hash "$(stellar contract fetch --id $(stellar contract alias show xasset --network-passphrase "Standalone Network ; February 2017")  | openssl sha256 | awk '{print $2}')"
+"""
 init = """
-admin_set --new-admin equitx
-init --xlm_sac "$(stellar contract id asset --asset native) --xlm_contract "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63"
+set_existing_asset_contract --asset_symbol xUSDT --asset_contract $(stellar contract alias show xasset --network-passphrase "Standalone Network ; February 2017") 
 """
 
 [testing]
