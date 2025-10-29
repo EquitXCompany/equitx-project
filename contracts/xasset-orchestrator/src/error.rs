@@ -4,21 +4,18 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Error {
-    // "Orchestrator contract not initialized with necessary values"
-    ContractNotInitalized = 1,
-
     // "Failed to deploy xasset contract"
-    XAssetDeployFailed = 2,
+    XAssetDeployFailed = 1,
 
     // "Asset contract already deployed"
-    AssetAlreadyDeployed = 3,
+    AssetAlreadyDeployed = 2,
 
     // "Failed to set asset contract admin"
-    AssetAdminSetFailed = 4,
+    AssetAdminSetFailed = 3,
 
     // "No such asset deployed"
-    NoSuchAsset = 5,
+    NoSuchAsset = 4,
 
     // "Failed to upgrade asset contract"
-    AssetUpgradeFailed = 6,
+    AssetUpgradeFailed = 5,
 }
