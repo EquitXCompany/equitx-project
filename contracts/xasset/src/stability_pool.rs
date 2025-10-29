@@ -30,28 +30,28 @@ impl Default for StakerPosition {
 }
 
 pub trait IsStabilityPool {
-    /// Deposits xasset tokens into the Stability Pool.
+    /// Deposit xasset tokens into the Stability Pool
     fn deposit(env: &Env, from: Address, amount: i128) -> Result<(), Error>;
-    /// Withdraws xasset tokens from the Stability Pool.
+    /// Withdraw xasset tokens from the Stability Pool
     fn withdraw(env: &Env, to: Address, amount: i128) -> Result<(), Error>;
-    /// Processes a liquidation event for a CDP.
+    /// Process a liquidation event for a CDP
     fn liquidate(env: &Env, cdp_owner: Address) -> Result<(i128, i128, CDPStatus), Error>;
-    /// Allows a user to claim their share of collateral rewards.
+    /// Claim a user's share of collateral rewards
     fn claim_rewards(env: &Env, to: Address) -> Result<i128, Error>;
-    /// Retrieves the current deposit amount for a given address.
+    /// Retrieve the current deposit amount for a given address
     fn get_staker_deposit_amount(env: &Env, address: Address) -> Result<i128, Error>;
-    /// Retrieves the total amount of xasset tokens in the Stability Pool.
+    /// Retrieve the total amount of xasset tokens in the Stability Pool
     fn get_total_xasset(env: &Env) -> i128;
-    /// Retrieves the total amount of collateral rewards in the Stability Pool.
+    /// Retrieve the total amount of collateral rewards in the Stability Pool
     fn get_total_collateral(env: &Env) -> i128;
-    /// Allows a user to add their stake to the pool
+    /// Add a stake to the pool
     fn stake(env: &Env, from: Address, amount: i128) -> Result<(), Error>;
-    /// Allows a user to remove their stake from the pool
+    /// Remove a user's stake from the pool
     fn unstake(env: &Env, staker: Address) -> Result<(), Error>;
-    /// Allows a user to view their available xasset and rewards
+    /// View a user's available xasset and rewards
     fn get_available_assets(env: &Env, staker: Address) -> Result<AvailableAssets, Error>;
-    /// Allows a user to view their available current position
+    /// View a user's current position
     fn get_position(env: &Env, staker: Address) -> Result<StakerPosition, Error>;
-    /// Allows a user to view the stability pool's current constants
+    /// View the stability pool's current constants
     fn get_constants(env: &Env) -> StakerPosition;
 }
