@@ -2,9 +2,10 @@
 extern crate std;
 use crate::collateralized::CDPStatus;
 use crate::data_feed;
-use crate::{SorobanContract__, SorobanContract__Client};
+use crate::token::{TokenContract, TokenContractClient};
 use data_feed::Asset;
-use loam_sdk::soroban_sdk::{
+use soroban_sdk::testutils::Ledger;
+use soroban_sdk::{
     testutils::Address as _,
     token::{self, Client as TokenClient, StellarAssetClient},
     Address, Env, String, Symbol, Vec,
@@ -38,30 +39,30 @@ fn create_token_contract<'a>(
     admin: Address,
     datafeed: data_feed::Client<'_>,
     xlm_sac: Address,
-) -> SorobanContract__Client<'a> {
-    let token = SorobanContract__Client::new(e, &e.register(SorobanContract__, ()));
-    let _ = token.try_admin_set(&admin);
-
+) -> TokenContractClient<'a> {
     let pegged_asset = Symbol::new(e, "USDT");
-    let min_collat_ratio = 11000;
+    let min_collat_ratio: u32 = 11000; // 110%
     let name = String::from_str(e, "United States Dollar xAsset");
     let symbol = String::from_str(e, "xUSD");
-    let decimals = 7;
+    let decimals: u32 = 7;
     let annual_interest_rate: u32 = 11_00; // 11% interest rate
-
-    let _ = token.cdp_init(
-        &xlm_sac,
-        &datafeed.address,
-        &datafeed.address,
-        &pegged_asset,
-        &min_collat_ratio,
-        &name,
-        &symbol,
-        &decimals,
-        &annual_interest_rate,
+    let contract_id = e.register(
+        TokenContract,
+        (
+            admin,
+            xlm_sac, // xlm_sac
+            datafeed.address.clone(), //xlm_contract
+            datafeed.address.clone(), // asset_contract
+            pegged_asset, // pegged_asset
+            min_collat_ratio, // min_collat_ratio
+            name, // name
+            symbol, // asset symbol
+            decimals,
+            annual_interest_rate,
+        ),
     );
 
-    token
+    TokenContractClient::new(e, &contract_id)
 }
 
 #[test]
@@ -369,7 +370,7 @@ fn test_cdp_operations_with_interest() {
 
     // Set initial timestamp
     let initial_time = 1700000000;
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time);
+    Ledger::set_timestamp(&e.ledger(), initial_time);
 
     // Open initial CDP
     token.open_cdp(&alice, &10_000_000_000, &500_000_000);
@@ -379,7 +380,7 @@ fn test_cdp_operations_with_interest() {
     assert_eq!(initial_cdp.accrued_interest.amount, 0);
 
     // Advance time by 1 year (31536000 seconds)
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 31536000);
+    Ledger::set_timestamp(&e.ledger(), initial_time + 31536000);
 
     // Check interest has accrued (11% annual rate)
     let cdp_after_year = token.cdp(&alice);
@@ -388,13 +389,13 @@ fn test_cdp_operations_with_interest() {
     assert!(cdp_after_year.accrued_interest.amount >= 54_000_000); // Allow for some rounding
 
     // Advance another 6 months
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 47304000);
+    Ledger::set_timestamp(&e.ledger(), initial_time + 47304000);
 
     // Borrow more
     token.borrow_xasset(&alice, &200_000_000);
 
     // Advance 3 more months
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), initial_time + 55944000);
+    Ledger::set_timestamp(&e.ledger(), initial_time + 55944000);
 
     // Check total debt (original + borrowed + accumulated interest)
     let cdp_before_repay = token.cdp(&alice);
@@ -421,7 +422,7 @@ fn test_cdp_operations_with_interest() {
     // test pay_interest
     // Advance time by 2 months
     let time_after_debt = initial_time + 55944000 + 5_184_000; // +60 days (2 months in seconds)
-    loam_sdk::soroban_sdk::testutils::Ledger::set_timestamp(&e.ledger(), time_after_debt);
+    Ledger::set_timestamp(&e.ledger(), time_after_debt);
 
     // Get updated accrued interest
     let cdp_for_interest = token.cdp(&alice);
