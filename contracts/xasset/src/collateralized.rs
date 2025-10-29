@@ -64,7 +64,7 @@ pub trait IsCollateralized {
     /// Get the number of decimals used by the asset oracle contract. This is NOT the same as the number of decimals used by the xAsset Fungible Token contract.
     fn decimals_asset_feed(env: &Env) -> Result<u32, Error>;
 
-    /// Opens a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
+    /// Open a new Collateralized Debt Position (CDP) by depositing collateral and minting xAsset.
     /// The user who creates the CDP becomes the CDP's owner.
     fn open_cdp(
         env: &Env,
