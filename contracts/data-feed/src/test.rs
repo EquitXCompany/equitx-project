@@ -2,8 +2,8 @@
 extern crate std;
 use crate::{Asset, SorobanContract__, SorobanContract__Client};
 
-use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env};
-use loam_sdk::soroban_sdk::{Symbol, Vec};
+use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{Symbol, Vec};
 
 fn create_datafeed_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
     let datafeed =

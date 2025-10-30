@@ -1,17 +1,10 @@
-use loam_sdk::loamstorage;
-use loam_sdk::soroban_sdk::{Lazy, PersistentItem};
-use loam_sdk::{
-    soroban_sdk::{self, env, InstanceItem, LoamKey, Map, PersistentMap, Vec},
-    vec,
-};
+use soroban_sdk::{contract, contractimpl, Map, Vec};
 
 use crate::sep40::{IsSep40, IsSep40Admin};
 use crate::Contract;
 use crate::{Asset, PriceData};
 
-#[loamstorage]
-#[derive(Default)]
-pub struct DataFeed {
+pub struct DataFeedStorage {
     // key is Asset, value is Map<timestamp, price>
     asset_prices: PersistentMap<Asset, Map<u64, i128>>,
     // assets available in the contract
@@ -22,6 +15,10 @@ pub struct DataFeed {
     last_timestamp: InstanceItem<u64>,
 }
 
+#[contract]
+pub struct DataFeed;
+
+#[contractimpl]
 impl DataFeed {
     #[must_use]
     pub fn new(

@@ -1,35 +1,30 @@
 use crate::{Asset, PriceData};
-use loam_sdk::{
-    soroban_sdk::{Lazy, Vec},
-    subcontract,
-};
+use soroban_sdk::{Env, Vec};
 
-#[subcontract]
 /// Oracle Consumer Interface from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0040.md
 pub trait IsSep40 {
     /// Return all assets quoted by the price feed
-    fn assets(&self) -> loam_sdk::soroban_sdk::Vec<Asset>;
+    fn assets(env: &Env) -> Vec<Asset>;
 
     /// Return the base asset the price is reported in
-    fn base(&self) -> Asset;
+    fn base(env: &Env) -> Asset;
 
     /// Return the number of decimals for all assets quoted by the oracle
-    fn decimals(&self) -> u32;
+    fn decimals(env: &Env) -> u32;
 
     /// Get the most recent price for an asset
-    fn lastprice(&self, asset: Asset) -> Option<PriceData>;
+    fn lastprice(env: &Env, asset: Asset) -> Option<PriceData>;
 
     /// Get price in base asset at specific timestamp
-    fn price(&self, asset: Asset, timestamp: u64) -> Option<PriceData>;
+    fn price(env: &Env, asset: Asset, timestamp: u64) -> Option<PriceData>;
 
     /// Get last N price records
-    fn prices(&self, asset: Asset, records: u32) -> Option<Vec<PriceData>>;
+    fn prices(env: &Env, asset: Asset, records: u32) -> Option<Vec<PriceData>>;
 
     /// Return default tick period timeframe (in milliseconds)
-    fn resolution(&self) -> u32;
+    fn resolution(env: &Env) -> u32;
 }
 
-#[subcontract]
 /// While not part of the official consumer-facing spec, every SEP40 contract will need
 /// to provide a way for Oracles to update the contract with new prices. This is an interface for
 /// that, and also for other administrative functions, like initializing the contract.
@@ -46,7 +41,7 @@ pub trait IsSep40Admin {
     /// - if `admin_set` has not yet been called and there is therefore not yet an admin
     /// - if admin did not sign the transaction envelope
     fn sep40_init(
-        &self,
+        env: &Env,
         // The assets supported by the contract.
         assets: Vec<Asset>,
         // The base asset for the prices.
