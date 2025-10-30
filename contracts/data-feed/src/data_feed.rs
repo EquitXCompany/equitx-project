@@ -10,11 +10,11 @@ use crate::{Asset, PriceData};
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Error {
-    /// Unauthorized access
-    Unauthorized = 1,
-
     /// Asset not found
-    AssetNotFound = 2,
+    AssetNotFound = 1,
+
+    /// Asset already exists
+    AssetAlreadyExists = 2,
 }
 
 #[contracttype]
@@ -128,6 +128,9 @@ impl IsSep40Admin for DataFeed {
         let current_storage = DataFeedStorage::get_state(env);
         let mut assets_vec = current_storage.assets;
         for asset in assets {
+            if assets_vec.contains(&asset) {
+                panic_with_error!(env, Error::AssetAlreadyExists);
+            }
             assets_vec.push_back(asset.clone());
             env.storage()
                 .persistent()

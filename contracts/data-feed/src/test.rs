@@ -21,13 +21,20 @@ fn test_data_feed() {
     let e = Env::default();
     e.mock_all_auths();
 
+    // Added in create_datafeed_contract helper
     let asset_xlm: Asset = Asset::Other(Symbol::new(&e, "XLM"));
     let asset_xusd: Asset = Asset::Other(Symbol::new(&e, "XUSD"));
+    // Not in initial assets
     let asset_xeur: Asset = Asset::Other(Symbol::new(&e, "XEUR"));
     let datafeed = create_datafeed_contract(&e);
 
     // Test add_assets
     datafeed.add_assets(&Vec::from_array(&e, [asset_xeur.clone()]));
+
+    // Test adding existing asset
+    let result = datafeed.try_add_assets(&Vec::from_array(&e, [asset_xlm.clone()]));
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::AssetAlreadyExists.into());
 
     // Test assets
     let assets = datafeed.assets();
