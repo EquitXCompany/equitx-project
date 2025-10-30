@@ -1,9 +1,9 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::error::Error;
 use crate::collateralized::CDPStatus;
-use crate::{data_feed};
+use crate::data_feed;
+use crate::error::Error;
 use crate::token::{TokenContract, TokenContractClient};
 use data_feed::Asset;
 use soroban_sdk::testutils::Ledger;
@@ -29,7 +29,7 @@ fn create_data_feed(e: &Env) -> data_feed::Client<'_> {
     let asset_xusd = Asset::Other(Symbol::new(e, "USDT"));
     let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
     let admin = Address::generate(e);
-    let contract_address = e.register(data_feed::WASM, (admin, &asset_vec, &14, &300));
+    let contract_address = e.register(data_feed::WASM, (admin, asset_vec, asset_xusd, 14u32, 300u32));
     data_feed::Client::new(e, &contract_address)
 }
 
@@ -488,7 +488,10 @@ fn test_transfer_from_checks_balance() {
     // Carol transfers from Bob to Alice using allowance
     let result = token.try_transfer_from(&carol, &bob, &alice, &500_0000000);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err().unwrap(), Error::InsufficientBalance.into());
+    assert_eq!(
+        result.unwrap_err().unwrap(),
+        Error::InsufficientBalance.into()
+    );
 }
 
 #[test]
@@ -513,7 +516,10 @@ fn test_token_transfers_self() {
     // Transfer from Alice to Alice, will get an error
     let result = token.try_transfer(&alice, &alice, &1000_0000000);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err().unwrap(), Error::CannotTransferToSelf.into());
+    assert_eq!(
+        result.unwrap_err().unwrap(),
+        Error::CannotTransferToSelf.into()
+    );
 
     // Balance should remain unchanged
     assert_eq!(token.balance(&alice), 1000_0000000);
