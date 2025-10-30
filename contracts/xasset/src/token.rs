@@ -535,12 +535,14 @@ impl TokenContract {
     }
 
     fn burn_internal(env: &Env, from: Address, amount: i128) {
-        let balance = env
+        let balance: i128 = env
             .storage()
             .persistent()
             .get(&DataKey::Balance(from.clone()))
             .unwrap_or(0);
-        let new_balance = balance - amount;
+        let Some(new_balance) = balance.checked_sub(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
         env.storage()
             .persistent()
             .set(&DataKey::Balance(from.clone()), &new_balance);
@@ -602,6 +604,7 @@ impl TokenContract {
             Self::add_total_xasset(env, -amount_to_withdraw);
             return Ok(());
         }
+
         let mut position = Self::get_deposit(env, to.clone()).unwrap_or_default();
 
         position.xasset_deposit = xasset_owed - amount_to_withdraw;
