@@ -315,7 +315,9 @@ impl TokenContract {
         from.require_auth();
         assert_positive(env, amount);
         let current_allowance = Self::allowance(env.clone(), from.clone(), spender.clone());
-        let new_amount = current_allowance + amount;
+        let Some(new_amount) = current_allowance.checked_add(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
         let current_ledger = env.ledger().sequence();
         Self::set_and_extend_allowance(
             env,
@@ -388,10 +390,12 @@ impl TokenContract {
     pub fn clawback(env: &Env, from: Address, amount: i128) {
         assert_positive(env, amount);
         Self::require_admin(env);
-        let balance = Self::balance(env.clone(), from.clone()) - amount;
+        let Some(new_balance) = Self::balance(env.clone(), from.clone()).checked_sub(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
         env.storage()
             .persistent()
-            .set(&DataKey::Balance(from.clone()), &balance);
+            .set(&DataKey::Balance(from.clone()), &new_balance);
         let ttl = env.storage().max_ttl();
         env.storage()
             .persistent()
@@ -492,28 +496,36 @@ impl TokenContract {
 
     // convenience functions for internal minting / transfering of the ft asset
     fn mint_internal(env: &Env, to: Address, amount: i128) {
-        let balance = env
+        let balance: i128 = env
             .storage()
             .persistent()
             .get(&DataKey::Balance(to.clone()))
             .unwrap_or(0);
-        let new_balance = balance + amount;
+        let Some(new_balance) = balance.checked_add(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
         env.storage()
             .persistent()
             .set(&DataKey::Balance(to.clone()), &new_balance);
     }
 
     fn transfer_internal(env: &Env, from: Address, to: Address, amount: i128) {
-        let curr_from_balance: Option<i128> = env
+        let curr_from_balance: i128 = env
             .storage()
             .persistent()
-            .get(&DataKey::Balance(from.clone()));
-        let from_balance = curr_from_balance.unwrap_or(0) - amount;
-        let curr_to_balance: Option<i128> = env
+            .get(&DataKey::Balance(from.clone()))
+            .unwrap_or(0);
+        let Some(from_balance) = curr_from_balance.checked_sub(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        let curr_to_balance: i128 = env
             .storage()
             .persistent()
-            .get(&DataKey::Balance(to.clone()));
-        let to_balance = curr_to_balance.unwrap_or(0) + amount;
+            .get(&DataKey::Balance(to.clone()))
+            .unwrap_or(0);
+        let Some(to_balance) = curr_to_balance.checked_add(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
         env.storage()
             .persistent()
             .set(&DataKey::Balance(from.clone()), &from_balance);
@@ -733,25 +745,37 @@ impl TokenContract {
     // todo: many of these function shouldnt be exposed
     fn add_total_xasset(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
-        state.total_xasset += amount;
+        let Some(new_total) = state.total_xasset.checked_add(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        state.total_xasset = new_total;
         TokenStorage::set_state(env, &state);
     }
 
     fn subtract_total_xasset(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
-        state.total_xasset -= amount;
+        let Some(new_total) = state.total_xasset.checked_sub(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        state.total_xasset = new_total;
         TokenStorage::set_state(env, &state);
     }
 
     fn add_total_collateral(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
-        state.total_collateral += amount;
+        let Some(new_total) = state.total_collateral.checked_add(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        state.total_collateral = new_total;
         TokenStorage::set_state(env, &state);
     }
 
     fn subtract_total_collateral(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
-        state.total_collateral -= amount;
+        let Some(new_total) = state.total_collateral.checked_sub(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        state.total_collateral = new_total;
         TokenStorage::set_state(env, &state);
     }
 
@@ -797,13 +821,19 @@ impl TokenContract {
 
     fn add_fees_collected(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
-        state.fees_collected += amount;
+        let Some(new_total) = state.fees_collected.checked_add(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        state.fees_collected = new_total;
         TokenStorage::set_state(env, &state);
     }
 
     fn subtract_fees_collected(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
-        state.fees_collected -= amount;
+        let Some(new_total) = state.fees_collected.checked_sub(amount) else {
+            panic_with_error!(env, Error::ArithmeticError);
+        };
+        state.fees_collected = new_total;
         TokenStorage::set_state(env, &state);
     }
 
@@ -890,8 +920,15 @@ impl TokenContract {
 
         pay_fn(&lender, &amount_in_xlm)?;
 
-        interest.amount -= amount_to_pay;
-        interest.paid += amount_in_xlm;
+        let Some(new_interest) = interest.amount.checked_sub(amount_to_pay) else {
+            return Err(Error::ArithmeticError);
+        };
+        interest.amount = new_interest;
+
+        let Some(new_paid) = interest.paid.checked_add(amount_in_xlm) else {
+            return Err(Error::ArithmeticError);
+        };
+        interest.paid = new_paid;
 
         let decorated_cdp = Self::decorate(
             env,
@@ -1281,12 +1318,17 @@ impl IsCollateralized for TokenContract {
             return Err(Error::CDPNotOpenOrInsolvent);
         }
 
+        // Calculate the new deposit amount and check for overflow before we transfer
+        let Some(new_deposit) = cdp.xlm_deposited.checked_add(amount) else {
+            return Err(Error::ArithmeticError);
+        };
+
         // Transfer XLM from lender to contract
         let _ = Self::native(env)
             .try_transfer(&lender, env.current_contract_address(), &amount)
             .map_err(|_| Error::XLMTransferFailed)?;
 
-        cdp.xlm_deposited += amount;
+        cdp.xlm_deposited = new_deposit;
         TokenStorage::set_cdp(env, lender, cdp);
         Ok(())
     }
@@ -1327,12 +1369,17 @@ impl IsCollateralized for TokenContract {
             return Err(Error::InvalidWithdrawal);
         }
 
+        // Calculate the new deposit amount and check for overflow before transfer
+        let Some(new_deposit) = cdp.xlm_deposited.checked_sub(amount) else {
+            return Err(Error::ArithmeticError);
+        };
+
         // Transfer XLM from contract to lender
         let _ = Self::native(env)
             .try_transfer(&env.current_contract_address(), &lender, &amount)
             .map_err(|_| Error::XLMTransferFailed)?;
 
-        cdp.xlm_deposited -= amount;
+        cdp.xlm_deposited = new_deposit;
         TokenStorage::set_cdp(env, lender, cdp);
         Ok(())
     }
@@ -1348,11 +1395,15 @@ impl IsCollateralized for TokenContract {
             return Err(Error::CDPNotOpenOrInsolvent);
         }
 
+        let Some(asset_lent) = cdp.asset_lent.checked_add(amount) else {
+            return Err(Error::ArithmeticError);
+        };
+
         let new_cdp = Self::decorate(
             env,
             CDPInternal {
                 xlm_deposited: cdp.xlm_deposited,
-                asset_lent: cdp.asset_lent + amount,
+                asset_lent,
                 status: cdp.status,
                 accrued_interest: cdp.accrued_interest,
                 last_interest_time: cdp.last_interest_time,
@@ -1411,10 +1462,15 @@ impl IsCollateralized for TokenContract {
             return Err(Error::InsufficientBalance);
         }
 
+        // Calculate the new asset lent amount and check for overflow before we burn
+        let Some(asset_lent) = cdp.asset_lent.checked_sub(amount) else {
+            return Err(Error::ArithmeticError);
+        };
+
         // Burn the xasset
         Self::burn_internal(env, lender.clone(), amount);
 
-        cdp.asset_lent -= amount;
+        cdp.asset_lent = asset_lent;
 
         if cdp.asset_lent == 0 && cdp.xlm_deposited == 0 {
             Self::close_cdp(env, lender)?;
@@ -1435,8 +1491,8 @@ impl IsCollateralized for TokenContract {
             return Err(Error::InvalidMerge);
         }
 
-        let mut total_xlm = 0;
-        let mut total_asset = 0;
+        let mut total_xlm: i128 = 0;
+        let mut total_asset: i128 = 0;
         let mut total_interest: Interest = Interest::default();
 
         for lender in lenders.iter() {
@@ -1445,10 +1501,27 @@ impl IsCollateralized for TokenContract {
             if !matches!(cdp.status, CDPStatus::Frozen) {
                 return Err(Error::InvalidMerge);
             }
-            total_xlm += cdp.xlm_deposited;
-            total_asset += cdp.asset_lent;
-            total_interest.amount += cdp.accrued_interest.amount;
-            total_interest.paid += cdp.accrued_interest.paid;
+
+            let Some(new_total_xlm) = total_xlm.checked_add(cdp.xlm_deposited) else {
+                return Err(Error::ArithmeticError);
+            };
+            let Some(new_total_asset) = total_asset.checked_add(cdp.asset_lent) else {
+                return Err(Error::ArithmeticError);
+            };
+            let Some(new_total_interest_amount) = total_interest
+                .amount
+                .checked_add(cdp.accrued_interest.amount) else {
+                return Err(Error::ArithmeticError);
+            };
+            let Some(new_total_interest_paid) = total_interest
+                .paid
+                .checked_add(cdp.accrued_interest.paid) else {
+                return Err(Error::ArithmeticError);
+            };
+            total_xlm = new_total_xlm;
+            total_asset = new_total_asset;
+            total_interest.amount = new_total_interest_amount;
+            total_interest.paid = new_total_interest_paid;
         }
 
         // Merge into the first CDP
@@ -1651,7 +1724,10 @@ impl IsStabilityPool for TokenContract {
             )
             .map_err(|_| Error::XLMTransferFailed)?;
         Self::add_fees_collected(env, Self::get_deposit_fee(env));
-        position.xasset_deposit = current_position + amount;
+        let Some(xasset_deposit) = current_position.checked_add(amount) else {
+            return Err(Error::ArithmeticError);
+        };
+        position.xasset_deposit = xasset_deposit;
         position.compounded_constant = Self::get_compounded_constant(env);
         position.product_constant = Self::get_product_constant(env);
         // transfer xasset from address to pool
@@ -1694,8 +1770,14 @@ impl IsStabilityPool for TokenContract {
             Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
 
         if interest_to_liquidate_xlm > 0 {
-            interest.amount -= interest_to_liquidate_xasset;
-            interest.paid += interest_to_liquidate_xlm;
+            let Some(interest_amount) = interest.amount.checked_sub(interest_to_liquidate_xasset) else {
+                return Err(Error::ArithmeticError);
+            };
+            let Some(interest_paid) = interest.paid.checked_add(interest_to_liquidate_xlm) else {
+                return Err(Error::ArithmeticError);
+            };
+            interest.amount = interest_amount;
+            interest.paid = interest_paid;
             cdp.accrued_interest = interest;
             TokenStorage::set_interest_collected(
                 env,
@@ -1730,8 +1812,14 @@ impl IsStabilityPool for TokenContract {
         Self::burn_internal(env, env.current_contract_address(), liquidated_debt);
 
         // Update the CDP
-        cdp.xlm_deposited -= liquidated_collateral;
-        cdp.asset_lent -= liquidated_debt;
+        let Some(xlm_deposited) = cdp.xlm_deposited.checked_sub(liquidated_collateral) else {
+            return Err(Error::ArithmeticError);
+        };
+        let Some(asset_lent) = cdp.asset_lent.checked_sub(liquidated_debt) else {
+            return Err(Error::ArithmeticError);
+        };
+        cdp.xlm_deposited = xlm_deposited;
+        cdp.asset_lent = asset_lent;
 
         env.events().publish(
             (Symbol::new(env, "Liquidation"), lender.clone()),
