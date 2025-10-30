@@ -1,7 +1,7 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, assert_with_error, contract, contractimpl, contracttype, symbol_short,
+    self, assert_with_error, contract, contractimpl, contracttype, panic_with_error, symbol_short,
     token::{TokenClient, TokenInterface},
     Address, BytesN, Env, MuxedAddress, String, Symbol, Vec,
 };
@@ -541,7 +541,8 @@ impl TokenContract {
         amount: i128,
         full_withdrawal: bool,
     ) -> Result<(), Error> {
-        let position = Self::get_deposit(env, to.clone()).ok_or(Error::StakeDoesntExist)?;
+        let position = Self::get_deposit(env, to.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::StakeDoesntExist));
         let rewards = Self::calculate_rewards(env, &position);
         if rewards > 0 {
             return Err(Error::ClaimRewardsFirst);
@@ -1239,7 +1240,8 @@ impl IsCollateralized for TokenContract {
 
     /// Retrieve the CDP information for a specific lender
     fn cdp(env: &Env, lender: Address) -> Result<CDPContract, Error> {
-        let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let cdp = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
         let xlm_price = Self::lastprice_xlm(env)?;
         let xlm_decimals = Self::decimals_xlm_feed(env)?;
         let xasset_price = Self::lastprice_asset(env)?;
@@ -1272,8 +1274,8 @@ impl IsCollateralized for TokenContract {
     fn add_collateral(env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
-        let mut cdp: CDPInternal =
-            TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let mut cdp: CDPInternal = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
 
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolvent);
@@ -1294,7 +1296,8 @@ impl IsCollateralized for TokenContract {
     fn withdraw_collateral(env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
-        let mut cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let mut cdp = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
 
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolvent);
@@ -1338,7 +1341,8 @@ impl IsCollateralized for TokenContract {
     fn borrow_xasset(env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
-        let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let cdp = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
 
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolvent);
@@ -1375,7 +1379,8 @@ impl IsCollateralized for TokenContract {
     fn repay_debt(env: &Env, lender: Address, amount: i128) -> Result<(), Error> {
         assert_positive(env, amount);
         lender.require_auth();
-        let mut cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let mut cdp = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
 
         if matches!(cdp.status, CDPStatus::Closed) || matches!(cdp.status, CDPStatus::Frozen) {
             return Err(Error::CDPNotOpenOrInsolventForRepay);
@@ -1435,7 +1440,8 @@ impl IsCollateralized for TokenContract {
         let mut total_interest: Interest = Interest::default();
 
         for lender in lenders.iter() {
-            let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+            let cdp = TokenStorage::get_cdp(env, lender.clone())
+                .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
             if !matches!(cdp.status, CDPStatus::Frozen) {
                 return Err(Error::InvalidMerge);
             }
@@ -1465,7 +1471,8 @@ impl IsCollateralized for TokenContract {
 
     /// Close a CDP when its Collateralization Ratio (CR) value is zero, having no collateral or debt
     fn close_cdp(env: &Env, lender: Address) -> Result<(), Error> {
-        let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let cdp = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
         if cdp.asset_lent > 0 {
             return Err(Error::OutstandingDebt);
         }
@@ -1496,7 +1503,8 @@ impl IsCollateralized for TokenContract {
 
     /// Update and return the accrued interest on a CDP
     fn get_accrued_interest(env: &Env, lender: Address) -> Result<InterestDetail, Error> {
-        let cdp = TokenStorage::get_cdp(env, lender.clone()).ok_or(Error::CDPNotFound)?;
+        let cdp = TokenStorage::get_cdp(env, lender.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
         let (interest, last_interest_time) = Self::get_updated_accrued_interest(env, &cdp)?;
 
         // Calculate approvalAmount: Projected interest 5 minutes ahead
@@ -1663,8 +1671,7 @@ impl IsStabilityPool for TokenContract {
     /// Process a liquidation event for a CDP
     fn liquidate(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         let mut cdp = TokenStorage::get_cdp(env, lender.clone())
-            .ok_or(Error::CDPNotFound)
-            .unwrap();
+            .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
         let principal_debt = cdp.asset_lent;
         let collateral = cdp.xlm_deposited;
         let mut interest = cdp.accrued_interest;
@@ -1783,7 +1790,8 @@ impl IsStabilityPool for TokenContract {
     /// Claim a user's share of collateral rewards
     fn claim_rewards(env: &Env, to: Address) -> Result<i128, Error> {
         to.require_auth();
-        let mut position = Self::get_deposit(env, to.clone()).ok_or(Error::StakeDoesntExist)?;
+        let mut position = Self::get_deposit(env, to.clone())
+            .unwrap_or_else(|| panic_with_error!(env, Error::StakeDoesntExist));
 
         let xlm_reward = Self::calculate_rewards(env, &position);
 
