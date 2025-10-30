@@ -1061,6 +1061,11 @@ impl TokenInterface for TokenContract {
     fn transfer(env: Env, from: Address, to: MuxedAddress, amount: i128) {
         from.require_auth();
         assert_with_error!(env.clone(), amount > 0, Error::ValueNotPositive);
+        assert_with_error!(
+            env.clone(),
+            to.address() != from,
+            Error::CannotTransferToSelf
+        );
         let balance = Self::balance(env.clone(), from.clone());
         assert_with_error!(env, balance >= amount, Error::InsufficientBalance);
         Self::transfer_internal(&env, from, to.address(), amount);

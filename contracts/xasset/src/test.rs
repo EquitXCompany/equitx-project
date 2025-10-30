@@ -464,3 +464,31 @@ fn test_cdp_operations_with_interest() {
     assert!(cdp_post_pay.accrued_interest.amount < accrued_interest);
     assert!(cdp_post_pay.accrued_interest.amount > 0);
 }
+
+#[test]
+fn test_token_transfers_self() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let xlm_admin_address = Address::generate(&e);
+    let (_, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
+    let xlm_token_address = xlm_admin.address.clone();
+    let datafeed = create_data_feed(&e);
+    let admin: Address = Address::generate(&e);
+    let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
+
+    let alice = Address::generate(&e);
+
+    // Mint tokens to Alice
+    token.mint(&alice, &1000_0000000);
+
+    assert_eq!(token.balance(&alice), 1000_0000000);
+
+    // Transfer from Alice to Alice, will get an error
+    let result = token.try_transfer(&alice, &alice, &1000_0000000);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::CannotTransferToSelf.into());
+
+    // Balance should remain unchanged
+    assert_eq!(token.balance(&alice), 1000_0000000);
+}
