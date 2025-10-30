@@ -1,9 +1,6 @@
 #![no_std]
-use loam_sdk::{
-    derive_contract,
-    soroban_sdk::{self, Vec},
-};
-use loam_subcontract_core::{admin::Admin, Core};
+
+use soroban_sdk::{self, Vec, contracttype, env, Map};,
 
 pub mod data_feed;
 pub mod reflector;
@@ -13,7 +10,7 @@ pub use data_feed::DataFeed;
 pub use sep40::{Sep40, Sep40Admin};
 
 /// Quoted asset definition
-#[loam_sdk::soroban_sdk::contracttype]
+#[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Asset {
     /// Can be a Stellar Classic or Soroban asset
@@ -23,7 +20,7 @@ pub enum Asset {
 }
 
 /// Price record definition
-#[loam_sdk::soroban_sdk::contracttype]
+#[contracttype]
 pub struct PriceData {
     pub price: i128,    //asset price at given point in time
     pub timestamp: u64, //recording timestamp

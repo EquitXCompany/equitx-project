@@ -9,9 +9,6 @@ edition = "2021"
 repository = "github:EquitXCompany/equitx-project"
 
 [workspace.dependencies]
-loam-sdk = "0.6.16"
-loam-subcontract-core = "0.7.9"
-loam-subcontract-ft = "0.7.2"
 soroban-sdk = "23.0.3"
 
 [profile.release]
