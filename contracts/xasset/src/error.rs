@@ -93,4 +93,7 @@ pub enum Error {
 
     /// Insufficient allowance; spender must call `approve` first
     InsufficientAllowance = 30,
+
+    /// Arithmetic overflow or underflow occurred
+    ArithmeticError = 31,
 }
