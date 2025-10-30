@@ -1081,6 +1081,11 @@ impl TokenInterface for TokenContract {
             allowance >= amount,
             Error::InsufficientAllowance
         );
+        assert_with_error!(
+            env.clone(),
+            Self::balance(env.clone(), from.clone()) >= amount,
+            Error::InsufficientBalance
+        );
         Self::transfer_internal(&env, from.clone(), to, amount);
         Self::decrease_allowance_internal(&env, from, spender, amount);
     }
@@ -1518,12 +1523,13 @@ impl IsCollateralized for TokenContract {
             };
             let Some(new_total_interest_amount) = total_interest
                 .amount
-                .checked_add(cdp.accrued_interest.amount) else {
+                .checked_add(cdp.accrued_interest.amount)
+            else {
                 return Err(Error::ArithmeticError);
             };
-            let Some(new_total_interest_paid) = total_interest
-                .paid
-                .checked_add(cdp.accrued_interest.paid) else {
+            let Some(new_total_interest_paid) =
+                total_interest.paid.checked_add(cdp.accrued_interest.paid)
+            else {
                 return Err(Error::ArithmeticError);
             };
             total_xlm = new_total_xlm;
@@ -1778,7 +1784,8 @@ impl IsStabilityPool for TokenContract {
             Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
 
         if interest_to_liquidate_xlm > 0 {
-            let Some(interest_amount) = interest.amount.checked_sub(interest_to_liquidate_xasset) else {
+            let Some(interest_amount) = interest.amount.checked_sub(interest_to_liquidate_xasset)
+            else {
                 return Err(Error::ArithmeticError);
             };
             let Some(interest_paid) = interest.paid.checked_add(interest_to_liquidate_xlm) else {

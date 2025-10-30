@@ -466,6 +466,36 @@ fn test_cdp_operations_with_interest() {
 }
 
 #[test]
+fn test_transfer_from_checks_balance() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let xlm_admin_address = Address::generate(&e);
+    let (_, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
+    let xlm_token_address = xlm_admin.address.clone();
+    let datafeed = create_data_feed(&e);
+    let admin: Address = Address::generate(&e);
+    let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
+
+    let alice = Address::generate(&e); // Token holder
+    let bob = Address::generate(&e); // Will give approval
+    let carol = Address::generate(&e); // Will execute transfer_from
+
+    // Mint initial tokens to Bob
+    token.mint(&bob, &1_0000000);
+    assert_eq!(token.balance(&bob), 1_0000000);
+
+    // Bob approves Carol to spend tokens
+    token.approve(&bob, &carol, &1000_0000000, &(e.ledger().sequence() + 1000));
+    assert_eq!(token.allowance(&bob, &carol), 1000_0000000);
+
+    // Carol transfers from Bob to Alice using allowance
+    let result = token.try_transfer_from(&carol, &bob, &alice, &500_0000000);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::InsufficientBalance.into());
+}
+
+#[test]
 fn test_token_transfers_self() {
     let e = Env::default();
     e.mock_all_auths();
