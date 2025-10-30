@@ -1,7 +1,10 @@
 #![cfg(test)]
 extern crate std;
+use core::i128;
+
+use crate::error::Error;
 use crate::collateralized::CDPStatus;
-use crate::data_feed;
+use crate::{data_feed};
 use crate::token::{TokenContract, TokenContractClient};
 use data_feed::Asset;
 use soroban_sdk::testutils::Ledger;
@@ -50,13 +53,13 @@ fn create_token_contract<'a>(
         TokenContract,
         (
             admin,
-            xlm_sac, // xlm_sac
+            xlm_sac,                  // xlm_sac
             datafeed.address.clone(), //xlm_contract
             datafeed.address.clone(), // asset_contract
-            pegged_asset, // pegged_asset
-            min_collat_ratio, // min_collat_ratio
-            name, // name
-            symbol, // asset symbol
+            pegged_asset,             // pegged_asset
+            min_collat_ratio,         // min_collat_ratio
+            name,                     // name
+            symbol,                   // asset symbol
             decimals,
             annual_interest_rate,
         ),
@@ -135,6 +138,32 @@ fn test_cdp_operations() {
 
     assert_eq!(alice_cdp.status, CDPStatus::Open);
     assert_eq!(bob_cdp.status, CDPStatus::Insolvent);
+}
+
+#[test]
+fn test_cannot_cause_overflow() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let xlm_admin_address = Address::generate(&e);
+    let (_, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
+    let xlm_token_address = xlm_admin.address.clone();
+    let datafeed = create_data_feed(&e);
+    let admin: Address = Address::generate(&e);
+    let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
+
+    let alice = Address::generate(&e);
+    let bob = Address::generate(&e);
+
+    // Mint some tokens to Alice
+    token.mint(&alice, &1000_0000000);
+    // Mint maximum tokens to Bob
+    token.mint(&bob, &i128::MAX);
+
+    // Try to transfer from Bob to Alice that would cause overflow
+    let result = token.try_transfer(&bob, &alice, &i128::MAX);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::ArithmeticError.into());
 }
 
 #[test]
