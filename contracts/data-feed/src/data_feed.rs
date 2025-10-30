@@ -1,18 +1,56 @@
-use soroban_sdk::{contract, contractimpl, Map, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, vec,
+    Address, BytesN, Env, Map, Symbol, Vec,
+};
 
 use crate::sep40::{IsSep40, IsSep40Admin};
-use crate::Contract;
 use crate::{Asset, PriceData};
 
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    /// Unauthorized access
+    Unauthorized = 1,
+
+    /// Asset not found
+    AssetNotFound = 2,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DataFeedStorage {
     // key is Asset, value is Map<timestamp, price>
-    asset_prices: PersistentMap<Asset, Map<u64, i128>>,
+    // asset_prices: PersistentMap<Asset, Map<u64, i128>>,
     // assets available in the contract
-    assets: PersistentItem<Vec<Asset>>,
-    base: InstanceItem<Asset>,
-    decimals: InstanceItem<u32>,
-    resolution: InstanceItem<u32>,
-    last_timestamp: InstanceItem<u64>,
+    assets: Vec<Asset>,
+    base: Asset,
+    decimals: u32,
+    resolution: u32,
+    last_timestamp: u64,
+}
+
+impl DataFeedStorage {
+    /// Get current state of the contract
+    pub fn get_state(env: &Env) -> DataFeedStorage {
+        env.storage().instance().get(&STORAGE).unwrap()
+    }
+
+    pub fn set_state(env: &Env, storage: &DataFeedStorage) {
+        env.storage().instance().set(&STORAGE, &storage);
+    }
+}
+
+const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
+const STORAGE: Symbol = symbol_short!("STORAGE");
+
+#[contracttype]
+enum DataKey {
+    Prices(Asset),
+}
+
+fn new_asset_prices_map(env: &Env) -> Map<u64, i128> {
+    Map::new(env)
 }
 
 #[contract]
@@ -20,8 +58,11 @@ pub struct DataFeed;
 
 #[contractimpl]
 impl DataFeed {
-    #[must_use]
-    pub fn new(
+    // #[must_use]
+    pub fn __constructor(
+        env: &Env,
+        // Admin of the contract
+        admin: Address,
         // The assets supported by the contract.
         assets: Vec<Asset>,
         // The base asset for the prices.
@@ -30,83 +71,119 @@ impl DataFeed {
         decimals: u32,
         // The resolution of the prices.
         resolution: u32,
-    ) -> Self {
-        let mut feed = DataFeed::default();
-        feed.assets.set(&assets);
+    ) -> Result<(), Error> {
+        env.storage().instance().set(&ADMIN_KEY, &admin);
+        let feed = DataFeedStorage {
+            // asset_prices: PersistentMap::new(env),
+            assets: assets.clone(),
+            base,
+            decimals,
+            resolution,
+            last_timestamp: 0,
+        };
+        DataFeedStorage::set_state(env, &feed);
+        let new_map: Map<u64, i128> = Map::new(env);
         for asset in assets.into_iter() {
-            feed.asset_prices.set(asset, &Map::new(env()));
+            env.storage()
+                .persistent()
+                .set(&DataKey::Prices(asset), &new_map);
         }
-        feed.base.set(&base);
-        feed.decimals.set(&decimals);
-        feed.resolution.set(&resolution);
-        feed
+        Ok(())
+    }
+
+    fn require_admin(env: &Env) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&ADMIN_KEY)
+            .expect("Admin must be set");
+        admin.require_auth();
+    }
+
+    /// Upgrade the contract to new wasm
+    pub fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        Self::require_admin(env);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
+    fn get_asset_price(env: &Env, asset_id: Asset) -> Option<Map<u64, i128>> {
+        env.storage().persistent().get(&DataKey::Prices(asset_id))
+    }
+
+    fn set_asset_price_internal(env: &Env, asset_id: Asset, price: i128, timestamp: u64) {
+        let mut asset = Self::get_asset_price(env, asset_id.clone()).unwrap_or_else(|| {
+            panic_with_error!(env, Error::AssetNotFound);
+        });
+        asset.set(timestamp, price);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Prices(asset_id), &asset);
     }
 }
 
+#[contractimpl]
 impl IsSep40Admin for DataFeed {
-    fn sep40_init(&self, assets: Vec<Asset>, base: Asset, decimals: u32, resolution: u32) {
-        Contract::require_auth();
-        DataFeed::set_lazy(DataFeed::new(assets, base, decimals, resolution));
-    }
-
-    fn add_assets(&mut self, assets: Vec<Asset>) {
-        Contract::require_auth();
-        let env = env();
-        let mut assets_vec = self.assets.get().clone().unwrap_or(Vec::new(env));
+    fn add_assets(env: &Env, assets: Vec<Asset>) {
+        Self::require_admin(env);
+        let current_storage = DataFeedStorage::get_state(env);
+        let mut assets_vec = current_storage.assets;
         for asset in assets {
             assets_vec.push_back(asset.clone());
-            self.asset_prices.set(asset, &Map::new(env))
+            env.storage()
+                .persistent()
+                .set(&DataKey::Prices(asset), &new_asset_prices_map(env));
         }
-        self.assets.set(&assets_vec);
+        DataFeedStorage::set_state(
+            env,
+            &DataFeedStorage {
+                assets: assets_vec,
+                ..current_storage
+            },
+        );
     }
 
-    fn set_asset_price(&mut self, asset_id: Asset, price: i128, timestamp: u64) {
-        Contract::require_auth();
-        let Some(mut asset) = self.asset_prices.get(asset_id.clone()) else {
-            panic!("Asset not found");
-        };
-        asset.set(timestamp, price);
-        self.asset_prices.set(asset_id, &asset);
+    fn set_asset_price(env: &Env, asset_id: Asset, price: i128, timestamp: u64) {
+        Self::require_admin(env);
+        Self::set_asset_price_internal(env, asset_id, price, timestamp);
     }
 }
 
+#[contractimpl]
 impl IsSep40 for DataFeed {
-    fn assets(&self) -> loam_sdk::soroban_sdk::Vec<Asset> {
-        self.assets
-            .get()
-            .expect("Assets must be initialized")
-            .clone()
+    fn assets(env: &Env) -> Vec<Asset> {
+        DataFeedStorage::get_state(env).assets.clone()
     }
 
-    fn base(&self) -> Asset {
-        self.base
-            .get()
-            .expect("Base needs to be initialized")
-            .clone()
+    fn base(env: &Env) -> Asset {
+        DataFeedStorage::get_state(env).base.clone()
     }
 
-    fn decimals(&self) -> u32 {
-        self.decimals
-            .get()
-            .expect("Decimals needs to be initialized")
-            .clone()
+    fn decimals(env: &Env) -> u32 {
+        DataFeedStorage::get_state(env).decimals
     }
 
-    fn lastprice(&self, asset: Asset) -> Option<PriceData> {
-        let asset = self.asset_prices.get(asset.clone())?;
+    fn lastprice(env: &Env, asset: Asset) -> Option<PriceData> {
+        let Some(asset) = Self::get_asset_price(env, asset.clone()) else {
+            panic_with_error!(env, Error::AssetNotFound);
+        };
         let timestamp = asset.keys().last()?;
         let price = asset.get(timestamp)?;
         Some(PriceData { price, timestamp })
     }
 
-    fn price(&self, asset: Asset, timestamp: u64) -> Option<PriceData> {
-        let price = self.asset_prices.get(asset)?.get(timestamp)?;
+    fn price(env: &Env, asset: Asset, timestamp: u64) -> Option<PriceData> {
+        let Some(asset) = Self::get_asset_price(env, asset.clone()) else {
+            panic_with_error!(env, Error::AssetNotFound);
+        };
+        let price = asset.get(timestamp)?;
         Some(PriceData { price, timestamp })
     }
 
-    fn prices(&self, asset: Asset, records: u32) -> Option<Vec<PriceData>> {
-        let asset = self.asset_prices.get(asset)?;
-        let mut prices = vec![];
+    fn prices(env: &Env, asset: Asset, records: u32) -> Option<Vec<PriceData>> {
+        let Some(asset) = Self::get_asset_price(env, asset.clone()) else {
+            panic_with_error!(env, Error::AssetNotFound);
+        };
+        let mut prices = vec![env];
         asset
             .keys()
             .iter()
@@ -121,10 +198,7 @@ impl IsSep40 for DataFeed {
         Some(prices)
     }
 
-    fn resolution(&self) -> u32 {
-        self.resolution
-            .get()
-            .expect("Resolution needs to be initialized")
-            .clone()
+    fn resolution(env: &Env) -> u32 {
+        DataFeedStorage::get_state(env).resolution
     }
 }

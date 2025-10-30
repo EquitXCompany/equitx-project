@@ -1,6 +1,19 @@
 use crate::{Asset, PriceData};
 use soroban_sdk::{Env, Vec};
 
+#[soroban_sdk::contracterror(export = false)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub enum Error {
+    AlreadyInitialized = 0,
+    Unauthorized = 1,
+    AssetMissing = 2,
+    AssetAlreadyExists = 3,
+    InvalidConfigVersion = 4,
+    InvalidTimestamp = 5,
+    InvalidUpdateLength = 6,
+    AssetLimitExceeded = 7
+}
+
 /// SEP40 extension implemented by Reflector Network: https://reflector.network/docs/interface
 pub trait IsReflector {
     /// Get the most recent price update timestamp
@@ -57,5 +70,5 @@ pub trait IsReflectorAdmin {
     /// # Panics
     ///
     /// Panics if the caller doesn't match admin address, or if the period/version is invalid
-    fn set_retention_period(&mut self, period: u64);
+    fn set_retention_period(env: &Env, period: u64);
 }
