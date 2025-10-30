@@ -96,4 +96,7 @@ pub enum Error {
 
     /// Arithmetic overflow or underflow occurred
     ArithmeticError = 31,
+
+    // Cannot transfer to self
+    CannotTransferToSelf = 32,
 }
