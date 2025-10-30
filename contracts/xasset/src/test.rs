@@ -1,6 +1,5 @@
 #![cfg(test)]
 extern crate std;
-use core::i128;
 
 use crate::error::Error;
 use crate::collateralized::CDPStatus;
@@ -26,15 +25,12 @@ fn create_sac_token_clients<'a>(
 }
 
 fn create_data_feed(e: &Env) -> data_feed::Client<'_> {
-    let contract_address = e.register(data_feed::WASM, ());
-    let contract = data_feed::Client::new(e, &contract_address);
     let asset_xlm = Asset::Other(Symbol::new(e, "XLM"));
     let asset_xusd = Asset::Other(Symbol::new(e, "USDT"));
     let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
     let admin = Address::generate(e);
-    contract.admin_set(&admin);
-    contract.sep40_init(&asset_vec, &asset_xusd, &14, &300);
-    contract
+    let contract_address = e.register(data_feed::WASM, (admin, &asset_vec, &14, &300));
+    data_feed::Client::new(e, &contract_address)
 }
 
 fn create_token_contract<'a>(
