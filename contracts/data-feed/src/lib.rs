@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{self, contracttype, Address, Symbol};
+use soroban_sdk::{self, Address, Symbol, contracttype};
 
 pub mod data_feed;
 mod sep40;
@@ -22,6 +22,5 @@ pub struct PriceData {
     pub price: i128,    //asset price at given point in time
     pub timestamp: u64, //recording timestamp
 }
-
 
 mod test;
