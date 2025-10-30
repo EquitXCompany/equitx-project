@@ -3,7 +3,6 @@
 use soroban_sdk::{self, contracttype, Address, Symbol};
 
 pub mod data_feed;
-mod reflector;
 mod sep40;
 
 /// Quoted asset definition
@@ -18,6 +17,7 @@ pub enum Asset {
 
 /// Price record definition
 #[contracttype]
+#[derive(Debug)]
 pub struct PriceData {
     pub price: i128,    //asset price at given point in time
     pub timestamp: u64, //recording timestamp

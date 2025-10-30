@@ -1,6 +1,6 @@
 #![cfg(test)]
 extern crate std;
-use crate::data_feed::{DataFeed, DataFeedClient};
+use crate::data_feed::{DataFeed, DataFeedClient, Error};
 use crate::Asset;
 
 use soroban_sdk::{testutils::Address as _, Address, Env};
@@ -79,9 +79,14 @@ fn test_data_feed() {
 
     // Test non-existent asset
     let non_existent_asset = Asset::Other(Symbol::new(&e, "NON_EXISTENT"));
-    assert!(datafeed.lastprice(&non_existent_asset).is_none());
-    assert!(datafeed.price(&non_existent_asset, &timestamp1).is_none());
-    assert!(datafeed.prices(&non_existent_asset, &1).is_none());
+    let result = datafeed.try_lastprice(&non_existent_asset);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::AssetNotFound.into());
+    let result = datafeed.try_price(&non_existent_asset, &timestamp1);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::AssetNotFound.into());
+    let result = datafeed.try_prices(&non_existent_asset, &1);
+    assert!(result.is_err());
 
     // Test price at non-existent timestamp
     let non_existent_timestamp: u64 = 2_000_000_000;
