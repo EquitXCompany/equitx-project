@@ -1,29 +1,17 @@
 #![cfg(test)]
 extern crate std;
-use crate::{Asset};
 use crate::data_feed::{DataFeed, DataFeedClient};
-
+use crate::Asset;
 
 use soroban_sdk::{testutils::Address as _, Address, Env};
 use soroban_sdk::{Symbol, Vec};
 
-fn create_datafeed_contract<'a>(e: &Env) -> DataFeedClient<'a> {        
+fn create_datafeed_contract<'a>(e: &Env) -> DataFeedClient<'a> {
     let asset_xlm: Asset = Asset::Other(Symbol::new(e, "XLM"));
     let asset_xusd: Asset = Asset::Other(Symbol::new(e, "XUSD"));
     let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
     let admin = Address::generate(&e);
-    // datafeed.admin_set(&admin);
-    // datafeed.sep40_init(&asset_vec, &asset_xusd, &14, &300);
-        let contract_id = e.register(
-        DataFeed,
-        (
-            admin,
-            asset_vec,
-            asset_xusd,
-            14u32,
-            300u32,
-        ),
-    );
+    let contract_id = e.register(DataFeed, (admin, asset_vec, asset_xusd, 14u32, 300u32));
 
     DataFeedClient::new(e, &contract_id)
 }
