@@ -4,7 +4,7 @@ description = "Fungible Token that wraps another asset, creates a stability pool
 version = "1.0.0"
 authors = ["The Aha Company <help@theaha.co>"]
 license = "Apache-2.0"
-edition = "2021"
+edition.workspace = true
 repository.workspace = true
 publish = false
 

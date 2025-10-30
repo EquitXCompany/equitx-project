@@ -4,7 +4,7 @@ description = "Feed of data from an Oracle"
 version = "0.0.0"
 authors = ["The Aha Company <help@theaha.co>"]
 license = "Apache-2.0"
-edition = "2021"
+edition.workspace = true
 repository.workspace = true
 publish = false
 
@@ -13,12 +13,10 @@ crate-type = ["cdylib"]
 doctest = false
 
 [dependencies]
-loam-sdk = { workspace = true, features = ["loam-soroban-sdk"] }
-loam-subcontract-core = { workspace = true }
-
+soroban-sdk = { workspace = true }
 
 [dev-dependencies]
-loam-sdk = { workspace = true, features = ["soroban-sdk-testutils"] }
+soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [package.metadata.stellar]
 contract = true

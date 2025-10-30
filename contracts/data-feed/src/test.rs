@@ -1,20 +1,19 @@
 #![cfg(test)]
 extern crate std;
-use crate::{Asset, SorobanContract__, SorobanContract__Client};
+use crate::data_feed::{DataFeed, DataFeedClient, Error};
+use crate::Asset;
 
-use loam_sdk::soroban_sdk::{testutils::Address as _, Address, Env};
-use loam_sdk::soroban_sdk::{Symbol, Vec};
+use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{Symbol, Vec};
 
-fn create_datafeed_contract<'a>(e: &Env) -> SorobanContract__Client<'a> {
-    let datafeed =
-        SorobanContract__Client::new(e, &e.register_contract(None, SorobanContract__ {}));
+fn create_datafeed_contract<'a>(e: &Env) -> DataFeedClient<'a> {
     let asset_xlm: Asset = Asset::Other(Symbol::new(e, "XLM"));
     let asset_xusd: Asset = Asset::Other(Symbol::new(e, "XUSD"));
     let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
     let admin = Address::generate(&e);
-    datafeed.admin_set(&admin);
-    datafeed.sep40_init(&asset_vec, &asset_xusd, &14, &300);
-    datafeed
+    let contract_id = e.register(DataFeed, (admin, asset_vec, asset_xusd, 14u32, 300u32));
+
+    DataFeedClient::new(e, &contract_id)
 }
 
 #[test]
@@ -80,9 +79,14 @@ fn test_data_feed() {
 
     // Test non-existent asset
     let non_existent_asset = Asset::Other(Symbol::new(&e, "NON_EXISTENT"));
-    assert!(datafeed.lastprice(&non_existent_asset).is_none());
-    assert!(datafeed.price(&non_existent_asset, &timestamp1).is_none());
-    assert!(datafeed.prices(&non_existent_asset, &1).is_none());
+    let result = datafeed.try_lastprice(&non_existent_asset);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::AssetNotFound.into());
+    let result = datafeed.try_price(&non_existent_asset, &timestamp1);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::AssetNotFound.into());
+    let result = datafeed.try_prices(&non_existent_asset, &1);
+    assert!(result.is_err());
 
     // Test price at non-existent timestamp
     let non_existent_timestamp: u64 = 2_000_000_000;
