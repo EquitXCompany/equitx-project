@@ -1,5 +1,5 @@
 use crate::collateralized::CDPStatus;
-use soroban_sdk::{contracttype, Address};
+use soroban_sdk::{Address, contracttype};
 
 #[contracttype]
 pub struct CDP {

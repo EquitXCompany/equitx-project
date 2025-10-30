@@ -1,8 +1,8 @@
-use soroban_sdk::{contracttype, Address, Env, String, Symbol, Vec};
+use soroban_sdk::{Address, Env, String, Symbol, Vec, contracttype};
 
 use crate::{
-    storage::{Interest, InterestDetail},
     Error, PriceData,
+    storage::{Interest, InterestDetail},
 };
 
 #[contracttype]

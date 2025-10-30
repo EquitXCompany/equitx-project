@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address};
+use soroban_sdk::{Address, contracttype};
 
 use crate::collateralized::CDPStatus;
 

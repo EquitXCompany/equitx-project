@@ -1,6 +1,6 @@
-use soroban_sdk::{contracttype, Address, Env};
+use soroban_sdk::{Address, Env, contracttype};
 
-use crate::{collateralized::CDPStatus, Error};
+use crate::{Error, collateralized::CDPStatus};
 const PRODUCT_CONSTANT: i128 = 1_000_000_000;
 
 #[contracttype]

@@ -1,17 +1,17 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, assert_with_error, contract, contractimpl, contracttype, panic_with_error, symbol_short,
+    self, Address, BytesN, Env, MuxedAddress, String, Symbol, Vec, assert_with_error, contract,
+    contractimpl, contracttype, panic_with_error, symbol_short,
     token::{TokenClient, TokenInterface},
-    Address, BytesN, Env, MuxedAddress, String, Symbol, Vec,
 };
 
 use crate::{
+    Error, PriceData,
     collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
     data_feed,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
-    Error, PriceData,
 };
 const VERSION_STRING: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),

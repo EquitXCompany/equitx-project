@@ -1,9 +1,9 @@
 #![cfg(test)]
 extern crate std;
-use crate::data_feed::{DataFeed, DataFeedClient, Error};
 use crate::Asset;
+use crate::data_feed::{DataFeed, DataFeedClient, Error};
 
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{Address, Env, testutils::Address as _};
 use soroban_sdk::{Symbol, Vec};
 
 fn create_datafeed_contract<'a>(e: &Env) -> DataFeedClient<'a> {
@@ -34,7 +34,10 @@ fn test_data_feed() {
     // Test adding existing asset
     let result = datafeed.try_add_assets(&Vec::from_array(&e, [asset_xlm.clone()]));
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err().unwrap(), Error::AssetAlreadyExists.into());
+    assert_eq!(
+        result.unwrap_err().unwrap(),
+        Error::AssetAlreadyExists.into()
+    );
 
     // Test assets
     let assets = datafeed.assets();
@@ -97,7 +100,9 @@ fn test_data_feed() {
 
     // Test price at non-existent timestamp
     let non_existent_timestamp: u64 = 2_000_000_000;
-    assert!(datafeed
-        .price(&asset_xlm, &non_existent_timestamp)
-        .is_none());
+    assert!(
+        datafeed
+            .price(&asset_xlm, &non_existent_timestamp)
+            .is_none()
+    );
 }

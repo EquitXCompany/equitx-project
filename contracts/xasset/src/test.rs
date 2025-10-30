@@ -8,9 +8,9 @@ use crate::token::{TokenContract, TokenContractClient};
 use data_feed::Asset;
 use soroban_sdk::testutils::Ledger;
 use soroban_sdk::{
+    Address, Env, String, Symbol, Vec,
     testutils::Address as _,
     token::{self, Client as TokenClient, StellarAssetClient},
-    Address, Env, String, Symbol, Vec,
 };
 
 fn create_sac_token_clients<'a>(
@@ -29,7 +29,10 @@ fn create_data_feed(e: &Env) -> data_feed::Client<'_> {
     let asset_xusd = Asset::Other(Symbol::new(e, "USDT"));
     let asset_vec = Vec::from_array(e, [asset_xlm.clone(), asset_xusd.clone()]);
     let admin = Address::generate(e);
-    let contract_address = e.register(data_feed::WASM, (admin, asset_vec, asset_xusd, 14u32, 300u32));
+    let contract_address = e.register(
+        data_feed::WASM,
+        (admin, asset_vec, asset_xusd, 14u32, 300u32),
+    );
     data_feed::Client::new(e, &contract_address)
 }
 
