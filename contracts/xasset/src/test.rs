@@ -67,6 +67,16 @@ fn create_token_contract<'a>(
     TokenContractClient::new(e, &contract_id)
 }
 
+fn set_token_prices(e: &Env, token: &TokenContractClient, xlm_price: i128, asset_price: i128) {
+    let xlm_contract = token.xlm_contract();
+    let client = data_feed::Client::new(e, &xlm_contract);
+    client.set_asset_price(&Asset::Other(Symbol::new(e, "XLM")), &xlm_price, &1000);
+
+    let asset_contract = token.asset_contract();
+    let client = data_feed::Client::new(e, &asset_contract);
+    client.set_asset_price(&Asset::Other(Symbol::new(e, "USDT")), &asset_price, &1000);
+}
+
 #[test]
 fn test_token_initialization() {
     let e = Env::default();
@@ -275,16 +285,16 @@ fn test_stability_pool() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
+    set_token_prices(&e, &token, 10_000_000_000_000, 10_000_000_000_000);
+
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
     xlm_admin.mint(&alice, &1_000_000_000_000);
     xlm_admin.mint(&bob, &1_000_000_000_000);
 
-    // Mint tokens to Alice and Bob
+    // Alice and Bob open CDPs
     token.open_cdp(&alice, &1000_0000000, &1000_0000000);
-    token.open_cdp(&bob, &1000_0000000, &1000_0000000);
-    // token.mint(&alice, &1000_0000000);
-    // token.mint(&bob, &1000_0000000);
+    token.open_cdp(&bob, &1500_0000000, &1000_0000000);
 
     // Stake in stability pool
     token.stake(&alice, &500_0000000);
@@ -319,16 +329,7 @@ fn test_liquidation() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    // Mock initial
-    let xlm_contract = token.xlm_contract();
-    let client = data_feed::Client::new(&e, &xlm_contract);
-    let xlm_price = 10_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
-
-    let usdt_contract = token.asset_contract();
-    let client = data_feed::Client::new(&e, &usdt_contract);
-    let usdt_price: i128 = 100_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+    set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
 
     let alice = Address::generate(&e);
     xlm_admin.mint(&alice, &2_000_000_000_000);
@@ -342,9 +343,8 @@ fn test_liquidation() {
     token.open_cdp(&alice, &10_000_000_000, &700_000_000);
 
     // Update XLM price to make the CDP insolvent
-    let client = data_feed::Client::new(&e, &xlm_contract);
     let xlm_price = 5_000_000_000_000; // Half the original price
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
+    set_token_prices(&e, &token, xlm_price, 100_000_000_000_000);
 
     // Check if the CDP is insolvent
     let alice_cdp = token.cdp(&alice);
