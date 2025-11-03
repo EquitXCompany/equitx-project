@@ -67,6 +67,16 @@ fn create_token_contract<'a>(
     TokenContractClient::new(e, &contract_id)
 }
 
+fn set_token_prices(e: &Env, token: &TokenContractClient, xlm_price: i128, asset_price: i128) {
+    let xlm_contract = token.xlm_contract();
+    let client = data_feed::Client::new(e, &xlm_contract);
+    client.set_asset_price(&Asset::Other(Symbol::new(e, "XLM")), &xlm_price, &1000);
+
+    let asset_contract = token.asset_contract();
+    let client = data_feed::Client::new(e, &asset_contract);
+    client.set_asset_price(&Asset::Other(Symbol::new(e, "USDT")), &asset_price, &1000);
+}
+
 #[test]
 fn test_token_initialization() {
     let e = Env::default();
@@ -151,18 +161,17 @@ fn test_cannot_cause_overflow() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    let alice = Address::generate(&e);
+    set_token_prices(&e, &token, 10_000_000_000_000, 1_000);
+
     let bob = Address::generate(&e);
 
-    // Mint some tokens to Alice
-    token.mint(&alice, &1000_0000000);
-    // Mint maximum tokens to Bob
-    token.mint(&bob, &i128::MAX);
+    // Fund  Bob with XLM
+    xlm_admin.mint(&bob, &150_000_000_000_000);
 
-    // Try to transfer from Bob to Alice that would cause overflow
-    let result = token.try_transfer(&bob, &alice, &i128::MAX);
+    // Bob attempts to open a CDP that would cause overflow in collateralization ratio calculation
+    let result = token.try_open_cdp(&bob, &100_000_000_000_000, &i128::MAX);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err().unwrap(), Error::ArithmeticError.into());
+    assert_eq!(result.unwrap_err().unwrap(), Error::ArithmeticError);
 }
 
 #[test]
@@ -178,10 +187,13 @@ fn test_token_transfers() {
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
     let alice = Address::generate(&e);
+    xlm_admin.mint(&alice, &2_000_000_000_000); // Fund Alice with XLM
     let bob = Address::generate(&e);
 
-    // Mint tokens to Alice
-    token.mint(&alice, &1000_0000000);
+    set_token_prices(&e, &token, 10_000_000_000_000, 1_000_000_000_000);
+
+    // Alice opens a CDP to get tokens
+    token.open_cdp(&alice, &1000_0000000, &1000_0000000);
 
     assert_eq!(token.balance(&alice), 1000_0000000);
     assert_eq!(token.balance(&bob), 0);
@@ -205,12 +217,16 @@ fn test_allowances() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
+    set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
+
     let alice = Address::generate(&e); // Token holder
+    xlm_admin.mint(&alice, &2_000_000_000_000); // Fund Alice with XLM
     let bob = Address::generate(&e); // Will give approval
+    xlm_admin.mint(&bob, &250_000_000_000); // Fund Bob with XLM
     let carol = Address::generate(&e); // Will execute transfer_from
 
-    // Mint initial tokens to Bob
-    token.mint(&bob, &2000_0000000);
+    // Bob opens a CDP to get some tokens
+    token.open_cdp(&bob, &250_000_000_000, &2000_0000000);
     assert_eq!(token.balance(&bob), 2000_0000000);
 
     // Bob approves Carol to spend tokens
@@ -241,14 +257,16 @@ fn test_stability_pool() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
+    set_token_prices(&e, &token, 10_000_000_000_000, 10_000_000_000_000);
+
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
     xlm_admin.mint(&alice, &1_000_000_000_000);
     xlm_admin.mint(&bob, &1_000_000_000_000);
 
-    // Mint tokens to Alice and Bob
-    token.mint(&alice, &1000_0000000);
-    token.mint(&bob, &1000_0000000);
+    // Alice and Bob open CDPs
+    token.open_cdp(&alice, &1500_0000000, &1000_0000000);
+    token.open_cdp(&bob, &1500_0000000, &1000_0000000);
 
     // Stake in stability pool
     token.stake(&alice, &500_0000000);
@@ -283,32 +301,22 @@ fn test_liquidation() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
+    set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
+
     let alice = Address::generate(&e);
     xlm_admin.mint(&alice, &2_000_000_000_000);
     let staker = Address::generate(&e); // Add a staker
     xlm_admin.mint(&staker, &2_000_000_000_000); // Mint some XLM to staker
 
-    token.mint(&staker, &1000_0000000);
+    token.open_cdp(&staker, &100000_0000000, &1000_0000000);
     token.stake(&staker, &50_0000000);
-
-    // Mock initial prices
-    let xlm_contract = token.xlm_contract();
-    let client = data_feed::Client::new(&e, &xlm_contract);
-    let xlm_price = 10_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
-
-    let usdt_contract = token.asset_contract();
-    let client = data_feed::Client::new(&e, &usdt_contract);
-    let usdt_price: i128 = 100_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
 
     // Open CDP for Alice
     token.open_cdp(&alice, &10_000_000_000, &700_000_000);
 
     // Update XLM price to make the CDP insolvent
-    let client = data_feed::Client::new(&e, &xlm_contract);
     let xlm_price = 5_000_000_000_000; // Half the original price
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
+    set_token_prices(&e, &token, xlm_price, 100_000_000_000_000);
 
     // Check if the CDP is insolvent
     let alice_cdp = token.cdp(&alice);
@@ -343,16 +351,7 @@ fn test_error_handling() {
     xlm_admin.mint(&alice, &2_000_000_000_000);
     xlm_admin.mint(&bob, &2_000_000_000_000);
 
-    // Mock prices
-    let xlm_contract = token.xlm_contract();
-    let client = data_feed::Client::new(&e, &xlm_contract);
-    let xlm_price = 10_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
-
-    let usdt_contract = token.asset_contract();
-    let client = data_feed::Client::new(&e, &usdt_contract);
-    let usdt_price: i128 = 100_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+    set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
 
     // Try to transfer more than balance
     let result = token.try_transfer(&alice, &bob, &1000_0000000);
@@ -364,9 +363,9 @@ fn test_error_handling() {
     assert!(result.is_err());
 
     // Try to withdraw more than staked
-    token.mint(&bob, &1200_0000000);
-    token.stake(&bob, &100_0000000);
-    let result = token.try_withdraw(&bob, &200_0000000);
+    token.open_cdp(&bob, &1_002_000_000_000, &12_000_000_000);
+    token.stake(&bob, &1_000_000_000);
+    let result = token.try_withdraw(&bob, &2_000_000_000);
     assert!(result.is_err());
 }
 
@@ -385,16 +384,7 @@ fn test_cdp_operations_with_interest() {
     let alice = Address::generate(&e);
     xlm_admin.mint(&alice, &2_000_000_000_000);
 
-    // Mock prices
-    let xlm_contract = token.xlm_contract();
-    let client = data_feed::Client::new(&e, &xlm_contract);
-    let xlm_price = 10_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
-
-    let usdt_contract = token.asset_contract();
-    let client = data_feed::Client::new(&e, &usdt_contract);
-    let usdt_price: i128 = 100_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+    set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
 
     // Set initial timestamp
     let initial_time = 1700000000;
@@ -476,12 +466,15 @@ fn test_transfer_from_checks_balance() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    let alice = Address::generate(&e); // Token holder
+    set_token_prices(&e, &token, 10_000_000_000_000, 10_000_000_000_000);
+
+    let alice = Address::generate(&e); // Token receiver
     let bob = Address::generate(&e); // Will give approval
+    xlm_admin.mint(&bob, &5_0000000);
     let carol = Address::generate(&e); // Will execute transfer_from
 
-    // Mint initial tokens to Bob
-    token.mint(&bob, &1_0000000);
+    // Bob opens a CDP to get some tokens
+    token.open_cdp(&bob, &2_0000000, &1_0000000);
     assert_eq!(token.balance(&bob), 1_0000000);
 
     // Bob approves Carol to spend tokens
@@ -509,10 +502,13 @@ fn test_token_transfers_self() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    let alice = Address::generate(&e);
+    set_token_prices(&e, &token, 10_000_000_000_000, 10_000_000_000_000);
 
-    // Mint tokens to Alice
-    token.mint(&alice, &1000_0000000);
+    let alice = Address::generate(&e);
+    xlm_admin.mint(&alice, &2000_0000000); // Fund Alice with XLM
+
+    // Alice opens a CDP to get some tokens
+    token.open_cdp(&alice, &1200_0000000, &1000_0000000);
 
     assert_eq!(token.balance(&alice), 1000_0000000);
 
