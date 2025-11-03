@@ -319,16 +319,7 @@ fn test_liquidation() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    let alice = Address::generate(&e);
-    xlm_admin.mint(&alice, &2_000_000_000_000);
-    let staker = Address::generate(&e); // Add a staker
-    xlm_admin.mint(&staker, &2_000_000_000_000); // Mint some XLM to staker
-
-    // token.mint(&staker, &1000_0000000);
-    token.open_cdp(&staker, &1000_0000000, &1000_0000000);
-    token.stake(&staker, &50_0000000);
-
-    // Mock initial prices
+    // Mock initial
     let xlm_contract = token.xlm_contract();
     let client = data_feed::Client::new(&e, &xlm_contract);
     let xlm_price = 10_000_000_000_000;
@@ -338,6 +329,14 @@ fn test_liquidation() {
     let client = data_feed::Client::new(&e, &usdt_contract);
     let usdt_price: i128 = 100_000_000_000_000;
     client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+
+    let alice = Address::generate(&e);
+    xlm_admin.mint(&alice, &2_000_000_000_000);
+    let staker = Address::generate(&e); // Add a staker
+    xlm_admin.mint(&staker, &2_000_000_000_000); // Mint some XLM to staker
+
+    token.open_cdp(&staker, &100000_0000000, &1000_0000000);
+    token.stake(&staker, &50_0000000);
 
     // Open CDP for Alice
     token.open_cdp(&alice, &10_000_000_000, &700_000_000);
