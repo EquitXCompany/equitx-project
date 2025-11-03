@@ -338,6 +338,8 @@ impl TokenContract {
         assert_positive(env, amount);
         let current_allowance = Self::allowance(env.clone(), from.clone(), spender.clone());
         let new_amount = current_allowance.checked_sub(amount).unwrap_or(0);
+        // New amount must be positive
+        assert_positive(env, new_amount);
         let current_ledger = env.ledger().sequence();
         Self::set_and_extend_allowance(
             env,
