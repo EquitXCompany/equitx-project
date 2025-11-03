@@ -401,10 +401,9 @@ fn test_error_handling() {
     assert!(result.is_err());
 
     // Try to withdraw more than staked
-    // token.mint(&bob, &1200_0000000);
-    token.open_cdp(&bob, &1200_0000000, &1200_0000000);
-    token.stake(&bob, &100_0000000);
-    let result = token.try_withdraw(&bob, &200_0000000);
+    token.open_cdp(&bob, &1_002_000_000_000, &12_000_000_000);
+    token.stake(&bob, &1_000_000_000);
+    let result = token.try_withdraw(&bob, &2_000_000_000);
     assert!(result.is_err());
 }
 
