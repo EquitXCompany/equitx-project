@@ -198,7 +198,7 @@ fn test_token_transfers() {
 
     let usdt_contract = token.asset_contract();
     let client = data_feed::Client::new(&e, &usdt_contract);
-    let usdt_price: i128 = 100_000_000_000_000;
+    let usdt_price: i128 = 1_000_000_000_000;
     client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
 
     // Alice opens a CDP to get tokens
@@ -546,6 +546,17 @@ fn test_token_transfers_self() {
     let datafeed = create_data_feed(&e);
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
+
+    // Mock prices
+    let xlm_contract = token.xlm_contract();
+    let client = data_feed::Client::new(&e, &xlm_contract);
+    let xlm_price = 10_000_000_000_000;
+    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
+
+    let usdt_contract = token.asset_contract();
+    let client = data_feed::Client::new(&e, &usdt_contract);
+    let usdt_price: i128 = 1_000_000_000_000;
+    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
 
     let alice = Address::generate(&e);
 
