@@ -11,7 +11,7 @@ use crate::{
     collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
     data_feed,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
-    storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
+    storage::{Allowance, Balance, CDPInternal, Interest, InterestDetail, Txn},
 };
 const VERSION_STRING: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),
@@ -60,6 +60,7 @@ fn bankers_round(value: i128, precision: i128) -> i128 {
 }
 
 fn calculate_collateralization_ratio(
+    env: &Env,
     asset_lent: i128,
     xasset_price: i128,
     xlm_deposited: i128,
@@ -81,8 +82,11 @@ fn calculate_collateralization_ratio(
     } else {
         // Include accrued interest in the calculation: (a - i)b / (mp)
         let effective_xlm = xlm_deposited.saturating_sub(accrued_interest);
-        (BASIS_POINTS * effective_xlm * xlm_price * 10i128.pow(numer_decimals)
-            / (asset_lent * 10i128.pow(denom_decimals) * xasset_price)) as u32
+        let basis_in_xlm = BASIS_POINTS.checked_mul(effective_xlm).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError));
+        (basis_in_xlm.checked_mul(xlm_price).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
+            .checked_mul(10i128.pow(numer_decimals)).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
+            / (asset_lent.checked_mul(10i128.pow(denom_decimals)).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
+                .checked_mul(xasset_price).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError)))) as u32
     };
     collateralization_ratio
 }
@@ -418,6 +422,7 @@ impl TokenContract {
             Self::get_updated_accrued_interest(env, &cdp).unwrap_or_default();
 
         let collateralization_ratio = calculate_collateralization_ratio(
+            env,
             cdp.asset_lent,
             xasset_price,
             cdp.xlm_deposited,
@@ -1838,6 +1843,7 @@ impl IsStabilityPool for TokenContract {
                 accrued_interest_repaid: interest_to_liquidate_xasset,
                 collateral_applied_to_interest: interest_to_liquidate_xlm,
                 collateralization_ratio: calculate_collateralization_ratio(
+                    env,
                     cdp.asset_lent + liquidated_debt,
                     Self::lastprice_asset(env)?.price,
                     cdp.xlm_deposited + liquidated_collateral,
