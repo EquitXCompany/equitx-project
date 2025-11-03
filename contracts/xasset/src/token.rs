@@ -890,7 +890,7 @@ impl TokenContract {
     fn apply_interest_payment<F>(
         env: &Env,
         lender: Address,
-        amount_in_xasset: i128,
+        amount_in_xasset: Option<i128>,
         pay_fn: F,
     ) -> Result<CDPContract, Error>
     where
@@ -898,14 +898,15 @@ impl TokenContract {
     {
         let cdp = Self::cdp(env, lender.clone()).unwrap();
         let mut interest = cdp.accrued_interest;
-        // if called with 0, it means we want to pay off all currently accrued interest
-        let amount_to_pay = if amount_in_xasset == 0 {
-            interest.amount
-        } else {
-            if interest.amount < amount_in_xasset {
-                return Err(Error::PaymentExceedsInterestDue);
+        // if called with None, it means we want to pay off all currently accrued interest
+        let amount_to_pay = match amount_in_xasset {
+            None => interest.amount,
+            Some(amount) => {
+                if interest.amount < amount {
+                    return Err(Error::PaymentExceedsInterestDue);
+                }
+                amount
             }
-            amount_in_xasset
         };
         if amount_to_pay == 0 {
             return Ok(cdp);
@@ -1449,8 +1450,7 @@ impl IsCollateralized for TokenContract {
         }
 
         // Pay off any interest first
-        // cdp = Self::pay_interest_from(env, lender.clone())?;
-        Self::apply_interest_payment(env, lender.clone(), 0, |from, amount_in_xlm| {
+        Self::apply_interest_payment(env, lender.clone(), None, |from, amount_in_xlm| {
             match Self::native(env).try_transfer_from(
                 &env.current_contract_address(),
                 from,
@@ -1625,10 +1625,10 @@ impl IsCollateralized for TokenContract {
         if amount_in_xasset <= 0 {
             return Err(Error::ValueNotPositive);
         }
-        Self::apply_interest_payment(env, lender, amount_in_xasset, |lender, amount_in_xlm| {
+        Self::apply_interest_payment(env, lender, Some(amount_in_xasset), |lender, amount_in_xlm| {
             match Self::native(env).try_transfer(
                 lender,
-                &env.current_contract_address(),
+                env.current_contract_address(),
                 amount_in_xlm,
             ) {
                 Ok(Ok(())) => Ok(()), // both contract invocation and logic succeeded
