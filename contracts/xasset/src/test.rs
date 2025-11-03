@@ -248,10 +248,7 @@ fn test_allowances() {
     // Cannot decrease allowance below zero
     let result = token.try_decrease_allowance(&bob, &carol, &1000_0000000);
     assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::ValueNotPositive.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::ValueNotPositive.into());
 }
 
 #[test]

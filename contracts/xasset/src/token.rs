@@ -82,11 +82,19 @@ fn calculate_collateralization_ratio(
     } else {
         // Include accrued interest in the calculation: (a - i)b / (mp)
         let effective_xlm = xlm_deposited.saturating_sub(accrued_interest);
-        let basis_in_xlm = BASIS_POINTS.checked_mul(effective_xlm).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError));
-        (basis_in_xlm.checked_mul(xlm_price).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
-            .checked_mul(10i128.pow(numer_decimals)).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
-            / (asset_lent.checked_mul(10i128.pow(denom_decimals)).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
-                .checked_mul(xasset_price).unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError)))) as u32
+        let basis_in_xlm = BASIS_POINTS
+            .checked_mul(effective_xlm)
+            .unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError));
+        (basis_in_xlm
+            .checked_mul(xlm_price)
+            .unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
+            .checked_mul(10i128.pow(numer_decimals))
+            .unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
+            / (asset_lent
+                .checked_mul(10i128.pow(denom_decimals))
+                .unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError))
+                .checked_mul(xasset_price)
+                .unwrap_or_else(|| panic_with_error!(env, Error::ArithmeticError)))) as u32
     };
     collateralization_ratio
 }
@@ -1627,17 +1635,22 @@ impl IsCollateralized for TokenContract {
         if amount_in_xasset <= 0 {
             return Err(Error::ValueNotPositive);
         }
-        Self::apply_interest_payment(env, lender, Some(amount_in_xasset), |lender, amount_in_xlm| {
-            match Self::native(env).try_transfer(
-                lender,
-                env.current_contract_address(),
-                amount_in_xlm,
-            ) {
-                Ok(Ok(())) => Ok(()), // both contract invocation and logic succeeded
-                Ok(Err(_)) => Err(Error::XLMTransferFailed), // invocation succeeded but logic failed
-                Err(_) => Err(Error::XLMInvocationFailed),   // invocation (host error) failed
-            }
-        })
+        Self::apply_interest_payment(
+            env,
+            lender,
+            Some(amount_in_xasset),
+            |lender, amount_in_xlm| {
+                match Self::native(env).try_transfer(
+                    lender,
+                    env.current_contract_address(),
+                    amount_in_xlm,
+                ) {
+                    Ok(Ok(())) => Ok(()), // both contract invocation and logic succeeded
+                    Ok(Err(_)) => Err(Error::XLMTransferFailed), // invocation succeeded but logic failed
+                    Err(_) => Err(Error::XLMInvocationFailed),   // invocation (host error) failed
+                }
+            },
+        )
     }
 }
 
