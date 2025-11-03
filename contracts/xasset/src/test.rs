@@ -293,7 +293,7 @@ fn test_stability_pool() {
     xlm_admin.mint(&bob, &1_000_000_000_000);
 
     // Alice and Bob open CDPs
-    token.open_cdp(&alice, &1000_0000000, &1000_0000000);
+    token.open_cdp(&alice, &1500_0000000, &1000_0000000);
     token.open_cdp(&bob, &1500_0000000, &1000_0000000);
 
     // Stake in stability pool
