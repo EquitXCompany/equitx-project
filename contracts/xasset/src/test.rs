@@ -240,9 +240,18 @@ fn test_allowances() {
     assert_eq!(token.allowance(&bob, &carol), 500_0000000);
 
     // Verify balances
-    assert_eq!(token.balance(&bob), 1500_0000000); // Original holder lost tokens
+    assert_eq!(token.balance(&bob), 1500_0000000); // Original holder has fewer tokens
     assert_eq!(token.balance(&alice), 500_0000000); // Recipient got tokens
     assert_eq!(token.balance(&carol), 0); // Spender balance unchanged
+    assert_eq!(token.allowance(&bob, &carol), 500_0000000); // Allowance decreased correctly
+
+    // Cannot decrease allowance below zero
+    let result = token.try_decrease_allowance(&bob, &carol, &1000_0000000);
+    assert!(result.is_err());
+    assert_eq!(
+        result.unwrap_err().unwrap(),
+        Error::ValueNotPositive.into()
+    );
 }
 
 #[test]
