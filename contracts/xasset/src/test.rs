@@ -512,12 +512,15 @@ fn test_transfer_from_checks_balance() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    let alice = Address::generate(&e); // Token holder
+    set_token_prices(&e, &token, 10_000_000_000_000, 10_000_000_000_000);
+
+    let alice = Address::generate(&e); // Token receiver
     let bob = Address::generate(&e); // Will give approval
+    xlm_admin.mint(&bob, &5_0000000);
     let carol = Address::generate(&e); // Will execute transfer_from
 
     // Bob opens a CDP to get some tokens
-    token.open_cdp(&bob, &1_0000000, &1_0000000);
+    token.open_cdp(&bob, &2_0000000, &1_0000000);
     assert_eq!(token.balance(&bob), 1_0000000);
 
     // Bob approves Carol to spend tokens
