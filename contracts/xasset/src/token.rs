@@ -487,14 +487,7 @@ impl TokenContract {
         TokenClient::new(env, &Self::xlm_sac(env))
     }
 
-    /// Mint a specified amount of tokens to a specific address
-    pub fn mint(env: &Env, to: Address, amount: i128) {
-        Self::require_admin(env);
-        assert_positive(env, amount);
-        Self::mint_internal(env, to, amount);
-    }
-
-    // convenience functions for internal minting / transfering of the ft asset
+    // Mint asset, internal only as all assets should be backed by collateral
     fn mint_internal(env: &Env, to: Address, amount: i128) {
         let balance: i128 = env
             .storage()

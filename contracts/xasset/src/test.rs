@@ -154,10 +154,10 @@ fn test_cannot_cause_overflow() {
     let alice = Address::generate(&e);
     let bob = Address::generate(&e);
 
-    // Mint some tokens to Alice
-    token.mint(&alice, &1000_0000000);
-    // Mint maximum tokens to Bob
-    token.mint(&bob, &i128::MAX);
+    // Alice opens a CDP to get some tokens
+    token.open_cdp(&alice, &10_000_000_000, &1_000_000_000);
+    // Bob opens a CDP to get some tokens
+    token.open_cdp(&bob, &20_000_000_000, &i128::MAX);
 
     // Try to transfer from Bob to Alice that would cause overflow
     let result = token.try_transfer(&bob, &alice, &i128::MAX);
@@ -205,12 +205,25 @@ fn test_allowances() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
+    // Mock initial prices so CDPs can be opened
+    let xlm_contract = token.xlm_contract();
+    let client = data_feed::Client::new(&e, &xlm_contract);
+    let xlm_price = 10_000_000_000_000;
+    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
+
+    let usdt_contract = token.asset_contract();
+    let client = data_feed::Client::new(&e, &usdt_contract);
+    let usdt_price: i128 = 100_000_000_000_000;
+    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+
     let alice = Address::generate(&e); // Token holder
+    xlm_admin.mint(&alice, &2_000_000_000_000); // Fund Alice with XLM
     let bob = Address::generate(&e); // Will give approval
+    xlm_admin.mint(&bob, &250_000_000_000); // Fund Bob with XLM
     let carol = Address::generate(&e); // Will execute transfer_from
 
-    // Mint initial tokens to Bob
-    token.mint(&bob, &2000_0000000);
+    // Bob opens a CDP to get some tokens
+    token.open_cdp(&bob, &250_000_000_000, &2000_0000000);
     assert_eq!(token.balance(&bob), 2000_0000000);
 
     // Bob approves Carol to spend tokens
