@@ -11,7 +11,7 @@ use crate::{
     collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
     data_feed,
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
-    storage::{Allowance, Balance, CDPInternal, Interest, InterestDetail, Txn},
+    storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
 };
 const VERSION_STRING: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),

@@ -161,17 +161,7 @@ fn test_cannot_cause_overflow() {
     let admin: Address = Address::generate(&e);
     let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
 
-    // Mock XLM price
-    let xlm_contract = token.xlm_contract();
-    let client = data_feed::Client::new(&e, &xlm_contract);
-    let xlm_price = 10_000_000_000_000;
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "XLM")), &xlm_price, &1000);
-
-    // Mock USDT price
-    let usdt_contract = token.asset_contract();
-    let client = data_feed::Client::new(&e, &usdt_contract);
-    let usdt_price: i128 = 1_000; // Low price so we can open a CDP with max values
-    client.set_asset_price(&Asset::Other(Symbol::new(&e, "USDT")), &usdt_price, &1000);
+    set_token_prices(&e, &token, 10_000_000_000_000, 1_000);
 
     let bob = Address::generate(&e);
 
