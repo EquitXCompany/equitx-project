@@ -720,12 +720,6 @@ impl TokenContract {
             .extend_ttl(&DataKey::StakerPosition(address), ttl, ttl);
     }
 
-    fn get_compound_record(env: &Env, epoch: u64) -> Option<i128> {
-        env.storage()
-            .persistent()
-            .get(&DataKey::CompoundRecord(epoch))
-    }
-
     fn set_compound_record(env: &Env, epoch: u64, amount: &i128) {
         env.storage()
             .persistent()
@@ -753,7 +747,6 @@ impl TokenContract {
             .extend_ttl(&DataKey::InterestRecord(epoch), ttl, ttl);
     }
 
-    // todo: many of these function shouldnt be exposed
     fn add_total_xasset(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
         let Some(new_total) = state.total_xasset.checked_add(amount) else {
@@ -826,10 +819,6 @@ impl TokenContract {
             .get(&DataKey::CompoundRecord(epoch))
     }
 
-    fn get_fees_collected(env: &Env) -> i128 {
-        TokenStorage::get_state(env).fees_collected
-    }
-
     fn add_fees_collected(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
         let Some(new_total) = state.fees_collected.checked_add(amount) else {
@@ -847,10 +836,6 @@ impl TokenContract {
         state.fees_collected = new_total;
         TokenStorage::set_state(env, &state);
     }
-
-    // fn get_stake_fee(env: &Env) -> i128 {
-    //     TokenStorage::get_state(env).stake_fee
-    // }
 
     fn get_deposit_fee(env: &Env) -> i128 {
         TokenStorage::get_state(env).deposit_fee
