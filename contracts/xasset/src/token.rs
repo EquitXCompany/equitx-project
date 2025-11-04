@@ -1468,8 +1468,11 @@ impl IsCollateralized for TokenContract {
                 amount_in_xlm,
             ) {
                 Ok(Ok(())) => Ok(()),
-                Ok(Err(_)) => Err(Error::InsufficientApprovedXLMForInterestRepayment),
-                Err(_) => Err(Error::XLMInvocationFailed),
+                Ok(Err(_)) => Err(Error::XLMInvocationFailed), // Conversion Error
+                Err(res) => match res {
+                    Ok(_) => Err(Error::InsufficientApprovedXLMForInterestRepayment),
+                    Err(_) => Err(Error::XLMInvocationFailed),
+                },
             }
         })?;
 
