@@ -747,7 +747,6 @@ impl TokenContract {
             .extend_ttl(&DataKey::InterestRecord(epoch), ttl, ttl);
     }
 
-    // todo: many of these function shouldnt be exposed
     fn add_total_xasset(env: &Env, amount: i128) {
         let mut state = TokenStorage::get_state(env);
         let Some(new_total) = state.total_xasset.checked_add(amount) else {
