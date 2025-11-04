@@ -720,12 +720,6 @@ impl TokenContract {
             .extend_ttl(&DataKey::StakerPosition(address), ttl, ttl);
     }
 
-    fn get_compound_record(env: &Env, epoch: u64) -> Option<i128> {
-        env.storage()
-            .persistent()
-            .get(&DataKey::CompoundRecord(epoch))
-    }
-
     fn set_compound_record(env: &Env, epoch: u64, amount: &i128) {
         env.storage()
             .persistent()
@@ -824,10 +818,6 @@ impl TokenContract {
         env.storage()
             .persistent()
             .get(&DataKey::CompoundRecord(epoch))
-    }
-
-    fn get_fees_collected(env: &Env) -> i128 {
-        TokenStorage::get_state(env).fees_collected
     }
 
     fn add_fees_collected(env: &Env, amount: i128) {
