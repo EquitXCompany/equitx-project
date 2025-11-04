@@ -838,10 +838,6 @@ impl TokenContract {
         TokenStorage::set_state(env, &state);
     }
 
-    // fn get_stake_fee(env: &Env) -> i128 {
-    //     TokenStorage::get_state(env).stake_fee
-    // }
-
     fn get_deposit_fee(env: &Env) -> i128 {
         TokenStorage::get_state(env).deposit_fee
     }
