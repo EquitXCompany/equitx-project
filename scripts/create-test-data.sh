@@ -1,5 +1,16 @@
 #!/bin/bash
 
+export STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+export STELLAR_RPC_URL="https://soroban-testnet.stellar.org"
+export STELLAR_ACCOUNT=equitxtestnet
+export STELLAR_NETWORK=testnet
+
+# If you wish to run this on a local network, uncomment and set the following:
+# export STELLAR_RPC_URL="http://localhost:8000/rpc"
+# export STELLAR_NETWORK_PASSPHRASE="Standalone Network ; February 2017"
+
+# and update the contract IDs map to have your local deployed contract ID of "symbol":"C...."
+
 # Declare a plain array to hold contract data
 XASSET_CONTRACT_IDS=()
 
@@ -15,7 +26,7 @@ load_contract_ids() {
     done < "$file_path"
 }
 
-# Source the existing contracts file
+# Source the existing contracts file (comment this out if running on local network)
 load_contract_ids "$(dirname "$0")/existing_contracts.txt"
 
 # Function to generate a random user name
@@ -27,9 +38,10 @@ generate_random_user() {
 get_contract_value() {
     local contract_id=$1
     local method=$2
-    stellar contract invoke --rpc-url https://soroban-testnet.stellar.org \
-        --network-passphrase "Test SDF Network ; September 2015" \
-        --id "$contract_id" -- "$method" | grep -o '"price":"[^"]*"' | cut -d'"' -f4
+    # Get the price value out of the output, and trim quotes
+    stellar contract invoke --id "$contract_id" -- "$method" | grep -o '"price":"[^"]*"' | cut -d'"' -f4
+    # Debug line:
+    # echo "stellar contract invoke --id "$contract_id" -- "$method" | grep -o '"price":"[^"]*"' | cut -d'"' -f4"
 }
 
 # Function to get asset price
@@ -60,14 +72,14 @@ open_cdp_and_maybe_stake() {
     local asset_lent=$4
 
     echo "Processing user: $user for contract: $contract_id"
+    echo "Collateral: $collateral, Asset Lent: $asset_lent"
 
     # Generate Stellar keys for the user
-    stellar keys generate "$user" --fund
+    stellar keys generate "$user"
+    stellar keys fund $user
 
     # Open CDP
-    stellar contract invoke --rpc-url https://soroban-testnet.stellar.org \
-        --network-passphrase "Test SDF Network ; September 2015" \
-        --id "$contract_id" -- \
+    stellar contract invoke --id "$contract_id" -- \
         open_cdp --lender "$user" --collateral "$collateral" --asset-lent "$asset_lent"
 
     echo "Opened CDP with $collateral XLM as collateral and $asset_lent asset lent on contract $contract_id for $user"
@@ -114,7 +126,7 @@ for entry in "${XASSET_CONTRACT_IDS[@]}"; do
     
     asset_price=$(get_asset_price "$contract_id" "lastprice_asset")
     asset_price=${asset_price:-100000000}  # Default if empty
-    
+
     # Generate users and create CDPs
     for ((i=1; i<=USERS_PER_CONTRACT; i++)); do
         user=$(generate_random_user)
@@ -127,10 +139,10 @@ for entry in "${XASSET_CONTRACT_IDS[@]}"; do
         cr_range=${cr_range:-89000}  # Default range if calculation results in 0
         random_cr_addition=$((RANDOM % cr_range))
         desired_cr=$((min_cr + random_cr_addition))
-        
+
         # Calculate asset_lent based on desired CR
         asset_lent=$(calculate_asset_lent "$xlm_amount" "$xlm_price" "$asset_price" "$desired_cr")
-        
+
         open_cdp_and_maybe_stake "$user" "$contract_id" "$xlm_amount" "$asset_lent"
     done
 done
