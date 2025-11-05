@@ -10,8 +10,8 @@ export STELLAR_NETWORK=testnet
 
 rm -rf target/stellar
 stellar scaffold build staging
-stellar contract optimize --wasm target/stellar/orchestrator.wasm
-stellar contract optimize --wasm target/stellar/xasset.wasm
+stellar contract optimize --wasm target/stellar/testnet/orchestrator.wasm
+stellar contract optimize --wasm target/stellar/testnet/xasset.wasm
 
 # Find orchestrator contract ID in environments.toml
 orchestrator_id=$(awk -F'"' '/^\[staging\.contracts\]/ {found=1} found && /orchestrator = { id = / {print $2; exit}' environments.toml)
@@ -21,15 +21,15 @@ if [[ -z "$orchestrator_id" ]]; then
   exit 1
 fi
 
-# Upload new wasm and redeploy orchestrator
+# Upload new wasm and upgrade orchestrator
 echo "Uploading orchestrator wasm..."
-orchestrator_wasm_hash=$(stellar contract upload --wasm target/stellar/orchestrator.wasm --source equitxtestnet)
+orchestrator_wasm_hash=$(stellar contract upload --wasm target/stellar/testnet/orchestrator.wasm --source equitxtestnet)
 echo "Orchestrator wasm hash: $orchestrator_wasm_hash"
-orchestrator_result=$(stellar contract invoke --id $orchestrator_id -- redeploy --wasm_hash $orchestrator_wasm_hash)
+orchestrator_result=$(stellar contract invoke --id $orchestrator_id -- upgrade --new_wasm_hash $orchestrator_wasm_hash)
 echo $orchestrator_result
 
 echo "Uploading xasset contract..."
-xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.wasm --source equitxtestnet)
+xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/testnet/xasset.wasm --source equitxtestnet)
 echo "xasset wasm hash: $xasset_wasm_hash"
 
 echo "Updating orchestrator xasset $xasset_wasm_hash ..."
