@@ -7,11 +7,13 @@ network-passphrase = "Standalone Network ; February 2017"
 
 [development.contracts.data_feed]
 client = true
+constructor_args = """
+--admin equitx
+--resolution 300 --assets '[{"Other":"USDT"},{"Other":"XLM"}]' --decimals 14 --base '{"Other":"USDT"}'
+"""
 init = """
-admin_set --new-admin equitx
-sep40_init --resolution 300 --assets '[{"Other":"USDT"},{"Other":"XLM"}]' --decimals 14 --base '{"Other":"USDT"}'
-set_asset_price --price 10000000000000 --asset '{"Other":"XLM"}' --timestamp "$(date +%s)"
-set_asset_price --price 100000000000000 --asset '{"Other":"USDT"}' --timestamp "$(date +%s)"
+set_asset_price --price 10000000000000 --asset-id '{"Other":"XLM"}' --timestamp "$(date +%s)"
+set_asset_price --price 100000000000000 --asset-id '{"Other":"USDT"}' --timestamp "$(date +%s)"
 """
 
 [development.contracts.xasset]
@@ -34,11 +36,12 @@ set_min_collat_ratio --to 15000
 
 [development.contracts.orchestrator]
 client = true
+# The wasm hash below is a placeholder; replace it with the actual hash as needed.
 constructor_args = """
 --admin equitx  
 --xlm_sac "$(stellar contract id asset --asset native)"
 --xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")"
---xasset_wasm_hash "$(stellar contract fetch --id $(stellar contract alias show xasset --network-passphrase "Standalone Network ; February 2017")  | openssl sha256 | awk '{print $2}')"
+--xasset_wasm_hash ced079be88e32cf1260b216c5dbefa5d1073704aa0cac0f8dbd3e422e02672ce
 """
 init = """
 set_existing_asset_contract --asset_symbol xUSDT --asset_contract $(stellar contract alias show xasset --network-passphrase "Standalone Network ; February 2017") 
