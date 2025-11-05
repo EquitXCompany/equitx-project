@@ -69,7 +69,7 @@ network-passphrase = "Test SDF Network ; September 2015"
 
 [staging.contracts]
 orchestrator = { id = "CDOB2QSYJPQY2BYGNUOTXADWEBMW4ZWCZBAUM7R63JQWTVX5TMZZ45AP" }
-xBTC = { id = "CD5IVQFW4JTDWHGXHWOUBAZZUKOMK3RUEPI6JE7ZQDJZIXNETIK44F7C" }
+xBTC = { id = "CCVC6UJBPO2IHIQGTUGA2DPS557Z5VUOWIFOJBQBOKUXB6HJXFDJXOIJ" }
 
 [production]
 accounts = ["equitxmainnet"]
