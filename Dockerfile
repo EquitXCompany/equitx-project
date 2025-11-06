@@ -28,6 +28,7 @@ RUN apt-get update -qq && \
     gcc \
     libc6-dev \
     libssl-dev \
+    libdbus-1-dev \
     pkg-config \
     && update-ca-certificates
 
@@ -103,7 +104,6 @@ RUN apt-get update -qq && \
     libudev-dev \
     libssl3 \
     libssl-dev \
-    libdbus-1-dev \
     gcc \
     libc6-dev \
     build-essential \
