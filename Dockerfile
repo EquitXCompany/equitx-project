@@ -116,8 +116,8 @@ RUN apt-get update -qq && \
 # Install stellar CLI from prebuilt binary with specific version
 RUN mkdir -p /tmp/stellar && \
     cd /tmp/stellar && \
-    wget --no-check-certificate https://github.com/stellar/stellar-cli/releases/download/v22.8.1/stellar-cli-22.8.1-x86_64-unknown-linux-gnu.tar.gz && \
-    tar xzf stellar-cli-22.8.1-x86_64-unknown-linux-gnu.tar.gz && \
+    wget --no-check-certificate https://github.com/stellar/stellar-cli/releases/download/v23.1.4/stellar-cli-23.1.4-x86_64-unknown-linux-gnu.tar.gz && \
+    tar xzf stellar-cli-23.1.4-x86_64-unknown-linux-gnu.tar.gz && \
     mv stellar /usr/local/bin/ && \
     chmod +x /usr/local/bin/stellar && \
     cd /app && \
