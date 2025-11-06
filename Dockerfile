@@ -102,8 +102,8 @@ RUN apt-get update -qq && \
     ca-certificates \
     libudev-dev \
     libssl3 \
-    libdbus-1-3 \
     libssl-dev \
+    libdbus-1-dev \
     gcc \
     libc6-dev \
     build-essential \
