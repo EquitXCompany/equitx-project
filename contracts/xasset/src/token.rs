@@ -1656,7 +1656,7 @@ impl IsCDPAdmin for TokenContract {
     fn set_xlm_contract(env: &Env, to: Address) {
         Self::require_admin(env);
         let mut state = TokenStorage::get_state(env);
-        state.xlm_sac = to;
+        state.xlm_contract = to;
         TokenStorage::set_state(env, &state);
     }
 
