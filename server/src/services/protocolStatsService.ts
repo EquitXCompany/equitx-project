@@ -212,9 +212,9 @@ export class ProtocolStatsService {
   ): string {
     if (!previous || !current) return "0";
     // Use BigInt for precise large integer calculations
-    // Cast to Number first to handle decimal strings
-    const prev = BigInt(Number(previous));
-    const curr = BigInt(Number(current));
+    // BigInt does not support decimals, so we handle only the integer part, dropping the decimal
+    const prev = BigInt(Number(previous.split('.')[0]));
+    const curr = BigInt(Number(current.split('.')[0]));
     if (prev === 0n) return "0";
     return ((Number(curr - prev) / Number(prev)) * 100).toFixed(5);
   }
