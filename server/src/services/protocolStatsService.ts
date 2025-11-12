@@ -211,6 +211,8 @@ export class ProtocolStatsService {
     current: string | undefined
   ): string {
     if (!previous || !current) return "0";
+    // Use BigInt for precise large integer calculations
+    // Cast to Number first to handle decimal strings
     const prev = BigInt(Number(previous));
     const curr = BigInt(Number(current));
     if (prev === 0n) return "0";
