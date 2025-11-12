@@ -211,8 +211,8 @@ export class ProtocolStatsService {
     current: string | undefined
   ): string {
     if (!previous || !current) return "0";
-    const prev = BigInt(previous);
-    const curr = BigInt(current);
+    const prev = BigInt(Number(previous));
+    const curr = BigInt(Number(current));
     if (prev === 0n) return "0";
     return ((Number(curr - prev) / Number(prev)) * 100).toFixed(5);
   }
