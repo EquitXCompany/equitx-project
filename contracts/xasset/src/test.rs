@@ -529,3 +529,43 @@ fn test_token_transfers_self() {
     // Balance should remain unchanged
     assert_eq!(token.balance(&alice), 1000_0000000);
 }
+
+#[test]
+fn test_exact_allowance_usage() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let xlm_admin_address = Address::generate(&e);
+    let (_, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
+    let xlm_token_address = xlm_admin.address.clone();
+    let datafeed = create_data_feed(&e);
+    let admin: Address = Address::generate(&e);
+    let token = create_token_contract(&e, admin, datafeed, xlm_token_address);
+
+    set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
+
+    let alice = Address::generate(&e); // Token holder
+    xlm_admin.mint(&alice, &2_000_000_000_000); // Fund Alice with XLM
+    let bob = Address::generate(&e); // Will give approval
+    xlm_admin.mint(&bob, &250_000_000_000); // Fund Bob with XLM
+    let carol = Address::generate(&e); // Will execute transfer_from
+
+    // Bob opens a CDP to get some tokens
+    token.open_cdp(&bob, &250_000_000_000, &2000_0000000);
+    assert_eq!(token.balance(&bob), 2000_0000000);
+
+    // Bob approves Carol to spend tokens
+    token.approve(&bob, &carol, &1000_0000000, &(e.ledger().sequence() + 1000));
+    assert_eq!(token.allowance(&bob, &carol), 1000_0000000);
+
+    // Carol transfers from Bob to Alice using allowance
+    token.transfer_from(&carol, &bob, &alice, &1000_0000000);
+
+    // Verify allowance was decreased
+    assert_eq!(token.allowance(&bob, &carol), 0);
+
+    // Cannot decrease allowance below zero
+    let result = token.try_decrease_allowance(&bob, &carol, &1000_0000000);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().unwrap(), Error::ValueNotPositive.into());
+}

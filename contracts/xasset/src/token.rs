@@ -1,9 +1,7 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, Address, BytesN, Env, MuxedAddress, String, Symbol, Vec, assert_with_error, contract,
-    contractimpl, contracttype, panic_with_error, symbol_short,
-    token::{TokenClient, TokenInterface},
+    self, Address, BytesN, Env, MuxedAddress, String, Symbol, Vec, assert_with_error, contract, contractimpl, contracttype, panic_with_error, symbol_short, token::{TokenClient, TokenInterface}
 };
 
 use crate::{
@@ -31,7 +29,7 @@ const INTEREST_PRECISION: i128 = 1_000_000_000; // 9 decimal places for precisio
 const DEFAULT_PRECISION: i128 = 10_000_000; // 7 decimal places for precision
 
 fn assert_positive(env: &Env, value: i128) {
-    assert_with_error!(env, value > 0, Error::ValueNotPositive);
+    assert_with_error!(env, value >= 0, Error::ValueNotPositive);
 }
 
 fn bankers_round(value: i128, precision: i128) -> i128 {
