@@ -1,12 +1,4 @@
-import {
-  Box,
-  Paper,
-  Typography,
-  Grid,
-  Tabs,
-  Tab,
-  Grid2,
-} from "@mui/material";
+import { Box, Paper, Typography, Grid, Tabs, Tab, Grid2 } from "@mui/material";
 import { StatCard } from "./common/StatCard";
 import { formatCurrency, generateAssetColors } from "../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
@@ -116,7 +108,7 @@ export default function CDPStats() {
         const cdp = convertContractCDPtoClientCDP(
           contractCdp!,
           asset,
-          contractId
+          contractId,
         );
         const spMetadata = stabilityPoolData[assetSymbol];
         if (!spMetadata || !cdp) return null;
@@ -156,7 +148,7 @@ export default function CDPStats() {
       if (!spMetadata) return liquidation;
 
       const collateralLiquidated = new BigNumber(
-        liquidation.collateralLiquidated
+        liquidation.collateralLiquidated,
       );
       const principalRepaid = new BigNumber(liquidation.principalRepaid);
       const xlmPrice = liquidation.xlmPrice;
@@ -170,13 +162,13 @@ export default function CDPStats() {
           principalRepaid,
           7,
           6,
-          liquidation.asset
+          liquidation.asset,
         ),
         interest: formatCurrency(
           liquidation.collateralAppliedToInterest,
           7,
           6,
-          "XLM"
+          "XLM",
         ),
         xlmPrice: formatCurrency(xlmPrice, 14, 6, "USD"),
         xAssetPrice: formatCurrency(xAssetPrice, 0, 6, "XLM"),
@@ -198,11 +190,11 @@ export default function CDPStats() {
 
     // Check if metrics data is available
     const loadedCdpMetrics = cdpMetricsResults.filter(
-      (result) => result.isSuccess && result.data
+      (result) => result.isSuccess && result.data,
     );
 
     const loadedTvlMetrics = TVLMetricsResults.filter(
-      (result) => result.isSuccess && result.data
+      (result) => result.isSuccess && result.data,
     );
 
     if (loadedCdpMetrics.length === 0 || loadedTvlMetrics.length === 0) {
@@ -223,7 +215,7 @@ export default function CDPStats() {
         }
         return acc;
       },
-      {} as Record<string, TVLMetricsData>
+      {} as Record<string, TVLMetricsData>,
     );
 
     loadedCdpMetrics.forEach((result) => {
@@ -239,7 +231,7 @@ export default function CDPStats() {
       totalActiveCdps += metrics.totalCDPs;
       totalCollateralXlm = totalCollateralXlm.plus(metrics.totalXLMLocked);
       totalOutstandingInterestXlm = totalOutstandingInterestXlm.plus(
-        metrics.interestMetrics.totalOutstandingInterest
+        metrics.interestMetrics.totalOutstandingInterest,
       );
 
       // Use stabilityPool data to convert xAssetsMinted to XLM value
@@ -269,21 +261,27 @@ export default function CDPStats() {
   const assetSymbols = Object.keys(contractMapping);
   const assetColors = generateAssetColors(assetSymbols);
 
-  const piChartData: { id: number; value: number; label: string, backgroundColor: (string | undefined)[] }[] | [] =
-    !TVLMetricsResults.some((result) => result.isLoading)
-      ? TVLMetricsResults.map((result: UseQueryResult, idx) => {
-          const backgroundColor = assetSymbols.map((asset) => assetColors[asset]);
-          return {
-            id: idx,
-            value: (result?.data as TVLMetricsData).totalXlmLocked
-              .div(1e7)
-              .toNumber(),
-            label: (result?.data as TVLMetricsData).asset,
-            backgroundColor,
-            color: backgroundColor[idx]
-          };
-        })
-      : [];
+  const piChartData:
+    | {
+        id: number;
+        value: number;
+        label: string;
+        backgroundColor: (string | undefined)[];
+      }[]
+    | [] = !TVLMetricsResults.some((result) => result.isLoading)
+    ? TVLMetricsResults.map((result: UseQueryResult, idx) => {
+        const backgroundColor = assetSymbols.map((asset) => assetColors[asset]);
+        return {
+          id: idx,
+          value: (result?.data as TVLMetricsData).totalXlmLocked
+            .div(1e7)
+            .toNumber(),
+          label: (result?.data as TVLMetricsData).asset,
+          backgroundColor,
+          color: backgroundColor[idx],
+        };
+      })
+    : [];
 
   const cdpColumns = [
     {
@@ -367,7 +365,6 @@ export default function CDPStats() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-
       {/* System-wide metrics summary */}
       <Paper
         sx={{
@@ -385,7 +382,7 @@ export default function CDPStats() {
             mt: 5,
             mb: 0,
             fontWeight: "bold",
-            fontSize: 40
+            fontSize: 40,
           }}
         >
           CDP STATISTICS
@@ -401,13 +398,10 @@ export default function CDPStats() {
             justifyContent: "space-around",
             margin: 0,
             width: 1,
-            gap: '20px'
+            gap: "20px",
           }}
         >
-          <StatCard
-            title="Active CDPs"
-            value={systemMetrics.totalActiveCdps}
-          />
+          <StatCard title="Active CDPs" value={systemMetrics.totalActiveCdps} />
           <StatCard
             title="System Collateral Ratio"
             value={`${systemMetrics.systemCollateralRatio.toFixed(2)}%`}
@@ -415,10 +409,10 @@ export default function CDPStats() {
           <StatCard
             title="Total Collateral"
             value={formatCurrency(
-                systemMetrics.totalCollateralXlm,
-                7,
-                2,
-                "XLM"
+              systemMetrics.totalCollateralXlm,
+              7,
+              2,
+              "XLM",
             )}
           />
           <StatCard
@@ -431,7 +425,7 @@ export default function CDPStats() {
               systemMetrics.totalOutstandingInterestXlm,
               7,
               2,
-              "XLM"
+              "XLM",
             )}
           />
         </Grid>
@@ -443,34 +437,50 @@ export default function CDPStats() {
             XLM locked by asset
           </Typography>
 
-          <Paper style={{ minHeight: '400px', width: "100%" }}>
+          <Paper sx={{ minHeight: "400px", width: "100%" }}>
             {!TVLMetricsResults.some((result) => result.isLoading) && (
-              <div style={{ width: '100%', height: '350px' }}>
-              <PieChart
-                sx={{ margin: '52px' }}
-                series={[{
-                  data: piChartData,
-                  innerRadius: '66%',
-                  paddingAngle: 0,
-                  cx: '62%',
-                }]}
-                slotProps={{ legend: { hidden: true }}}
-              >
-              </PieChart>
-              </div>
+              <Box sx={{ width: "100%", height: "350px" }}>
+                <PieChart
+                  sx={{ margin: "52px" }}
+                  series={[
+                    {
+                      data: piChartData,
+                      innerRadius: "66%",
+                      paddingAngle: 0,
+                      cx: "62%",
+                    },
+                  ]}
+                  slotProps={{ legend: { hidden: true } }}
+                ></PieChart>
+              </Box>
             )}
-            <Grid2 container spacing={4} justifyContent='center' pb='10px' px='50px'>
-            {piChartData.map(({ backgroundColor, label }, idx) => {
-              return <Grid2 display='flex' justifyContent='center' width={'20%'} key={idx}>
-                <Box style={{
-                  width: '25px',
-                  height: '24px',
-                  backgroundColor: backgroundColor[idx],
-                  display: 'inline-block',
-                  margin: 4
-                }}></Box>
-                {label}
-                </Grid2>
+            <Grid2
+              container
+              spacing={4}
+              justifyContent="center"
+              pb="10px"
+              px="50px"
+            >
+              {piChartData.map(({ backgroundColor, label }, idx) => {
+                return (
+                  <Grid2
+                    display="flex"
+                    justifyContent="center"
+                    width={"20%"}
+                    key={idx}
+                  >
+                    <Box
+                      sx={{
+                        width: "25px",
+                        height: "24px",
+                        backgroundColor: backgroundColor[idx],
+                        display: "inline-block",
+                        margin: 0.5,
+                      }}
+                    ></Box>
+                    {label}
+                  </Grid2>
+                );
               })}
             </Grid2>
           </Paper>
@@ -487,18 +497,17 @@ export default function CDPStats() {
                 data={Object.keys(contractMapping).reduce(
                   (acc, asset) => {
                     const result = cdpMetricsResults.find(
-                      (r) => r.data?.asset === asset
+                      (r) => r.data?.asset === asset,
                     );
                     if (result?.data) {
-                      acc[asset] =
-                        result.data.collateralRatioHistogram;
+                      acc[asset] = result.data.collateralRatioHistogram;
                     }
                     return acc;
                   },
                   {} as Record<
                     string,
                     CDPMetricsData["collateralRatioHistogram"]
-                  >
+                  >,
                 )}
                 isLoading={cdpMetricsResults.some((result) => result.isLoading)}
                 normalize={1e7}
@@ -575,7 +584,9 @@ export default function CDPStats() {
               rows={enrichedLiquidations}
               columns={liquidationColumns}
               loading={liquidationsLoading}
-              getRowId={(row) => `${row.cdpId}-${row.timestamp.toLocaleString()}`}
+              getRowId={(row) =>
+                `${row.cdpId}-${row.timestamp.toLocaleString()}`
+              }
               pageSizeOptions={[10, 25, 50]}
               initialState={{
                 sorting: {

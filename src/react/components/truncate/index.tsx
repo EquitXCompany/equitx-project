@@ -1,5 +1,5 @@
 import { useState } from "react";
-import styles from "./truncate.module.css";
+import { Box } from "@mui/material";
 
 export default function Truncate({
   children,
@@ -10,17 +10,28 @@ export default function Truncate({
 }) {
   const [copy, setCopy] = useState("click to copy");
   return (
-    <abbr
+    <Box
+      component="abbr"
       title={clickToCopy ? `${children} (${copy})` : children}
-      className={styles.truncate}
       onClick={() => {
         if (clickToCopy && navigator.clipboard)
           navigator.clipboard
             .writeText(children)
             .then(() => setCopy("copied!"));
       }}
+      sx={{
+        display: "inline-block",
+        width: "3.5em",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        verticalAlign: "top",
+        borderBottom: "1px dotted rgb(var(--accent-light))",
+        textDecoration: "none",
+        cursor: "help",
+      }}
     >
       {children}
-    </abbr>
+    </Box>
   );
 }
