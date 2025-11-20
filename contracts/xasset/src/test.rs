@@ -37,7 +37,7 @@ fn create_data_feed(e: &Env) -> data_feed::Client<'_> {
     data_feed::Client::new(e, &contract_address)
 }
 
-fn create_token_contract_id<'a>(
+fn create_token_contract_id(
     e: &Env,
     admin: Address,
     datafeed: data_feed::Client<'_>,
