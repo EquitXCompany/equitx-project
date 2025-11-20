@@ -46,3 +46,10 @@ pub struct MintXasset {
     pub to: Address,
     pub amount: i128,
 }
+
+#[contractevent(topics = ["burnx"], data_format = "single-value")]
+pub struct BurnXasset {
+    #[topic]
+    pub from: Address,
+    pub amount: i128,
+}
