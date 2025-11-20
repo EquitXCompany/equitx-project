@@ -27,6 +27,9 @@ const queryClient = new QueryClient({
   },
 });
 
+const xAssetTitle = ({ assetSymbol }: { assetSymbol: string }) =>
+  `x${assetSymbol.slice(1).toUpperCase()}`;
+
 const router = createHashRouter([
   {
     path: "/",
@@ -53,34 +56,41 @@ const router = createHashRouter([
       {
         index: true,
         element: <Dashboard />,
+        handle: { title: () => "Dashboard" },
       },
       {
         path: "cdps/:assetSymbol",
+        handle: { title: xAssetTitle },
         ...cdps,
       },
       {
         path: "cdps",
         element: <CDPStats />,
+        handle: { title: () => "CDP Overview" },
         errorElement,
       },
       {
         path: "stability-pools",
         element: <StabilityPoolStats />,
+        handle: { title: () => "Stability Pools" },
         errorElement,
       },
       {
         path: "stability-pool/:assetSymbol",
         element: <StabilityPool />,
+        handle: { title: xAssetTitle },
         errorElement,
       },
       {
         path: "portfolio",
         element: <Portfolio />,
+        handle: { title: () => "Portfolio" },
         errorElement,
       },
       {
         path: "admin",
         element: <AdminPanel />,
+        handle: { title: "Admin" },
         errorElement,
       },
     ],
