@@ -1,5 +1,5 @@
 use crate::collateralized::CDPStatus;
-use soroban_sdk::{Address, contracttype};
+use soroban_sdk::{Address, contractevent, contracttype};
 
 #[contracttype]
 pub struct CDP {
@@ -38,4 +38,18 @@ pub struct Liquidation {
     pub xasset_price: i128,
     pub ledger: u32,
     pub timestamp: u64,
+}
+
+#[contractevent(topics = ["mintx"], data_format = "single-value")]
+pub struct MintXasset {
+    #[topic]
+    pub to: Address,
+    pub amount: i128,
+}
+
+#[contractevent(topics = ["burnx"], data_format = "single-value")]
+pub struct BurnXasset {
+    #[topic]
+    pub from: Address,
+    pub amount: i128,
 }

@@ -6,12 +6,13 @@ use crate::data_feed;
 use crate::error::Error;
 use crate::token::{TokenContract, TokenContractClient};
 use data_feed::Asset;
-use soroban_sdk::testutils::Ledger;
+use soroban_sdk::testutils::{Events, Ledger};
 use soroban_sdk::{
     Address, Env, String, Symbol, Vec,
     testutils::Address as _,
     token::{self, Client as TokenClient, StellarAssetClient},
 };
+use soroban_sdk::{IntoVal, symbol_short, vec};
 
 fn create_sac_token_clients<'a>(
     e: &Env,
@@ -36,19 +37,19 @@ fn create_data_feed(e: &Env) -> data_feed::Client<'_> {
     data_feed::Client::new(e, &contract_address)
 }
 
-fn create_token_contract<'a>(
+fn create_token_contract_id(
     e: &Env,
     admin: Address,
     datafeed: data_feed::Client<'_>,
     xlm_sac: Address,
-) -> TokenContractClient<'a> {
+) -> Address {
     let pegged_asset = Symbol::new(e, "USDT");
     let min_collat_ratio: u32 = 11000; // 110%
     let name = String::from_str(e, "United States Dollar xAsset");
     let symbol = String::from_str(e, "xUSD");
     let decimals: u32 = 7;
     let annual_interest_rate: u32 = 11_00; // 11% interest rate
-    let contract_id = e.register(
+    e.register(
         TokenContract,
         (
             admin,
@@ -62,7 +63,16 @@ fn create_token_contract<'a>(
             decimals,
             annual_interest_rate,
         ),
-    );
+    )
+}
+
+fn create_token_contract<'a>(
+    e: &Env,
+    admin: Address,
+    datafeed: data_feed::Client<'_>,
+    xlm_sac: Address,
+) -> TokenContractClient<'a> {
+    let contract_id = create_token_contract_id(e, admin, datafeed, xlm_sac);
 
     TokenContractClient::new(e, &contract_id)
 }
@@ -568,4 +578,50 @@ fn test_exact_allowance_usage() {
     let result = token.try_decrease_allowance(&bob, &carol, &1000_0000000);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err().unwrap(), Error::ValueNotPositive.into());
+}
+
+#[test]
+fn test_events_on_mint() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let xlm_admin_address = Address::generate(&e);
+    let (_, xlm_admin) = create_sac_token_clients(&e, &xlm_admin_address);
+    let xlm_token_address = xlm_admin.address.clone();
+    let datafeed = create_data_feed(&e);
+    let admin: Address = Address::generate(&e);
+    let contract_id = create_token_contract_id(&e, admin, datafeed, xlm_token_address.clone());
+    let token = TokenContractClient::new(&e, &contract_id);
+
+    set_token_prices(&e, &token, 10_000_000_000_000, 10_000_000_000_000);
+
+    let alice = Address::generate(&e);
+    xlm_admin.mint(&alice, &2000_0000000); // Fund Alice with XLM
+
+    // Alice opens a CDP to get some tokens
+    // This will transfer XLM to the contract, and mint xUSD to Alice
+    let amount = 1000_0000000;
+    token.open_cdp(&alice, &1200_0000000, &amount);
+
+    let mut events = e.events().all();
+    // Assert that three events were emitted
+    assert_eq!(events.len(), 3);
+
+    // Remove the first event, which is emitted from the transfer of XLM to the contract
+    events.pop_front();
+    // Remove the last event, which is the custom CDP event with a map emitted
+    events.pop_back();
+
+    // Verify the "mintx" event
+    assert_eq!(
+        events,
+        vec![
+            &e,
+            (
+                contract_id.clone(),
+                (symbol_short!("mintx"), alice.clone()).into_val(&e),
+                1000_0000000i128.into_val(&e)
+            ),
+        ]
+    );
 }

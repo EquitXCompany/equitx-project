@@ -1,13 +1,16 @@
 use core::cmp;
 
 use soroban_sdk::{
-    self, Address, BytesN, Env, MuxedAddress, String, Symbol, Vec, assert_with_error, contract, contractimpl, contracttype, panic_with_error, symbol_short, token::{TokenClient, TokenInterface}
+    self, Address, BytesN, Env, MuxedAddress, String, Symbol, Vec, assert_with_error, contract,
+    contractimpl, contracttype, panic_with_error, symbol_short,
+    token::{TokenClient, TokenInterface},
 };
 
 use crate::{
     Error, PriceData,
     collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
     data_feed,
+    index_types::{BurnXasset, MintXasset},
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
 };
@@ -513,6 +516,7 @@ impl TokenContract {
         env.storage()
             .persistent()
             .set(&DataKey::Balance(to.clone()), &new_balance);
+        MintXasset { to, amount }.publish(env);
     }
 
     fn transfer_internal(env: &Env, from: Address, to: Address, amount: i128) {
@@ -552,6 +556,7 @@ impl TokenContract {
         env.storage()
             .persistent()
             .set(&DataKey::Balance(from.clone()), &new_balance);
+        BurnXasset { from, amount }.publish(env);
     }
 
     // withdraw the amount specified unless full_withdrawal is true in which case withdraw remaining balance
@@ -1252,7 +1257,7 @@ impl IsCollateralized for TokenContract {
 
         // 3. transfer attached XLM to this contract
         let _ = Self::native(env)
-            .try_transfer(&lender, &env.current_contract_address(), &collateral)
+            .try_transfer(&lender, env.current_contract_address(), &collateral)
             .map_err(|_| Error::XLMTransferFailed)?;
 
         // 4. mint `asset_lent` of this token to `address`
