@@ -598,60 +598,30 @@ fn test_events_on_mint() {
     let alice = Address::generate(&e);
     xlm_admin.mint(&alice, &2000_0000000); // Fund Alice with XLM
 
-    let events = e.events().all();
-
-    // Verify the event publishes the expected topics and data.
-    let topics = (symbol_short!("mint"), token.name(), alice.clone());
-    let data = &2000_0000000i128;
-
-    assert_eq!(events.len(), 1);
-
-    assert_eq!(
-        e.events().all(),
-        vec![
-            &e,
-            (xlm_token_address.clone(), topics.into_val(&e), data.into_val(&e)),
-        ]
-    );
-
     // Alice opens a CDP to get some tokens
     // This will transfer XLM to the contract, and mint xUSD to Alice
     let amount = 1000_0000000;
     token.open_cdp(&alice, &1200_0000000, &amount);
 
-    // First event is transfer to the contract (XLM deposit)
-    // let topics = (
-    //     symbol_short!("transfer"),
-    //     alice.clone(),
-    //     contract_id.clone(),
-    //     xlm_token_address.clone(),
-    // );
-    let events = e.events().all();
+    let mut events = e.events().all();
+    // Assert that three events were emitted
     assert_eq!(events.len(), 3);
-    let (addy, toppy, vally) = events.get(1).unwrap();
-    std::println!("Event addr: {:?}, values: {:?}\n", addy, vally);
-    let t0 = toppy.get_unchecked(0);
-    std::println!("Topic 0: {:?}\n", t0);
-    let t1 = toppy.get_unchecked(1);
-    std::println!("Topic 1: {:?}\n", t1);
 
+    // Remove the first event, which is emitted from the transfer of XLM to the contract
+    events.pop_front();
+    // Remove the last event, which is the custom CDP event with a map emitted
+    events.pop_back();
 
+    // Verify the "mintx" event
     assert_eq!(
         events,
         vec![
             &e,
             (
-                xlm_token_address.clone(),
-                topics.into_val(&e),
-                2000_0000000i128.into_val(&e)
+                contract_id.clone(),
+                (symbol_short!("mintx"), alice.clone()).into_val(&e),
+                1000_0000000i128.into_val(&e)
             ),
-            (
-                xlm_token_address.clone(),
-                topics.into_val(&e),
-                data.into_val(&e)
-            )
         ]
     );
-
-    // assert_eq!(first_event_data, amount.into_val(&e));
 }

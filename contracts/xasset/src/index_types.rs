@@ -40,7 +40,7 @@ pub struct Liquidation {
     pub timestamp: u64,
 }
 
-#[contractevent(topics = ["mintxasset"], data_format = "single-value")]
+#[contractevent(topics = ["mintx"], data_format = "single-value")]
 pub struct MintXasset {
     #[topic]
     pub to: Address,
