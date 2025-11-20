@@ -10,7 +10,7 @@ use crate::{
     Error, PriceData,
     collateralized::{CDPContract, CDPStatus, IsCDPAdmin, IsCollateralized},
     data_feed,
-    index_types::{MintXasset, BurnXasset},
+    index_types::{BurnXasset, MintXasset},
     stability_pool::{AvailableAssets, IsStabilityPool, StakerPosition},
     storage::{Allowance, CDPInternal, Interest, InterestDetail, Txn},
 };
