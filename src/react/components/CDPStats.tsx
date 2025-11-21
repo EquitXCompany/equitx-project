@@ -364,33 +364,38 @@ export default function CDPStats() {
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        px: 3,
+        pb: 4,
+      }}
+    >
       {/* System-wide metrics summary */}
       <Paper
         sx={{
           mb: 4,
-          p: 2,
+          p: 4,
           display: "grid",
           justifyItems: "start",
-          borderRadius: 10,
+          borderRadius: "var(--radius-md)",
         }}
       >
         <Typography
-          variant="h4"
+          variant="h5"
           sx={{
-            ml: 4,
-            mt: 5,
-            mb: 0,
-            fontWeight: "bold",
-            fontSize: 40,
+            mb: 3,
+            fontWeight: 600,
+            fontSize: "var(--font-size-xl)",
           }}
         >
-          CDP STATISTICS
+          CDP Statistics
         </Typography>
         <Grid
           container
           spacing={3}
-          mb={4}
+          mb={2}
           className="metric-card-grid"
           id="cdp-cards"
           sx={{
@@ -398,7 +403,7 @@ export default function CDPStats() {
             justifyContent: "space-around",
             margin: 0,
             width: 1,
-            gap: "20px",
+            gap: "var(--spacing-lg)",
           }}
         >
           <StatCard title="Active CDPs" value={systemMetrics.totalActiveCdps} />
@@ -431,13 +436,27 @@ export default function CDPStats() {
         </Grid>
       </Paper>
 
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Typography variant="h5" gutterBottom>
-            XLM locked by asset
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              fontWeight: 600,
+              mb: 2,
+            }}
+          >
+            XLM Locked by Asset
           </Typography>
 
-          <Paper sx={{ minHeight: "400px", width: "100%" }}>
+          <Paper
+            sx={{
+              minHeight: "400px",
+              width: "100%",
+              p: 3,
+              borderRadius: "var(--radius-md)",
+            }}
+          >
             {!TVLMetricsResults.some((result) => result.isLoading) && (
               <Box sx={{ width: "100%", height: "350px" }}>
                 <PieChart
@@ -487,12 +506,24 @@ export default function CDPStats() {
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <Typography variant="h5" gutterBottom>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              fontWeight: 600,
+              mb: 2,
+            }}
+          >
             Collateral Ratio Distribution
           </Typography>
 
           {!cdpMetricsResults.some((result) => result.isLoading) && (
-            <Paper>
+            <Paper
+              sx={{
+                p: 3,
+                borderRadius: "var(--radius-md)",
+              }}
+            >
               <StackedHistogram
                 data={Object.keys(contractMapping).reduce(
                   (acc, asset) => {
@@ -519,7 +550,14 @@ export default function CDPStats() {
 
       <LiquidationsHistory />
 
-      <Paper sx={{ mt: 4, width: "100%" }}>
+      <Paper
+        sx={{
+          mt: 4,
+          width: "100%",
+          borderRadius: "var(--radius-md)",
+          overflow: "hidden",
+        }}
+      >
         <Box>
           <Tabs
             value={tabValue}

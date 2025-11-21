@@ -110,9 +110,23 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: theme.palette.background.default }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: theme.palette.background.default,
+        px: 3,
+        pb: 4,
+      }}
+    >
       {/* TVL Chart */}
-      <Paper component={Box} sx={{ p: 2, mb: 4 }}>
+      <Paper
+        component={Box}
+        sx={{
+          p: 3,
+          mb: 4,
+          borderRadius: "var(--radius-md)",
+        }}
+      >
         {historyError ? (
           <Alert severity="error">Failed to load TVL history data</Alert>
         ) : (
@@ -134,7 +148,7 @@ export default function Dashboard() {
         sx={{
           margin: 0,
           width: 1,
-          gap: "20px",
+          gap: "var(--spacing-lg)",
         }}
       >
         {topMetrics.map((metric, index) => (

@@ -41,8 +41,8 @@ const router = createHashRouter([
             component="main"
             sx={{
               flexGrow: 1,
-              width: "$(window).innerWidth() + 'px'",
-              height: "$(window).innerHeight() + 'px'",
+              p: 3,
+              minHeight: "100vh",
             }}
           >
             <ViewHeader />

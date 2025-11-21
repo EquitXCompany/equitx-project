@@ -34,9 +34,10 @@ export const MetricCard = ({
         flexDirection: "column",
         justifyContent: "flex-end",
         alignItems: "center",
-        p: 2,
+        p: 3,
         height: "100%",
-        borderRadius: "20px",
+        minHeight: "165px",
+        borderRadius: "var(--radius-xl)",
         border: 0,
         boxShadow: "none",
       }}
@@ -48,8 +49,9 @@ export const MetricCard = ({
             alignItems: "center",
             bgcolor: isPositiveChange ? "#648153" : "#D46565",
             px: 2,
-            py: 1.25,
+            py: 1,
             borderRadius: "25px",
+            mb: 1,
           }}
         >
           {isPositiveChange ? (
@@ -72,9 +74,9 @@ export const MetricCard = ({
           <Typography
             variant="caption"
             sx={{
-              color: "black",
+              color: "white",
               fontWeight: 600,
-              fontSize: 16,
+              fontSize: 14,
             }}
           >
             {formattedChange}%
@@ -89,10 +91,10 @@ export const MetricCard = ({
             variant="h4"
             component="p"
             sx={{
-              mt: "10px",
-              mb: 1,
-              fontWeight: 800,
-              fontSize: 34,
+              mb: 1.5,
+              fontWeight: 700,
+              fontSize: "2rem",
+              lineHeight: 1.2,
             }}
           >
             {value}
@@ -111,34 +113,42 @@ export const MetricCard = ({
           </Typography>
         </>
       )}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="flex-start"
-      >
-        <Box display="flex" alignItems="center" mb={1}>
-          <Typography
-            variant="subtitle2"
-            component="h2"
-            sx={{
-              fontWeight: 500,
-            }}
-          >
-            {title}
-          </Typography>
-          {tooltip && (
-            <Tooltip title={tooltip}>
-              <InfoOutlined
-                sx={{
-                  ml: 1,
-                  fontSize: 16,
-                }}
-              />
-            </Tooltip>
-          )}
-        </Box>
+      <Box display="flex" justifyContent="center" alignItems="center">
+        <Typography
+          variant="subtitle2"
+          component="h2"
+          sx={{
+            fontWeight: 600,
+            fontSize: "var(--font-size-sm)",
+            textAlign: "center",
+          }}
+        >
+          {title}
+        </Typography>
+        {tooltip && (
+          <Tooltip title={tooltip}>
+            <InfoOutlined
+              sx={{
+                ml: 1,
+                fontSize: 16,
+                opacity: 0.7,
+              }}
+            />
+          </Tooltip>
+        )}
       </Box>
-      {false && subtitle && <Typography variant="body2">{subtitle}</Typography>}
+      {subtitle && (
+        <Typography
+          variant="body2"
+          sx={{
+            mt: 0.5,
+            opacity: 0.8,
+            fontSize: "var(--font-size-xs)",
+          }}
+        >
+          {subtitle}
+        </Typography>
+      )}
     </Paper>
   );
 };

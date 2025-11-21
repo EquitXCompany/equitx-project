@@ -20,9 +20,26 @@ export default function ViewHeader() {
   const { isDarkMode, toggleTheme } = useTheme();
 
   return (
-    <Grid container spacing={3} alignItems="center">
+    <Grid
+      container
+      spacing={3}
+      alignItems="center"
+      sx={{
+        marginBottom: 4,
+        paddingTop: 2,
+      }}
+    >
       <Grid size="grow">
-        <h1 className="page-heading">{title}</h1>
+        <h1
+          className="page-heading"
+          style={{
+            fontSize: "var(--font-size-3xl)",
+            fontWeight: 700,
+            margin: 0,
+          }}
+        >
+          {title}
+        </h1>
       </Grid>
 
       <Grid size="auto">

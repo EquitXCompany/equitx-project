@@ -75,7 +75,9 @@ export default function StabilityPoolStats() {
         if (!assetStabilityData) return total;
 
         return total.plus(
-          result.data.totalXassetsStakedUSD.div(assetStabilityData.lastpriceXLM)
+          result.data.totalXassetsStakedUSD.div(
+            assetStabilityData.lastpriceXLM,
+          ),
         );
       }, new BigNumber(0))
     : new BigNumber(0);
@@ -104,14 +106,22 @@ export default function StabilityPoolStats() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Stability Pools
-      </Typography>
-
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        px: 3,
+        pb: 4,
+      }}
+    >
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: "var(--radius-md)",
+            }}
+          >
             {isLoading ? (
               <LoadingSkeleton />
             ) : (
@@ -123,7 +133,7 @@ export default function StabilityPoolStats() {
                   Open Accounts:{" "}
                   {tvlMetricsResults.reduce(
                     (sum, result) => sum + (result.data?.openAccounts || 0),
-                    0
+                    0,
                   )}
                 </Typography>
                 <Typography variant="body2">
@@ -173,11 +183,12 @@ export default function StabilityPoolStats() {
         <Grid item xs={12} md={6}>
           <Paper
             sx={{
-              p: 2,
+              p: 3,
               height: "100%",
-              minHeight: "400px", // Add minimum height
+              minHeight: "400px",
               display: "flex",
               flexDirection: "column",
+              borderRadius: "var(--radius-md)",
             }}
           >
             <Typography variant="subtitle2" color="textSecondary">
@@ -198,10 +209,9 @@ export default function StabilityPoolStats() {
                     data={Object.keys(contractMapping).reduce(
                       (acc, asset) => {
                         const result = tvlMetricsResults.find(
-                          (r) => r.data?.asset === asset
+                          (r) => r.data?.asset === asset,
                         );
-                        const assetStabilityData =
-                          stabilityPoolData?.[asset];
+                        const assetStabilityData = stabilityPoolData?.[asset];
                         if (result?.data && assetStabilityData) {
                           const histogram = result.data.stakedShareHistogram;
                           const convertedHistogram = {
@@ -209,7 +219,7 @@ export default function StabilityPoolStats() {
                             buckets: histogram.buckets.map((bucket) =>
                               bucket
                                 .multipliedBy(assetStabilityData.lastpriceAsset)
-                                .div(assetStabilityData.lastpriceXLM)
+                                .div(assetStabilityData.lastpriceXLM),
                             ),
                           };
                           acc[asset] = convertedHistogram;
@@ -219,10 +229,10 @@ export default function StabilityPoolStats() {
                       {} as Record<
                         string,
                         TVLMetricsData["stakedShareHistogram"]
-                      >
+                      >,
                     )}
                     isLoading={tvlMetricsResults.some(
-                      (result) => result.isLoading
+                      (result) => result.isLoading,
                     )}
                     normalize={1e7}
                   />
@@ -233,16 +243,21 @@ export default function StabilityPoolStats() {
         </Grid>
         {Object.entries(contractMapping).map(([symbol]) => {
           const tvlMetrics = tvlMetricsResults.find(
-            (result) => result.data?.asset === symbol
+            (result) => result.data?.asset === symbol,
           )?.data;
           const stabilityMetadata = stabilityPoolData?.[symbol];
           const userStake = userStakes?.find(
-            (stake) => stake.asset.symbol === symbol
+            (stake) => stake.asset.symbol === symbol,
           );
 
           return (
             <Grid item xs={12} md={6} key={symbol}>
-              <Paper sx={{ p: 2 }}>
+              <Paper
+                sx={{
+                  p: 3,
+                  borderRadius: "var(--radius-md)",
+                }}
+              >
                 {isLoading ? (
                   <LoadingSkeleton />
                 ) : (
@@ -264,18 +279,18 @@ export default function StabilityPoolStats() {
                           tvlMetrics?.totalXassetsStaked || "0",
                           7,
                           3,
-                          symbol
+                          symbol,
                         )}
                       </Typography>
                       <Typography variant="body2">
                         Staked Value:{" "}
                         {formatCurrency(
                           tvlMetrics?.totalXassetsStakedUSD.div(
-                            stabilityMetadata?.lastpriceXLM || BigNumber(1)
+                            stabilityMetadata?.lastpriceXLM || BigNumber(1),
                           ) || BigNumber(0),
                           14,
                           2,
-                          "XLM"
+                          "XLM",
                         )}
                       </Typography>
                       <Typography variant="body2">
@@ -298,7 +313,7 @@ export default function StabilityPoolStats() {
                                 userStake?.xasset_deposit || new BigNumber(0),
                                 7,
                                 2,
-                                symbol
+                                symbol,
                               )}
                             </Typography>
                             <Typography variant="body2">

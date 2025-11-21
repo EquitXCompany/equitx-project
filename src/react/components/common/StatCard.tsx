@@ -1,11 +1,5 @@
-import { 
-  Box,
-  Paper, 
-  Skeleton,
-  Tooltip, 
-  Typography, 
-} from '@mui/material';
-import { InfoOutlined } from '@mui/icons-material';
+import { Box, Paper, Skeleton, Tooltip, Typography } from "@mui/material";
+import { InfoOutlined } from "@mui/icons-material";
 
 interface StatCardProps {
   title: string;
@@ -22,38 +16,33 @@ export const StatCard = ({
   isLoading = false,
   tooltip,
 }: StatCardProps) => {
-
   return (
     <Paper
       className="metric-card-paper-root"
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        p: 2,
-        height: '165px',
-        maxWidth: '280px',
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        p: 3,
+        height: "165px",
+        minWidth: "240px",
         flexGrow: 1,
-        borderRadius: '20px',
-        transition: 'transform 0.2s',
-        '&:hover': {
-          transform: 'translateY(-2px)'
-        },
+        borderRadius: "var(--radius-xl)",
       }}
     >
       {isLoading ? (
         <Skeleton variant="text" width="80%" height={60} />
       ) : (
         <>
-          <Typography 
-            variant="h4" 
-            component="p" 
-            sx={{ 
-              mt: '10px',
-              mb: 1,
-              fontWeight: 600,
-              fontSize: 41
+          <Typography
+            variant="h4"
+            component="p"
+            sx={{
+              mb: 1.5,
+              fontWeight: 700,
+              fontSize: "2.5rem",
+              lineHeight: 1.2,
             }}
           >
             {value}
@@ -61,39 +50,44 @@ export const StatCard = ({
         </>
       )}
 
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-        <Box display="flex" alignItems="center" mb={1}>
-          <Typography 
-            variant="subtitle2" 
-            component="h2" 
-            sx={{ 
-              fontWeight: "bold",
-              fontSize: 16,
-            }}
-          >
-            {title.toUpperCase()}
-          </Typography>
-          {tooltip && (
-            <Tooltip title={tooltip}>
-              <InfoOutlined 
-                sx={{ 
-                  ml: 1,
-                  fontSize: 16, 
-                }} 
-              />
-            </Tooltip>
-          )}
-        </Box>
-
- 
+      <Box display="flex" justifyContent="center" alignItems="center">
+        <Typography
+          variant="subtitle2"
+          component="h2"
+          sx={{
+            fontWeight: 600,
+            fontSize: "var(--font-size-sm)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {title}
+        </Typography>
+        {tooltip && (
+          <Tooltip title={tooltip}>
+            <InfoOutlined
+              sx={{
+                ml: 1,
+                fontSize: 16,
+                opacity: 0.7,
+              }}
+            />
+          </Tooltip>
+        )}
       </Box>
-      {false && subtitle && (
-        <Typography 
+
+      {subtitle && (
+        <Typography
           variant="body2"
+          sx={{
+            mt: 0.5,
+            opacity: 0.8,
+            fontSize: "var(--font-size-xs)",
+          }}
         >
           {subtitle}
         </Typography>
       )}
     </Paper>
-  )
+  );
 };

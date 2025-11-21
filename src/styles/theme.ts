@@ -5,6 +5,7 @@ const black = "#000000";
 const white = "#ffffff";
 const darkGray = "#1A1C21";
 const dimGray = "#2A2C33";
+const darkSurface = "#3d3f47";
 const gray = "#707070";
 const mediumGray = "#AEAEAE";
 const lightGray = "#F3F4F6";
@@ -39,7 +40,7 @@ const getTheme = (mode: "light" | "dark") =>
       },
       background: {
         default: mode === "dark" ? black : white,
-        paper: mode === "dark" ? darkGray : lightGray,
+        paper: mode === "dark" ? dimGray : lightGray,
       },
       text: {
         primary: mode === "dark" ? lightGray : darkGray,
@@ -91,12 +92,26 @@ const getTheme = (mode: "light" | "dark") =>
       MuiListItemButton: {
         styleOverrides: {
           root: {
+            borderRadius: "8px",
+            marginBottom: "4px",
+            transition: "all 150ms ease",
             "&.Mui-selected": {
-              backgroundColor: mode === "dark" ? white : lightGray,
+              backgroundColor:
+                mode === "dark"
+                  ? "rgba(255, 255, 255, 0.15)"
+                  : "rgba(59, 130, 246, 0.1)",
               "&:hover": {
                 backgroundColor:
-                  mode === "dark" ? mediumGray : "rgba(0, 0, 0, 0.1)",
+                  mode === "dark"
+                    ? "rgba(255, 255, 255, 0.2)"
+                    : "rgba(59, 130, 246, 0.15)",
               },
+            },
+            "&:hover": {
+              backgroundColor:
+                mode === "dark"
+                  ? "rgba(255, 255, 255, 0.1)"
+                  : "rgba(0, 0, 0, 0.05)",
             },
           },
         },
@@ -123,8 +138,9 @@ const getTheme = (mode: "light" | "dark") =>
             backgroundImage: "none",
             boxShadow:
               mode === "dark"
-                ? "0 1px 3px rgb(0, 0, 0)"
-                : "0 1px 3px rgb(0, 0, 0, 0.10)",
+                ? "0 1px 3px rgba(0, 0, 0, 0.1)"
+                : "0 1px 3px rgba(0, 0, 0, 0.1)",
+            borderRadius: 12,
             "&.MuiPaper-elevation0": {
               backgroundColor: mode === "dark" ? darkGray : white,
             },
@@ -137,15 +153,23 @@ const getTheme = (mode: "light" | "dark") =>
             borderRadius: 12,
             boxShadow:
               mode === "dark"
-                ? "0 4px 6px -1px rgba(0, 0, 0, 0.2)"
-                : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-            backgroundColor: mode === "dark" ? darkGray : lightGray,
+                ? "0 4px 6px rgba(0, 0, 0, 0.1)"
+                : "0 4px 6px rgba(0, 0, 0, 0.1)",
+            backgroundColor: mode === "dark" ? dimGray : lightGray,
             height: "100%",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
             padding: "1.5rem",
             textAlign: "center",
+            transition: "transform 150ms ease, box-shadow 150ms ease",
+            "&:hover": {
+              transform: "translateY(-2px)",
+              boxShadow:
+                mode === "dark"
+                  ? "0 10px 15px rgba(0, 0, 0, 0.2)"
+                  : "0 10px 15px rgba(0, 0, 0, 0.1)",
+            },
           },
         },
       },
