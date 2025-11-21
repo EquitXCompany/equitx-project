@@ -8,7 +8,7 @@ import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 import cdps from "./routes/cdps";
 import errorElement from "./routes/error";
 import StabilityPool from "./routes/stabilityPool";
-import Navbar from "./components/Navbar";
+import Navbar, { drawerWidth } from "./components/Navbar";
 import { Box } from "@mui/material";
 import ViewHeader from "./components/ViewHeader";
 import Dashboard from "./components/Dashboard";
@@ -41,8 +41,12 @@ const router = createHashRouter([
             component="main"
             sx={{
               flexGrow: 1,
-              p: 3,
               minHeight: "100vh",
+              paddingLeft: "var(--spacing-md)",
+              paddingRight: "var(--spacing-md)",
+              paddingBottom: "var(--spacing-md)",
+              width: `calc(100vw - ${drawerWidth}px)`,
+              overflowX: "hidden",
             }}
           >
             <ViewHeader />
@@ -56,7 +60,7 @@ const router = createHashRouter([
       {
         index: true,
         element: <Dashboard />,
-        handle: { title: () => "Dashboard" },
+        handle: { title: () => "Protocol Overview" },
       },
       {
         path: "cdps/:assetSymbol",

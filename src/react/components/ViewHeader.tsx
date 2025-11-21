@@ -26,7 +26,7 @@ export default function ViewHeader() {
       alignItems="center"
       sx={{
         marginBottom: 4,
-        paddingTop: 2,
+        paddingTop: "var(--spacing-xl)",
       }}
     >
       <Grid size="grow">

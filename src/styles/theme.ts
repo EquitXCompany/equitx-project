@@ -39,8 +39,8 @@ const getTheme = (mode: "light" | "dark") =>
         dark: mode === "dark" ? gray : black,
       },
       background: {
-        default: mode === "dark" ? black : white,
-        paper: mode === "dark" ? dimGray : lightGray,
+        default: mode === "dark" ? black : lightGray,
+        paper: mode === "dark" ? dimGray : white,
       },
       text: {
         primary: mode === "dark" ? lightGray : darkGray,
@@ -98,8 +98,12 @@ const getTheme = (mode: "light" | "dark") =>
             "&.Mui-selected": {
               backgroundColor:
                 mode === "dark"
-                  ? "rgba(255, 255, 255, 0.15)"
+                  ? "rgba(255, 255, 255, 0.25)"
                   : "rgba(59, 130, 246, 0.1)",
+              color:
+                mode === "dark"
+                  ? "var(--color-text-primary-dark)"
+                  : "var(--color-text-primary-light)",
               "&:hover": {
                 backgroundColor:
                   mode === "dark"
@@ -112,6 +116,10 @@ const getTheme = (mode: "light" | "dark") =>
                 mode === "dark"
                   ? "rgba(255, 255, 255, 0.1)"
                   : "rgba(0, 0, 0, 0.05)",
+            },
+            "& .MuiListItemIcon-root": {
+              minWidth: "unset",
+              marginRight: "var(--spacing-sm)",
             },
           },
         },
@@ -141,9 +149,6 @@ const getTheme = (mode: "light" | "dark") =>
                 ? "0 1px 3px rgba(0, 0, 0, 0.1)"
                 : "0 1px 3px rgba(0, 0, 0, 0.1)",
             borderRadius: 12,
-            "&.MuiPaper-elevation0": {
-              backgroundColor: mode === "dark" ? darkGray : white,
-            },
           },
         },
       },
@@ -220,7 +225,15 @@ const getTheme = (mode: "light" | "dark") =>
       MuiTabs: {
         styleOverrides: {
           root: {
-            backgroundColor: mode === "dark" ? black : white,
+            backgroundColor: mode === "dark" ? dimGray : white,
+            "& .MuiTabs-indicator": {
+              display: "none",
+            },
+            "& .MuiTabs-list": {
+              margin: 0,
+              padding: "var(--spacing-md)",
+              gap: "var(--spacing-md)",
+            },
           },
         },
       },
@@ -229,63 +242,26 @@ const getTheme = (mode: "light" | "dark") =>
           root: {
             opacity: 1,
             overflow: "initial",
-            paddingLeft: "90px",
-            paddingRight: "90px",
-            borderTopLeftRadius: "25px",
-            borderTopRightRadius: "25px",
-            color: mode === "dark" ? lightGray : darkGray,
-            backgroundColor: mode === "dark" ? dimGray : lightGray,
+            paddingLeft: "2rem",
+            paddingRight: "2rem",
+            borderRadius: "var(--radius-md)",
+            color: mode === "dark" ? white : darkGray,
+            backgroundColor: mode === "dark" ? dimGray : white,
             transition: "0.2s",
             zIndex: 2,
-            marginTop: "4px",
-            textTransform: "uppercase",
             font: "normal normal 600 20px/24px Instrument Sans",
             "&:before": {
               transition: "0.2s",
-            },
-            "&:first-of-type": {
-              "--r": "25px",
-              margin: "0 -25px 0 0",
-              lineHeight: "1.8",
-              borderRight: "var(--r) solid #0000",
-              borderRadius: "var(--r) calc(2*var(--r)) 0 0/var(--r)",
-              mask: `
-              radial-gradient(var(--r) at 100% 0,#0000 98%,#000 101%)
-              100% 100%/var(--r) var(--r) no-repeat,
-              conic-gradient(#000 0 0) padding-box;
-              `,
-              background: mode === "dark" ? dimGray : lightGray,
-              width: "fit-content",
-            },
-            "&:not(:first-of-type)": {
-              "--r": "25px",
-              margin: "0 -25px",
-              lineHeight: "1.8",
-              borderInline: "var(--r) solid #0000",
-              borderRadius: " calc(2*var(--r)) calc(2*var(--r)) 0 0/var(--r)",
-              mask: `radial-gradient(var(--r) at var(--r) 0,#0000 98%,#000 101%)
-                calc(-1*var(--r)) 100%/100% var(--r) repeat-x,
-                conic-gradient(#000 0 0) padding-box;`,
-              background: mode === "dark" ? dimGray : lightGray,
-              width: "fit-content",
-              "&:before": {
-                content: '" "',
-                position: "absolute",
-                left: 0,
-                display: "block",
-                height: 20,
-                width: "1px",
-                zIndex: 1,
-                marginTop: "4px",
-                backgroundColor: mode === "dark" ? darkGray : lightGray,
-              },
             },
             [`& + .${tabClasses.selected}::before`]: {
               opacity: 0,
             },
             "&:hover": {
               [`&:not(.${tabClasses.selected})`]: {
-                backgroundColor: "rgba(255 255 255 / 55%)",
+                backgroundColor:
+                  mode === "dark"
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "rgba(0, 0, 0, 0.05)",
               },
               "&::before": {
                 opacity: 0,
@@ -295,7 +271,11 @@ const getTheme = (mode: "light" | "dark") =>
               },
             },
             [`&.${tabClasses.selected}`]: {
-              backgroundColor: mode === "dark" ? darkGray : lightGray,
+              backgroundColor:
+                mode === "dark"
+                  ? "rgba(255, 255, 255, 0.25)"
+                  : "rgba(59, 130, 246, 0.15)",
+              border: 0,
               color: mode === "dark" ? lightGray : darkGray,
             },
             [`&.${tabClasses.selected} + .${tabClasses.root}`]: {
@@ -309,8 +289,7 @@ const getTheme = (mode: "light" | "dark") =>
       },
     },
     typography: {
-      fontFamily:
-        '"Instrument Sans", "Roboto", "Helvetica", "Arial", sans-serif',
+      fontFamily: "var(--font-family)",
       button: {
         textTransform: "none",
       },

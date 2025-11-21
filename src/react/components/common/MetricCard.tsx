@@ -2,6 +2,7 @@ import { Paper, Typography, Skeleton, Tooltip, Box } from "@mui/material";
 import { InfoOutlined, TrendingUp, TrendingDown } from "@mui/icons-material";
 
 interface MetricCardProps {
+  icon?: typeof InfoOutlined;
   title: string;
   value: string | number;
   subtitle?: string;
@@ -22,6 +23,7 @@ export const MetricCard = ({
   tooltip,
   trend,
   change,
+  icon: Icon,
 }: MetricCardProps) => {
   const isPositiveChange = change && change > 0;
   const formattedChange = change ? Math.abs(change).toFixed(2) : null;
@@ -42,6 +44,23 @@ export const MetricCard = ({
         boxShadow: "none",
       }}
     >
+      {Icon && (
+        <Box>
+          <Icon
+            sx={{
+              display: "block",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.2)",
+              width: "3rem",
+              height: "3rem",
+              color: "var(--color-text-primary-dark)",
+              fontSize: "var(--font-size-3xl)",
+              padding: "10px",
+              mb: 2,
+            }}
+          />
+        </Box>
+      )}
       {change !== undefined && !isLoading && (
         <Box
           sx={{
@@ -91,7 +110,7 @@ export const MetricCard = ({
             variant="h4"
             component="p"
             sx={{
-              mb: 1.5,
+              mb: 0,
               fontWeight: 700,
               fontSize: "2rem",
               lineHeight: 1.2,
@@ -121,6 +140,7 @@ export const MetricCard = ({
             fontWeight: 600,
             fontSize: "var(--font-size-sm)",
             textAlign: "center",
+            marginBottom: 0,
           }}
         >
           {title}

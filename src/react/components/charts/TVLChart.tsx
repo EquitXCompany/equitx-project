@@ -19,7 +19,7 @@ ChartJS.register(
   BarElement,
   Title,
   ChartTooltip,
-  Legend
+  Legend,
 );
 
 interface TVLChartProps {
@@ -42,8 +42,8 @@ export const TVLChart = ({
   const theme = useTheme();
 
   // Define theme-aware colors
-  const primaryColor = theme.palette.primary.main;
-  const secondaryColor = theme.palette.secondary.main;
+  const primaryColor = theme.palette.primary.light;
+  const secondaryColor = theme.palette.secondary.light;
   const textColor = theme.palette.text.secondary;
   const borderColor = theme.palette.divider;
   const tooltipBackgroundColor =
@@ -70,20 +70,20 @@ export const TVLChart = ({
 
     // Sort by timestamp
     processedData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    
+
     // Limit to 3 data points per day
     const limitedData: typeof processedData = [];
     const dataByDay = new Map<string, typeof processedData>();
-    
+
     // Group data points by day
-    processedData.forEach(item => {
-      const day = item.timestamp.toISOString().split('T')[0];
+    processedData.forEach((item) => {
+      const day = item.timestamp.toISOString().split("T")[0];
       if (!dataByDay.has(day!)) {
         dataByDay.set(day!, []);
       }
       dataByDay.get(day!)!.push(item);
     });
-    
+
     // Limit to 3 points per day and flatten
     dataByDay.forEach((dayPoints, _) => {
       // If we have more than 3 points for a day, take evenly spaced samples
@@ -101,22 +101,25 @@ export const TVLChart = ({
         limitedData.push(...dayPoints);
       }
     });
-    
+
     // Re-sort the limited data
     limitedData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    
+
     // Determine colors based on theme mode
-    const borderColor = theme.palette.mode === "dark"
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(0, 0, 0, 0.1)";
-    
-    const primaryHoverColor = theme.palette.mode === "dark" 
-      ? theme.palette.primary.dark 
-      : theme.palette.primary.light;
-      
-    const secondaryHoverColor = theme.palette.mode === "dark" 
-      ? theme.palette.secondary.dark 
-      : theme.palette.secondary.light;
+    const borderColor =
+      theme.palette.mode === "dark"
+        ? "rgba(255, 255, 255, 0.1)"
+        : "rgba(0, 0, 0, 0.1)";
+
+    const primaryHoverColor =
+      theme.palette.mode === "dark"
+        ? theme.palette.primary.dark
+        : theme.palette.primary.light;
+
+    const secondaryHoverColor =
+      theme.palette.mode === "dark"
+        ? theme.palette.secondary.dark
+        : theme.palette.secondary.light;
 
     return {
       labels: limitedData.map((d) => {
@@ -125,8 +128,8 @@ export const TVLChart = ({
           month: "short",
           day: "numeric",
         })} ${date.toLocaleTimeString(undefined, {
-          hour: '2-digit',
-          minute: '2-digit'
+          hour: "2-digit",
+          minute: "2-digit",
         })}`;
       }),
       datasets: [
@@ -247,7 +250,7 @@ export const TVLChart = ({
       tooltipTextColor,
       borderColor,
       theme.typography.fontFamily,
-    ]
+    ],
   );
 
   return (
@@ -266,6 +269,7 @@ export const TVLChart = ({
             color: theme.palette.text.primary,
             fontWeight: 500,
             mb: 2,
+            textAlign: "left",
           }}
         >
           {type === "protocol"

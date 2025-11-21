@@ -57,7 +57,8 @@ html[data-theme="dark"] {
 
   /* Typography */
   --font-family:
-    "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Instrument Sans", "Roboto", "Helvetica", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -283,14 +284,6 @@ code {
   }
 }
 
-#metric-cards > .MuiGrid-item {
-  padding: 0;
-}
-
-[data-theme="dark"] #metric-cards > .MuiGrid-item {
-  border-color: white;
-}
-
 * {
   transition:
     background-color 0.2s ease,
@@ -299,16 +292,6 @@ code {
 
 .MuiChartsLegend-root {
   display: none;
-}
-
-.metric-card-grid {
-  padding: var(--spacing-lg);
-  background-color: var(--color-surface-light);
-  border-radius: var(--radius-xl);
-}
-
-[data-theme="dark"] .metric-card-grid {
-  background-color: var(--color-surface-darker);
 }
 
 .metric-card-paper-root {
@@ -324,29 +307,43 @@ code {
 }
 
 [data-theme="dark"] .metric-card-paper-root {
-  background-color: var(--color-background-dark);
+  background-color: var(--color-surface-dark);
   border-color: var(--color-text-secondary-dark);
 }
-
-.metric-card-container {
-  border-radius: var(--radius-xl);
+[data-theme="light"] .MuiGrid-item .metric-card-paper-root .MuiTypography-root {
+  color: var(--color-text-primary-dark);
 }
 
-[data-theme="dark"] .metric-card-container {
-  background-color: var(--color-surface-darker);
+.MuiGrid-item:nth-of-type(1) .metric-card-paper-root {
+  background-color: var(--color-primary-light);
+  background: linear-gradient(
+    120deg,
+    var(--color-primary-light),
+    var(--color-secondary-light)
+  );
 }
-
-[data-theme="dark"] .MuiButtonBase-root.Mui-selected {
-  .MuiListItemIcon-root {
-    .MuiSvgIcon-root {
-      color: var(--color-text-primary-light) !important;
-    }
-  }
-  .MuiListItemText-root {
-    .MuiTypography-root {
-      color: var(--color-text-primary-light) !important;
-    }
-  }
+.MuiGrid-item:nth-of-type(2) .metric-card-paper-root {
+  background-color: var(--color-secondary-light);
+  background: linear-gradient(
+    120deg,
+    var(--color-secondary-light),
+    var(--color-secondary)
+  );
+}
+.MuiGrid-item:nth-of-type(3) .metric-card-paper-root {
+  background-color: var(--color-accent);
+  background: linear-gradient(
+    120deg,
+    var(--color-secondary),
+    var(--color-primary-light)
+  );
+}
+.MuiGrid-item:nth-of-type(4) .metric-card-paper-root {
+  background: linear-gradient(
+    120deg,
+    var(--color-primary-light),
+    var(--color-primary-dark)
+  );
 }
 
 [data-theme="dark"] .MuiTable-root {
@@ -372,8 +369,18 @@ code {
   }
 }
 
+.MuiDataGrid-root {
+  --unstable_DataGrid-radius: 0 !important;
+}
 .MuiDataGrid-row--borderBottom {
-  background-color: var(--color-text-primary-light) !important;
+  background-color: var(--color-surface-light) !important;
+}
+[data-theme="dark"] .MuiDataGrid-row--borderBottom {
+  background-color: var(--color-surface-dark) !important;
+}
+.MuiDataGrid-root .MuiDataGrid-columnHeaders,
+.MuiDataGrid-root .MuiDataGrid-columnHeader {
+  border-radius: 0 !important;
 }
 
 .brand-chevron {
@@ -396,12 +403,15 @@ header.header {
   padding: 2rem 3rem 3rem;
 }
 .header-brand {
-  flex: 1 1 auto;
   background: url("/EQUITX-Logo-DarkGray-Horizontal.svg") no-repeat;
   background-size: contain;
+  background-position: center;
   text-indent: -9999px;
   overflow: hidden;
   white-space: nowrap;
+  width: 60%;
+  margin: 0;
+  min-height: 48px;
 }
 [data-theme="dark"] .header-brand {
   background-image: url("/EQUITX-Logo-White-Horizontal.svg");

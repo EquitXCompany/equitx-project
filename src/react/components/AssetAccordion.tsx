@@ -41,7 +41,11 @@ export function AssetAccordion({
       enabled: expanded, // Only fetch when expanded
     });
 
-  let metrics = <span>loading...</span>;
+  let metrics = (
+    <Typography variant="caption" color="textDisabled">
+      Loading Asset...
+    </Typography>
+  );
   let collateralRatio = new BigNumber(0);
   let deposits = new BigNumber(0);
   let minted = new BigNumber(0);
@@ -102,11 +106,9 @@ export function AssetAccordion({
       expanded={expanded}
       onChange={onChange}
       sx={{
-        mb: 2,
+        mb: "var(--spacing-lg)",
         borderRadius: "var(--radius-md) !important",
         "&:before": { display: "none" },
-        boxShadow: "none",
-        border: `1px solid ${theme.palette.divider}`,
       }}
     >
       <AccordionSummary

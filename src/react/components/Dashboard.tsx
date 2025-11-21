@@ -8,6 +8,12 @@ import {
   useTheme,
 } from "@mui/material";
 import {
+  TrendingUp,
+  Percent,
+  HandshakeOutlined,
+  AttachMoney,
+} from "@mui/icons-material";
+import {
   useLatestProtocolStats,
   useProtocolStatsHistory,
 } from "../hooks/useProtocolStats";
@@ -16,6 +22,13 @@ import { TVLChart } from "./charts/TVLChart";
 import { AssetAccordion } from "./AssetAccordion";
 import { formatCurrency } from "../../utils/formatters";
 import { useContractMapping } from "../../contexts/ContractMappingContext";
+
+const metricIcons = [
+  AttachMoney,
+  TrendingUp,
+  HandshakeOutlined,
+  Percent,
+] as const;
 
 export default function Dashboard() {
   const theme = useTheme();
@@ -81,37 +94,28 @@ export default function Dashboard() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
         bgcolor: theme.palette.background.default,
-        px: 3,
         pb: 4,
       }}
     >
       {/* Top Metrics Grid */}
       <Grid
         container
-        spacing={3}
-        mb={4}
-        className="metric-card-grid"
         id="metric-cards"
         sx={{
-          margin: 0,
+          justifyContent: "space-between",
+          m: "0 0 var(--spacing-lg)",
+          p: 0,
           width: 1,
           gap: "var(--spacing-lg)",
         }}
       >
         {topMetrics.map((metric, index) => (
-          <Grid
-            item
-            xs={12}
-            md={3}
-            key={index}
-            className="metric-card-container"
-          >
+          <Grid item xs={12} md={3} key={index} className="metric-card">
             <MetricCard
+              icon={metricIcons[index]}
               title={metric.title}
               value={metric.format(metric.value)}
-              change={metric.change}
               isLoading={statsLoading}
             />
           </Grid>

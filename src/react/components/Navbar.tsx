@@ -6,6 +6,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  type SxProps,
+  type Theme,
   Typography,
 } from "@mui/material";
 import {
@@ -20,9 +22,22 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useWallet } from "../../wallet";
 import { ADMIN_ADDRESS } from "../../constants";
 
-const drawerWidth = 280;
+export const drawerWidth = 300;
 const FEEDBACK_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLScIw31uG19BYszyMnKeDfRo4-UnbKAkHxQWBhpYvtdFEr-F-g/viewform?usp=dialog";
+
+const navHeader = (isDarkMode: boolean): SxProps<Theme> => ({
+  fontWeight: 600,
+  textAlign: "left",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  color: isDarkMode
+    ? "var(--color-text-secondary-dark)"
+    : "var(--color-text-secondary-light)",
+  mb: 1,
+  mt: 1,
+  display: "block",
+});
 
 export default function Navbar() {
   const location = useLocation();
@@ -36,33 +51,22 @@ export default function Navbar() {
         width: drawerWidth,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
-          width: drawerWidth,
+          width: `calc(${drawerWidth}px - (2 * var(--spacing-md)))`,
           boxSizing: "border-box",
           backgroundColor: isDarkMode
-            ? "var(--color-surface-dark)"
-            : "var(--color-surface-light)",
+            ? "var(--color-surface-darker)"
+            : "var(--color-background-light)",
           border: "none",
-          padding: "var(--spacing-lg)",
+          padding: "var(--spacing-md)",
+          margin: "var(--spacing-md)",
+          maxHeight: "calc(100vh - (2 * var(--spacing-md)))",
         },
       }}
     >
       <h1 className="header-brand">EquitX</h1>
 
       <List disablePadding sx={{ mt: 2 }}>
-        <Typography
-          variant="caption"
-          sx={{
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-            color: isDarkMode
-              ? "var(--color-text-secondary-dark)"
-              : "var(--color-text-secondary-light)",
-            px: 2,
-            mb: 1,
-            display: "block",
-          }}
-        >
+        <Typography variant="caption" sx={navHeader(isDarkMode)}>
           Menu
         </Typography>
 
@@ -107,21 +111,7 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
-        <Typography
-          variant="caption"
-          sx={{
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-            color: isDarkMode
-              ? "var(--color-text-secondary-dark)"
-              : "var(--color-text-secondary-light)",
-            px: 2,
-            mt: 3,
-            mb: 1,
-            display: "block",
-          }}
-        >
+        <Typography variant="caption" sx={navHeader(isDarkMode)}>
           xAssets
         </Typography>
 
@@ -151,21 +141,7 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
 
-        <Typography
-          variant="caption"
-          sx={{
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-            color: isDarkMode
-              ? "var(--color-text-secondary-dark)"
-              : "var(--color-text-secondary-light)",
-            px: 2,
-            mt: 3,
-            mb: 1,
-            display: "block",
-          }}
-        >
+        <Typography variant="caption" sx={navHeader(isDarkMode)}>
           Help
         </Typography>
 

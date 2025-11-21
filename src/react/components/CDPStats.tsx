@@ -40,7 +40,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
+      {value === index && <Box>{children}</Box>}
     </div>
   );
 }
@@ -364,14 +364,7 @@ export default function CDPStats() {
   ];
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        px: 3,
-        pb: 4,
-      }}
-    >
+    <Box>
       {/* System-wide metrics summary */}
       <Paper
         sx={{
