@@ -14,18 +14,24 @@ export default {
         {
           ...list,
           index: true,
+          handle: { title: () => "CDP Overview" },
         },
         {
           ...newCDP,
           path: "new",
+          handle: { title: () => "New CDP" },
         },
         {
           ...show,
           path: ":lender",
+          handle: { title: ({ lender }: { lender: string }) => lender },
         },
         {
           ...editCDP,
           path: ":lender/edit",
+          handle: {
+            title: ({ lender }: { lender: string }) => `Edit ${lender}`,
+          },
         },
       ],
     },

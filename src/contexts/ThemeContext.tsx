@@ -8,6 +8,7 @@ import {
 import { useTheme as useMUITheme } from "@mui/material/styles";
 
 const prefersDark = "(prefers-color-scheme: dark)";
+const storageKey = "equitx-theme";
 
 type ThemeContextType = {
   isDarkMode: boolean;
@@ -17,10 +18,12 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Use media query to set initial theme state
-  const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia(prefersDark).matches,
-  );
+  // Use media query to set initial theme state unless it's already been set by user
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const pref = window.localStorage.getItem(storageKey);
+    if (pref) return pref === "dark";
+    return window.matchMedia(prefersDark).matches;
+  });
 
   // Add event listener for system preference changes
   useEffect(() => {
@@ -37,7 +40,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Add toggle body attribute on state change
+  // Toggle body attribute on state change
   useEffect(() => {
     document.documentElement.setAttribute(
       "data-theme",
@@ -60,6 +63,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
+    // then update local storage with the same change
+    window.localStorage.setItem(storageKey, !isDarkMode ? "dark" : "light");
   };
 
   return (

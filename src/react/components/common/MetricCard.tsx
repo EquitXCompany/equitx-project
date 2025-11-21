@@ -2,6 +2,7 @@ import { Paper, Typography, Skeleton, Tooltip, Box } from "@mui/material";
 import { InfoOutlined, TrendingUp, TrendingDown } from "@mui/icons-material";
 
 interface MetricCardProps {
+  icon?: typeof InfoOutlined;
   title: string;
   value: string | number;
   subtitle?: string;
@@ -22,6 +23,7 @@ export const MetricCard = ({
   tooltip,
   trend,
   change,
+  icon: Icon,
 }: MetricCardProps) => {
   const isPositiveChange = change && change > 0;
   const formattedChange = change ? Math.abs(change).toFixed(2) : null;
@@ -34,13 +36,31 @@ export const MetricCard = ({
         flexDirection: "column",
         justifyContent: "flex-end",
         alignItems: "center",
-        p: 2,
+        p: 3,
         height: "100%",
-        borderRadius: "20px",
+        minHeight: "165px",
+        borderRadius: "var(--radius-xl)",
         border: 0,
         boxShadow: "none",
       }}
     >
+      {Icon && (
+        <Box>
+          <Icon
+            sx={{
+              display: "block",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.2)",
+              width: "3rem",
+              height: "3rem",
+              color: "var(--color-text-primary-dark)",
+              fontSize: "var(--font-size-3xl)",
+              padding: "10px",
+              mb: 2,
+            }}
+          />
+        </Box>
+      )}
       {change !== undefined && !isLoading && (
         <Box
           sx={{
@@ -48,8 +68,9 @@ export const MetricCard = ({
             alignItems: "center",
             bgcolor: isPositiveChange ? "#648153" : "#D46565",
             px: 2,
-            py: 1.25,
+            py: 1,
             borderRadius: "25px",
+            mb: 1,
           }}
         >
           {isPositiveChange ? (
@@ -72,9 +93,9 @@ export const MetricCard = ({
           <Typography
             variant="caption"
             sx={{
-              color: "black",
+              color: "white",
               fontWeight: 600,
-              fontSize: 16,
+              fontSize: 14,
             }}
           >
             {formattedChange}%
@@ -89,10 +110,10 @@ export const MetricCard = ({
             variant="h4"
             component="p"
             sx={{
-              mt: "10px",
-              mb: 1,
-              fontWeight: 800,
-              fontSize: 34,
+              mb: 0,
+              fontWeight: 700,
+              fontSize: "2rem",
+              lineHeight: 1.2,
             }}
           >
             {value}
@@ -111,34 +132,43 @@ export const MetricCard = ({
           </Typography>
         </>
       )}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="flex-start"
-      >
-        <Box display="flex" alignItems="center" mb={1}>
-          <Typography
-            variant="subtitle2"
-            component="h2"
-            sx={{
-              fontWeight: 500,
-            }}
-          >
-            {title}
-          </Typography>
-          {tooltip && (
-            <Tooltip title={tooltip}>
-              <InfoOutlined
-                sx={{
-                  ml: 1,
-                  fontSize: 16,
-                }}
-              />
-            </Tooltip>
-          )}
-        </Box>
+      <Box display="flex" justifyContent="center" alignItems="center">
+        <Typography
+          variant="subtitle2"
+          component="h2"
+          sx={{
+            fontWeight: 600,
+            fontSize: "var(--font-size-sm)",
+            textAlign: "center",
+            marginBottom: 0,
+          }}
+        >
+          {title}
+        </Typography>
+        {tooltip && (
+          <Tooltip title={tooltip}>
+            <InfoOutlined
+              sx={{
+                ml: 1,
+                fontSize: 16,
+                opacity: 0.7,
+              }}
+            />
+          </Tooltip>
+        )}
       </Box>
-      {false && subtitle && <Typography variant="body2">{subtitle}</Typography>}
+      {subtitle && (
+        <Typography
+          variant="body2"
+          sx={{
+            mt: 0.5,
+            opacity: 0.8,
+            fontSize: "var(--font-size-xs)",
+          }}
+        >
+          {subtitle}
+        </Typography>
+      )}
     </Paper>
   );
 };

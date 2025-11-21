@@ -8,7 +8,7 @@ import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 import cdps from "./routes/cdps";
 import errorElement from "./routes/error";
 import StabilityPool from "./routes/stabilityPool";
-import Navbar from "./components/Navbar";
+import Navbar, { drawerWidth } from "./components/Navbar";
 import { Box } from "@mui/material";
 import ViewHeader from "./components/ViewHeader";
 import Dashboard from "./components/Dashboard";
@@ -27,6 +27,9 @@ const queryClient = new QueryClient({
   },
 });
 
+const xAssetTitle = ({ assetSymbol }: { assetSymbol: string }) =>
+  `x${assetSymbol.slice(1).toUpperCase()}`;
+
 const router = createHashRouter([
   {
     path: "/",
@@ -38,8 +41,12 @@ const router = createHashRouter([
             component="main"
             sx={{
               flexGrow: 1,
-              width: "$(window).innerWidth() + 'px'",
-              height: "$(window).innerHeight() + 'px'",
+              minHeight: "100vh",
+              paddingLeft: "var(--spacing-md)",
+              paddingRight: "var(--spacing-md)",
+              paddingBottom: "var(--spacing-md)",
+              width: `calc(100vw - ${drawerWidth}px)`,
+              overflowX: "hidden",
             }}
           >
             <ViewHeader />
@@ -53,34 +60,41 @@ const router = createHashRouter([
       {
         index: true,
         element: <Dashboard />,
+        handle: { title: () => "Protocol Overview" },
       },
       {
         path: "cdps/:assetSymbol",
+        handle: { title: xAssetTitle },
         ...cdps,
       },
       {
         path: "cdps",
         element: <CDPStats />,
+        handle: { title: () => "CDP Overview" },
         errorElement,
       },
       {
         path: "stability-pools",
         element: <StabilityPoolStats />,
+        handle: { title: () => "Stability Pools" },
         errorElement,
       },
       {
         path: "stability-pool/:assetSymbol",
         element: <StabilityPool />,
+        handle: { title: xAssetTitle },
         errorElement,
       },
       {
         path: "portfolio",
         element: <Portfolio />,
+        handle: { title: () => "Portfolio" },
         errorElement,
       },
       {
         path: "admin",
         element: <AdminPanel />,
+        handle: { title: "Admin" },
         errorElement,
       },
     ],

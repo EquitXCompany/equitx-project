@@ -66,7 +66,7 @@ export default function AdminPanel() {
     annualInterestRate: 1,
     feedAddress: DATAFEED_ADDRESS, // Initialize with default feed address
   });
-  const deployNewAsset = useDeployAsset(newAsset)
+  const deployNewAsset = useDeployAsset(newAsset);
 
   const [deploymentResult, setDeploymentResult] = useState<{
     contractId: string;
@@ -148,7 +148,9 @@ export default function AdminPanel() {
 
       if (deployResponse.errors?.length > 0) {
         // Partial success - contract deployed but configs couldn't be updated
-        setSuccess(`Contract for x${newAsset.symbol} deployed, but configuration updates failed.`);
+        setSuccess(
+          `Contract for x${newAsset.symbol} deployed, but configuration updates failed.`,
+        );
       } else {
         setSuccess(`Contract for x${newAsset.symbol} deployed successfully!`);
       }
@@ -200,13 +202,13 @@ export default function AdminPanel() {
       const contractValue = Math.round(newMinRatio * 100);
       const result = await authenticatedContractCall(
         contract.set_min_collat_ratio,
-        { to: contractValue }
+        { to: contractValue },
       );
 
       const status = result.getTransactionResponse.status;
       if (status === "SUCCESS") {
         setUpdateSuccess(
-          `Minimum collateralization ratio updated to ${newMinRatio}%`
+          `Minimum collateralization ratio updated to ${newMinRatio}%`,
         );
         // Refetch metadata to update the UI
         refetchMetadata();
@@ -216,7 +218,7 @@ export default function AdminPanel() {
     } catch (err: any) {
       console.error("Failed to update min ratio:", err);
       setUpdateError(
-        `Failed to update minimum ratio: ${err.message || "Unknown error"}`
+        `Failed to update minimum ratio: ${err.message || "Unknown error"}`,
       );
     } finally {
       setLoading(false);
@@ -234,7 +236,7 @@ export default function AdminPanel() {
       const contractValue = Math.round(newInterestRate * 100);
       const result = await authenticatedContractCall(
         contract.set_interest_rate,
-        { new_rate: contractValue }
+        { new_rate: contractValue },
       );
 
       const status = result.getTransactionResponse.status;
@@ -248,7 +250,7 @@ export default function AdminPanel() {
     } catch (err: any) {
       console.error("Failed to update interest rate:", err);
       setUpdateError(
-        `Failed to update interest rate: ${err.message || "Unknown error"}`
+        `Failed to update interest rate: ${err.message || "Unknown error"}`,
       );
     } finally {
       setLoading(false);
@@ -451,7 +453,9 @@ export default function AdminPanel() {
 
               {deploymentResult && (
                 <Alert
-                  severity={deploymentResult.partialSuccess ? "warning" : "success"}
+                  severity={
+                    deploymentResult.partialSuccess ? "warning" : "success"
+                  }
                   sx={{ mb: 3 }}
                 >
                   <Typography variant="body1" fontWeight="bold">
@@ -469,20 +473,19 @@ export default function AdminPanel() {
                   {deploymentResult.partialSuccess && (
                     <>
                       <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                        Manual configuration required: The contract was deployed but server configurations could not be updated.
+                        Manual configuration required: The contract was deployed
+                        but server configurations could not be updated.
                       </Typography>
                       <Typography variant="body2" sx={{ mt: 1 }}>
                         Configuration errors:
                       </Typography>
-                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      <Box component="ul" sx={{ margin: 0, paddingLeft: 20 }}>
                         {deploymentResult.configErrors.map((error, index) => (
                           <li key={index}>
-                            <Typography variant="body2">
-                              {error}
-                            </Typography>
+                            <Typography variant="body2">{error}</Typography>
                           </li>
                         ))}
-                      </ul>
+                      </Box>
                     </>
                   )}
                 </Alert>
@@ -584,9 +587,7 @@ export default function AdminPanel() {
                         </Button>
                         <IconButton
                           color="primary"
-                          onClick={() =>
-                            handleEditAsset(symbol)
-                          }
+                          onClick={() => handleEditAsset(symbol)}
                           size="small"
                         >
                           <EditIcon />
