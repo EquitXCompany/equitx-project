@@ -1,36 +1,40 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Grid,
   Paper,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Alert,
   CircularProgress,
   useTheme,
 } from "@mui/material";
-
+import {
+  TrendingUp,
+  Percent,
+  HandshakeOutlined,
+  AttachMoney,
+} from "@mui/icons-material";
 import {
   useLatestProtocolStats,
   useProtocolStatsHistory,
 } from "../hooks/useProtocolStats";
-import { useLatestCdpMetrics } from "../hooks/useCdpMetrics";
-import { useLatestTVLMetrics } from "../hooks/useTvlMetrics";
 import { MetricCard } from "./common/MetricCard";
 import { TVLChart } from "./charts/TVLChart";
+import { AssetAccordion } from "./AssetAccordion";
 import { formatCurrency } from "../../utils/formatters";
-import { Link } from "react-router-dom";
 import { useContractMapping } from "../../contexts/ContractMappingContext";
+
+const metricIcons = [
+  AttachMoney,
+  TrendingUp,
+  HandshakeOutlined,
+  Percent,
+] as const;
 
 export default function Dashboard() {
   const theme = useTheme();
   const contractMapping = useContractMapping();
   const assetSymbols = Object.keys(contractMapping);
+  const [expandedAsset, setExpandedAsset] = useState<string | false>(false);
 
   const dateParams = useMemo(
     () => ({
@@ -77,28 +81,6 @@ export default function Dashboard() {
     },
   ];
 
-  const cdpRows = assetSymbols.map((symbol) => {
-    const { data: cdpMetrics, error: cdpError } = useLatestCdpMetrics(symbol);
-    const { data: tvlMetrics, error: tvlError } = useLatestTVLMetrics(symbol);
-
-    if (cdpError || tvlError) {
-      return {
-        asset: symbol,
-        error: true,
-      };
-    }
-
-    return {
-      asset: symbol,
-      collateralRatio: cdpMetrics?.collateralRatio,
-      rewardFrequency: "Daily",
-      deposits: tvlMetrics?.totalXlmLocked,
-      minted: tvlMetrics?.totalXassetsMinted,
-      marketCap: tvlMetrics?.totalXassetsMintedUSD,
-      tvl: tvlMetrics?.tvlUSD,
-    };
-  });
-
   if (statsError) {
     return (
       <Box sx={{ p: 3 }}>
@@ -110,9 +92,45 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: theme.palette.background.default }}>
+    <Box
+      sx={{
+        bgcolor: theme.palette.background.default,
+        pb: 4,
+      }}
+    >
+      {/* Top Metrics Grid */}
+      <Grid
+        container
+        id="metric-cards"
+        sx={{
+          justifyContent: "space-between",
+          m: "0 0 var(--spacing-lg)",
+          p: 0,
+          width: 1,
+          gap: "var(--spacing-lg)",
+        }}
+      >
+        {topMetrics.map((metric, index) => (
+          <Grid item xs={12} md={3} key={index} className="metric-card">
+            <MetricCard
+              icon={metricIcons[index]}
+              title={metric.title}
+              value={metric.format(metric.value)}
+              isLoading={statsLoading}
+            />
+          </Grid>
+        ))}
+      </Grid>
+
       {/* TVL Chart */}
-      <Paper component={Box} sx={{ p: 2, mb: 4 }}>
+      <Paper
+        component={Box}
+        sx={{
+          p: 3,
+          mb: 4,
+          borderRadius: "var(--radius-md)",
+        }}
+      >
         {historyError ? (
           <Alert severity="error">Failed to load TVL history data</Alert>
         ) : (
@@ -124,91 +142,26 @@ export default function Dashboard() {
         )}
       </Paper>
 
-      {/* Top Metrics Grid */}
-      <Grid
-        container
-        spacing={3}
-        mb={4}
-        className="metric-card-grid"
-        id="metric-cards"
-        sx={{
-          margin: 0,
-          width: 1,
-          gap: "20px",
-        }}
-      >
-        {topMetrics.map((metric, index) => (
-          <Grid
-            item
-            xs={12}
-            md={3}
-            key={index}
-            className="metric-card-container"
-          >
-            <MetricCard
-              title={metric.title}
-              value={metric.format(metric.value)}
-              change={metric.change}
-              isLoading={statsLoading}
-            />
-          </Grid>
-        ))}
-      </Grid>
+      {/* Asset Details Accordions */}
+      <Box sx={{ mb: 4 }}>
+        {assetSymbols.map((asset) => {
+          const handleAccordionChange =
+            (selection: string) =>
+            (_event: React.SyntheticEvent, isExpanded: boolean) => {
+              setExpandedAsset(isExpanded ? selection : false);
+            };
 
-      {/* CDP Table */}
-      {/*
-      <TableContainer component={Paper} sx={{ border: 5, borderColor: theme.palette.background.paper, borderRadius: 10 }}>
-        <Table>
-          <TableHead sx={{ borderBottom: 1, borderColor: theme.palette.text.secondary }}>
-            <TableRow>
-              <TableCell>Asset</TableCell>
-              <TableCell>Total Minted</TableCell>
-              <TableCell>SP Deposits</TableCell>
-              <TableCell>SP Deposits USD</TableCell>
-              <TableCell>Market Cap</TableCell>
-              <TableCell>CDP</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {cdpRows.map((row) => (
-              <TableRow key={row.asset}>
-                <TableCell>{row.asset}</TableCell>
-                {row.error ? (
-                  <TableCell colSpan={6}>
-                    <Alert severity="error" sx={{ my: 1 }}>
-                      Failed to load data for this asset
-                    </Alert>
-                  </TableCell>
-                ) : (
-                  <>
-                    <TableCell>{formatCurrency(row.minted!, 7, 2, row.asset)}</TableCell>
-                    <TableCell>{formatCurrency(row.deposits!, 7, 2, "XLM")}</TableCell>
-                    <TableCell>{formatCurrency(row.tvl!, 14, 2, "USD")}</TableCell>
-                    <TableCell>{formatCurrency(row.marketCap!, 14, 2, "USD")}</TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="button"
-                        component={Link}
-                        to={`/cdps/${row.asset}`}
-                        sx={{
-                          px: 2,
-                          py: 0.5,
-                          borderRadius: 1,
-                          cursor: "pointer",
-                          textDecoration: "none",
-                        }}
-                      >
-                        View
-                      </Typography>
-                    </TableCell>
-                  </>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      */}
+          return (
+            <AssetAccordion
+              key={asset}
+              asset={asset}
+              expanded={expandedAsset === asset}
+              onChange={handleAccordionChange(asset)}
+              dateParams={dateParams}
+            />
+          );
+        })}
+      </Box>
 
       {/* Global Loading State */}
       {statsLoading && (

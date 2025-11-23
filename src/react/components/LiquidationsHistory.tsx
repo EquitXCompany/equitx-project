@@ -10,7 +10,8 @@ import { useContractMapping } from "../../contexts/ContractMappingContext";
 export const LiquidationsHistory = () => {
   const { data: liquidations, isLoading: isLiquidationsLoading } =
     useLiquidations();
-  const { data: stabilityPoolData } = useAllStabilityPoolMetadata(useContractMapping());
+  const { data: stabilityPoolData } =
+    useAllStabilityPoolMetadata(useContractMapping());
 
   const metrics = useMemo(() => {
     if (!liquidations || !stabilityPoolData) return null;
@@ -24,7 +25,7 @@ export const LiquidationsHistory = () => {
         };
         return acc;
       },
-      {} as Record<string, { xlm: BigNumber; usd: BigNumber }>
+      {} as Record<string, { xlm: BigNumber; usd: BigNumber }>,
     );
 
     let largestLiquidation = { xlm: new BigNumber(0), usd: new BigNumber(0) };
@@ -79,16 +80,18 @@ export const LiquidationsHistory = () => {
               assets[`i${asset}`] = 0;
               return assets;
             },
-            { date, count: 0 } as any
+            { date, count: 0 } as any,
           );
         }
 
         const assetKey = `i${liquidation.asset}`;
-        acc[date][assetKey] += liquidation.collateralLiquidated.div(1e7).toNumber();
+        acc[date][assetKey] += liquidation.collateralLiquidated
+          .div(1e7)
+          .toNumber();
         acc[date].count += 1;
         return acc;
       },
-      {} as Record<string, any>
+      {} as Record<string, any>,
     );
 
     // Convert to array and sort by date (oldest to newest)
@@ -99,9 +102,7 @@ export const LiquidationsHistory = () => {
 
   const assetColors = useMemo(() => {
     if (!stabilityPoolData) return {};
-    return generateAssetColors(
-      Object.keys(stabilityPoolData)
-    );
+    return generateAssetColors(Object.keys(stabilityPoolData));
   }, [stabilityPoolData]);
 
   if (isLiquidationsLoading) {
@@ -116,7 +117,7 @@ export const LiquidationsHistory = () => {
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", borderRadius: 2 }}>
+          <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" color="textSecondary">
               Total Liquidated
             </Typography>
@@ -124,7 +125,7 @@ export const LiquidationsHistory = () => {
               {formatCurrency(
                 metrics?.totalLiquidated.xlm.toNumber() || 0,
                 7,
-                2
+                2,
               )}{" "}
               XLM
             </Typography>
@@ -133,13 +134,13 @@ export const LiquidationsHistory = () => {
                 metrics?.totalLiquidated.usd.toNumber() || 0,
                 14,
                 2,
-                "USD"
+                "USD",
               )}
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", borderRadius: 2 }}>
+          <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" color="textSecondary">
               Largest Liquidation
             </Typography>
@@ -147,7 +148,7 @@ export const LiquidationsHistory = () => {
               {formatCurrency(
                 metrics?.largestLiquidation.xlm.toNumber() || 0,
                 7,
-                2
+                2,
               )}{" "}
               XLM
             </Typography>
@@ -156,13 +157,13 @@ export const LiquidationsHistory = () => {
                 metrics?.largestLiquidation.usd.toNumber() || 0,
                 14,
                 2,
-                "USD"
+                "USD",
               )}
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", borderRadius: 2 }}>
+          <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" color="textSecondary">
               Asset Breakdown
             </Typography>
@@ -178,7 +179,7 @@ export const LiquidationsHistory = () => {
         </Grid>
       </Grid>
 
-      <Paper sx={{ p: 2, bgcolor: "rgba(0, 0, 0, 0.2)", borderRadius: 2 }}>
+      <Paper sx={{ p: 2 }}>
         <Box height={330}>
           Liquidations Over Time
           <BarChart
