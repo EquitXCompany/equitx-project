@@ -1762,7 +1762,7 @@ impl IsStabilityPool for TokenContract {
         Self::withdraw_internal(env, to, amount, false)
     }
 
-    /// Process a liquidation event for a CDP
+    /// Process a liquidation event for a CDP, returning the amount of debt and collateral liquidated and the CDP status
     fn liquidate(env: &Env, lender: Address) -> Result<(i128, i128, CDPStatus), Error> {
         let mut cdp = TokenStorage::get_cdp(env, lender.clone())
             .unwrap_or_else(|| panic_with_error!(env, Error::CDPNotFound));
@@ -1798,10 +1798,13 @@ impl IsStabilityPool for TokenContract {
             interest.amount = interest_amount;
             interest.paid = interest_paid;
             cdp.accrued_interest = interest;
+            // Update the interest collected
             TokenStorage::set_interest_collected(
                 env,
                 Self::get_total_interest_collected(env) + interest_to_liquidate_xlm,
             );
+            // Distribute the interest collected to the stability pool
+            Self::add_total_xasset(env, interest_to_liquidate_xasset);
             Self::increment_interest_for_current_epoch(env, &interest_to_liquidate_xlm);
         }
 
