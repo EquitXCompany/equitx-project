@@ -6,7 +6,7 @@
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.14",
-    "astro": "^5.14.5",
+    "astro": "^5.15.9",
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.1",
     "glob": "^10.4.1",
