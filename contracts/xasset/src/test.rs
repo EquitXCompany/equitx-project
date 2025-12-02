@@ -319,16 +319,36 @@ fn test_liquidation() {
 
     set_token_prices(&e, &token, 10_000_000_000_000, 100_000_000_000_000);
 
+    // Set initial timestamp
+    let initial_time = 1700000000;
+    Ledger::set_timestamp(&e.ledger(), initial_time);
+
     let alice = Address::generate(&e);
     xlm_admin.mint(&alice, &2_000_000_000_000);
     let staker = Address::generate(&e); // Add a staker
     xlm_admin.mint(&staker, &2_000_000_000_000); // Mint some XLM to staker
 
     token.open_cdp(&staker, &100000_0000000, &1000_0000000);
-    token.stake(&staker, &50_0000000);
+    // Stability pool has a 0 balance
+    assert_eq!(token.get_total_xasset(), 0);
+
+    // Stability pool has a balance, and it's greater than the CDP we're going to liquidate
+    let stability_pool_balance = 500_0000000;
+    token.stake(&staker, &stability_pool_balance);
+    assert_eq!(token.get_total_xasset(), stability_pool_balance);
 
     // Open CDP for Alice
-    token.open_cdp(&alice, &10_000_000_000, &700_000_000);
+    let alice_xasset = 70_0000000;
+    token.open_cdp(&alice, &10_000_000_000, &alice_xasset);
+
+    // Advance time by 1 year (31536000 seconds)
+    Ledger::set_timestamp(&e.ledger(), initial_time + 31536000);
+
+    // Check interest has accrued (11% annual rate)
+    let cdp_after_year = token.cdp(&alice);
+    assert!(cdp_after_year.accrued_interest.amount > 0);
+    // With 11% interest rate, expect ~77000000 interest (70_0000000 * 0.11)
+    assert!(cdp_after_year.accrued_interest.amount >= 7_7000000);
 
     // Update XLM price to make the CDP insolvent
     let xlm_price = 5_000_000_000_000; // Half the original price
@@ -341,13 +361,21 @@ fn test_liquidation() {
     // Freeze the CDP
     token.freeze_cdp(&alice);
 
-    // Liquidate the CDP
-    token.liquidate_cdp(&alice);
+    // Check total xasset in stability pool before liquidation
+    assert_eq!(token.get_total_xasset(), 500_0000000);
 
-    // Check if the CDP is closed or has reduced debt/collateral
-    let alice_cdp = token.cdp(&alice);
-    assert!(alice_cdp.xlm_deposited < 10_000_000_000);
-    assert!(alice_cdp.asset_lent < 700_000_000);
+    // Liquidate the CDP
+    let (liquidated_debt, liquidated_collateral, cdp_status) = token.liquidate_cdp(&alice);
+    assert_eq!(liquidated_debt, alice_xasset);
+    assert!(liquidated_collateral > 0);
+    assert_eq!(cdp_status, CDPStatus::Closed);
+
+    // Assert that Alice's CDP is now gone
+    let alice_cdp = token.try_cdp(&alice);
+    assert!(alice_cdp.is_err());
+
+    // Check total xasset in stability pool has changed, subtracting the liquidated debt but adding the interest
+    assert_eq!(token.get_total_xasset(), stability_pool_balance - alice_xasset + cdp_after_year.accrued_interest.amount);
 }
 
 #[test]
