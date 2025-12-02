@@ -60,7 +60,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install, build, and upload your site
-        uses: withastro/action@v3
+        uses: withastro/action@v5
 
   deploy:
     needs: build
