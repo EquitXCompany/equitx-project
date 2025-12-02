@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -11,3 +11,7 @@ updates:
         update-types:
           - minor
           - patch
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
