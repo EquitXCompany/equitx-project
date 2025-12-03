@@ -612,7 +612,7 @@ impl TokenContract {
             );
 
             Self::remove_deposit(env, to);
-            Self::add_total_xasset(env, -amount_to_withdraw);
+            Self::subtract_total_xasset(env, amount_to_withdraw);
             return Ok(());
         }
 
@@ -1803,7 +1803,9 @@ impl IsStabilityPool for TokenContract {
                 env,
                 Self::get_total_interest_collected(env) + interest_to_liquidate_xlm,
             );
-            // Distribute the interest collected to the stability pool
+            // Transfer the xasset interest from address to pool
+            Self::transfer_internal(env, lender.clone(), env.current_contract_address(), interest_to_liquidate_xasset);
+            // Update the balance of the stability pool
             Self::add_total_xasset(env, interest_to_liquidate_xasset);
             Self::increment_interest_for_current_epoch(env, &interest_to_liquidate_xlm);
         }
