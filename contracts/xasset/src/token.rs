@@ -1782,46 +1782,49 @@ impl IsStabilityPool for TokenContract {
 
         let total_xasset = Self::get_total_xasset(env);
 
-        // Handle interest first - collect all accrued interest if possible
+        // Convert accrued interest to XLM
         let interest_to_liquidate_xasset = cmp::min(interest.amount, total_xasset);
         let interest_to_liquidate_xlm =
             Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
 
-        if interest_to_liquidate_xlm > 0 {
-            let Some(interest_amount) = interest.amount.checked_sub(interest_to_liquidate_xasset)
-            else {
-                return Err(Error::ArithmeticError);
-            };
-            let Some(interest_paid) = interest.paid.checked_add(interest_to_liquidate_xlm) else {
-                return Err(Error::ArithmeticError);
-            };
-            interest.amount = interest_amount;
-            interest.paid = interest_paid;
-            cdp.accrued_interest = interest;
-            // Update the interest collected
-            TokenStorage::set_interest_collected(
-                env,
-                Self::get_total_interest_collected(env) + interest_to_liquidate_xlm,
-            );
-            // Transfer the xasset interest from address to pool
-            Self::transfer_internal(env, lender.clone(), env.current_contract_address(), interest_to_liquidate_xasset);
-            // Update the balance of the stability pool
-            Self::add_total_xasset(env, interest_to_liquidate_xasset);
-            Self::increment_interest_for_current_epoch(env, &interest_to_liquidate_xlm);
-        }
+        // Pay interest from collateral
+        let collateral_less_interest = collateral
+            .checked_sub(interest_to_liquidate_xlm)
+            .ok_or(Error::ArithmeticError)?;
 
-        // if unable to cover all interest, go ahead and update rewards and return
-        if interest.amount > 0 {
+        // Update protocol accounting for interest revenue
+        TokenStorage::set_interest_collected(
+            env,
+            Self::get_total_interest_collected(env) + interest_to_liquidate_xlm,
+        );
+        Self::increment_interest_for_current_epoch(env, &interest_to_liquidate_xlm);
+
+        // Update CDP interest fields
+        let Some(interest_amount) = interest.amount.checked_sub(interest_to_liquidate_xasset)
+        else {
+            return Err(Error::ArithmeticError);
+        };
+        let Some(interest_paid) = interest.paid.checked_add(interest_to_liquidate_xlm) else {
+            return Err(Error::ArithmeticError);
+        };
+        interest.amount = interest_amount;
+        interest.paid = interest_paid;
+        cdp.accrued_interest = interest;
+
+        // If interest remains, update CDP and return
+        if interest_amount > 0 {
+            cdp.xlm_deposited = collateral_less_interest;
             TokenStorage::set_cdp(env, lender, cdp);
             return Ok((0, 0, CDPStatus::Frozen));
         }
-        // Now handle the principal debt with remaining available xasset
+
+        // Liquidate principal debt using pool xAsset
         let remaining_xasset = Self::get_total_xasset(env);
         let liquidated_debt = cmp::min(principal_debt, remaining_xasset);
 
         // Calculate the proportional amount of collateral to withdraw based on principal repaid
         let liquidated_collateral = bankers_round(
-            DEFAULT_PRECISION * collateral * liquidated_debt / principal_debt,
+            DEFAULT_PRECISION * collateral_less_interest * liquidated_debt / principal_debt,
             DEFAULT_PRECISION,
         );
 

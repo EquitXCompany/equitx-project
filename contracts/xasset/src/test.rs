@@ -379,7 +379,7 @@ fn test_liquidation() {
 
     assert_eq!(
         total_xasset,
-        stability_pool_balance - alice_xasset + cdp_after_year.accrued_interest.amount
+        stability_pool_balance - alice_xasset
     );
 
     // Assert that the balance of the contract equals the assets in the stability pool after this liquidation
