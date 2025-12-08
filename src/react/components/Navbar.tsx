@@ -39,30 +39,19 @@ const navHeader = (isDarkMode: boolean): SxProps<Theme> => ({
   display: "block",
 });
 
-export default function Navbar() {
+export default function Navbar({
+  open,
+  toggle,
+}: {
+  open: boolean;
+  toggle: VoidFunction;
+}) {
   const location = useLocation();
   const { isDarkMode } = useTheme();
   const { isSignedIn, account } = useWallet();
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        "& .MuiDrawer-paper": {
-          width: `calc(${drawerWidth}px - (2 * var(--spacing-md)))`,
-          boxSizing: "border-box",
-          backgroundColor: isDarkMode
-            ? "var(--color-surface-darker)"
-            : "var(--color-background-light)",
-          border: "none",
-          padding: "var(--spacing-md)",
-          margin: "var(--spacing-md)",
-          maxHeight: "calc(100vh - (2 * var(--spacing-md)))",
-        },
-      }}
-    >
+  const contents = (
+    <>
       <h1 className="header-brand">EquitX</h1>
 
       <List disablePadding sx={{ mt: 2 }}>
@@ -159,6 +148,53 @@ export default function Navbar() {
           </ListItemButton>
         </ListItem>
       </List>
-    </Drawer>
+    </>
+  );
+
+  const baseSx = {
+    flexShrink: 0,
+    transition: "width 0.2s ease",
+    "& .MuiDrawer-paper": {
+      width: `calc(${drawerWidth}px - (2 * var(--spacing-md)))`,
+      boxSizing: "border-box",
+      backgroundColor: isDarkMode
+        ? "var(--color-surface-darker)"
+        : "var(--color-background-light)",
+      border: "none",
+      padding: "var(--spacing-md)",
+      margin: "var(--spacing-md)",
+      maxHeight: "calc(100vh - (2 * var(--spacing-md)))",
+    },
+  };
+
+  return (
+    <>
+      <Drawer
+        data-open="permanent"
+        variant="permanent"
+        open
+        anchor="left"
+        sx={{
+          ...baseSx,
+          display: { sm: "none", md: "block" },
+          width: drawerWidth,
+        }}
+      >
+        {contents}
+      </Drawer>
+      <Drawer
+        data-open={open}
+        variant="temporary"
+        open={open}
+        onClose={toggle}
+        sx={{
+          ...baseSx,
+          display: { sm: "block", md: "none" },
+          width: open ? drawerWidth : 0,
+        }}
+      >
+        {contents}
+      </Drawer>
+    </>
   );
 }
