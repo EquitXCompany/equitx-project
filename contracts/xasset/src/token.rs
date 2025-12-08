@@ -1780,13 +1780,27 @@ impl IsStabilityPool for TokenContract {
             return Err(Error::InvalidLiquidation);
         }
 
-        let total_xasset = Self::get_total_xasset(env);
+        // Implement a safety cap for collateral used for interest
+        // Convert principal debt and interest to XLM
+        let principal_debt_in_xlm = Self::convert_xasset_to_xlm(env, principal_debt)?;
+        let interest_amount_in_xlm = Self::convert_xasset_to_xlm(env, interest.amount)?;
 
-        // Convert accrued interest to XLM
-        let interest_to_liquidate_xasset = cmp::min(interest.amount, total_xasset);
+        // Determine the maximum amount of collateral that can be used to pay interest
+        let excess_collateral = collateral.saturating_sub(principal_debt_in_xlm);
+        let max_collateral_for_interest = cmp::max(0, excess_collateral);
+
+        // Compute how much interest we will actually liquidate from collateral
         let interest_to_liquidate_xlm =
-            Self::convert_xasset_to_xlm(env, interest_to_liquidate_xasset)?;
-
+            cmp::min(interest_amount_in_xlm, max_collateral_for_interest);
+        let interest_to_liquidate_xasset = if interest_amount_in_xlm > 0 {
+            bankers_round(
+                (DEFAULT_PRECISION * interest_to_liquidate_xlm * interest.amount)
+                    / interest_amount_in_xlm,
+                DEFAULT_PRECISION,
+            )
+        } else {
+            0
+        };
         // Pay interest from collateral
         let collateral_less_interest = collateral
             .checked_sub(interest_to_liquidate_xlm)
@@ -1799,11 +1813,15 @@ impl IsStabilityPool for TokenContract {
         );
         Self::increment_interest_for_current_epoch(env, &interest_to_liquidate_xlm);
 
-        // Update CDP interest fields
-        let Some(interest_amount) = interest.amount.checked_sub(interest_to_liquidate_xasset)
-        else {
-            return Err(Error::ArithmeticError);
+        // 2. Interest wiping after partial payment
+        // If we couldn't pay all interest due to safety cap, wipe the remaining unpayable interest
+        let remaining_interest = interest.amount.saturating_sub(interest_to_liquidate_xasset);
+        let interest_amount = if interest_to_liquidate_xlm < interest_amount_in_xlm {
+            0 // Wipe remaining unpayable interest
+        } else {
+            remaining_interest
         };
+        interest.amount = interest_amount;
         let Some(interest_paid) = interest.paid.checked_add(interest_to_liquidate_xlm) else {
             return Err(Error::ArithmeticError);
         };
