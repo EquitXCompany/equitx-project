@@ -377,10 +377,7 @@ fn test_liquidation() {
     // Check total xasset in stability pool has changed, subtracting the liquidated debt but adding the interest
     let total_xasset = token.get_total_xasset();
 
-    assert_eq!(
-        total_xasset,
-        stability_pool_balance - alice_xasset
-    );
+    assert_eq!(total_xasset, stability_pool_balance - alice_xasset);
 
     // Assert that the balance of the contract equals the assets in the stability pool after this liquidation
     let contract_balance = token.balance(&token.address);
