@@ -375,7 +375,18 @@ fn test_liquidation() {
     assert!(alice_cdp.is_err());
 
     // Check total xasset in stability pool has changed, subtracting the liquidated debt but adding the interest
-    assert_eq!(token.get_total_xasset(), stability_pool_balance - alice_xasset + cdp_after_year.accrued_interest.amount);
+    let total_xasset = token.get_total_xasset();
+
+    assert_eq!(total_xasset, stability_pool_balance - alice_xasset);
+
+    // Assert that the balance of the contract equals the assets in the stability pool after this liquidation
+    let contract_balance = token.balance(&token.address);
+    assert_eq!(total_xasset, contract_balance);
+
+    // Staker is able to claim rewards and unstake without issues
+    token.claim_rewards(&staker);
+    token.unstake(&staker);
+    assert!(0 <= token.balance(&token.address));
 }
 
 #[test]
