@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { createHashRouter, RouterProvider, Outlet } from "react-router-dom";
 import { ThemeProvider as MUIThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -30,31 +30,37 @@ const queryClient = new QueryClient({
 const xAssetTitle = ({ assetSymbol }: { assetSymbol: string }) =>
   `x${assetSymbol.slice(1).toUpperCase()}`;
 
+function AppLayout() {
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const toggleNav = () => setIsNavOpen(!isNavOpen);
+
+  return (
+    <Box sx={{ display: "flex" }}>
+      <ContractMappingProvider>
+        <Navbar open={isNavOpen} toggle={toggleNav} />
+
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            minHeight: "100vh",
+            paddingLeft: "var(--spacing-md)",
+            paddingRight: "var(--spacing-md)",
+            paddingBottom: "var(--spacing-md)",
+          }}
+        >
+          <ViewHeader isNavOpen={isNavOpen} toggleNav={toggleNav} />
+          <Outlet />
+        </Box>
+      </ContractMappingProvider>
+    </Box>
+  );
+}
+
 const router = createHashRouter([
   {
     path: "/",
-    element: (
-      <Box sx={{ display: "flex" }}>
-        <ContractMappingProvider>
-          <Navbar />
-          <Box
-            component="main"
-            sx={{
-              flexGrow: 1,
-              minHeight: "100vh",
-              paddingLeft: "var(--spacing-md)",
-              paddingRight: "var(--spacing-md)",
-              paddingBottom: "var(--spacing-md)",
-              width: `calc(100vw - ${drawerWidth}px)`,
-              overflowX: "hidden",
-            }}
-          >
-            <ViewHeader />
-            <Outlet />
-          </Box>
-        </ContractMappingProvider>
-      </Box>
-    ),
+    element: <AppLayout />,
     errorElement,
     children: [
       {

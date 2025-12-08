@@ -141,11 +141,6 @@ textarea:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-.page-heading {
-  margin: 0;
-  text-align: left;
-}
-
 .stats-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

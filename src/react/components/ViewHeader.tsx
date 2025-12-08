@@ -1,5 +1,6 @@
 import { useTheme } from "../../contexts/ThemeContext";
-import { Grid2 as Grid, Switch } from "@mui/material";
+import { Grid2 as Grid, IconButton, Typography, Switch } from "@mui/material";
+import Chevron from "./common/Chevron";
 import Connect from "./connect";
 import { type UIMatch, useMatches, useParams } from "react-router-dom";
 
@@ -10,7 +11,13 @@ type MatchWithTitle = UIMatch<
 const hasTitle = (m: UIMatch): m is MatchWithTitle =>
   typeof (m as MatchWithTitle).handle?.title === "function";
 
-export default function ViewHeader() {
+export default function ViewHeader({
+  isNavOpen,
+  toggleNav,
+}: {
+  isNavOpen: boolean;
+  toggleNav: VoidFunction;
+}) {
   const matches = useMatches();
   const params = useParams();
   const titles = matches
@@ -29,17 +36,28 @@ export default function ViewHeader() {
         paddingTop: "var(--spacing-xl)",
       }}
     >
-      <Grid size="grow">
-        <h1
-          className="page-heading"
-          style={{
+      <Grid size="grow" container>
+        <IconButton
+          className="nav-toggle"
+          onClick={toggleNav}
+          type="button"
+          sx={{
+            display: { sm: "block", md: "none" },
+          }}
+        >
+          <Chevron open={isNavOpen} isDarkMode={isDarkMode} />
+        </IconButton>
+
+        <Typography
+          variant="h1"
+          sx={{
             fontSize: "var(--font-size-3xl)",
-            fontWeight: 700,
             margin: 0,
+            textAlign: "left",
           }}
         >
           {title}
-        </h1>
+        </Typography>
       </Grid>
 
       <Grid size="auto">
