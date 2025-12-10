@@ -10,8 +10,8 @@ export STELLAR_NETWORK=mainnet
 
 rm -rf target/stellar
 stellar scaffold build production
-stellar contract optimize --wasm target/stellar/orchestrator.wasm
-stellar contract optimize --wasm target/stellar/xasset.wasm
+stellar contract optimize --wasm target/stellar/mainnet/orchestrator.wasm
+stellar contract optimize --wasm target/stellar/mainnet/xasset.wasm
 
 # Find orchestrator contract ID in environments.toml
 orchestrator_id=$(awk -F'"' '/^\[production\.contracts\]/ {found=1} found && /orchestrator = { id = / {print $2; exit}' environments.toml)
@@ -23,13 +23,17 @@ fi
 
 # Upload new wasm and redeploy orchestrator
 echo "Uploading orchestrator wasm..."
-orchestrator_wasm_hash=$(stellar contract upload --wasm target/stellar/orchestrator.optimized.wasm --source equitxmainnet)
+orchestrator_wasm_hash=$(stellar contract upload --wasm target/stellar/mainnet/orchestrator.optimized.wasm --source equitxmainnet)
 echo "Redeploying orchestrator with wasm hash: $orchestrator_wasm_hash"
+if [[ -z "$orchestrator_wasm_hash" ]]; then
+  echo "Error: orchestrator wasm hash not found"
+  exit 1
+fi
 orchestrator_result=$(stellar contract invoke --id $orchestrator_id -- redeploy --wasm_hash $orchestrator_wasm_hash)
 echo $orchestrator_result
 
 echo "Uploading xasset contract..."
-xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.optimized.wasm --source equitxmainnet)
+xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/mainnet/xasset.optimized.wasm --source equitxmainnet)
 if [[ -z "$xasset_wasm_hash" ]]; then
   echo "Error: xasset wasm hash not found"
   exit 1
