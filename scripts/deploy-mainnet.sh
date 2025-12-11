@@ -9,12 +9,14 @@ export STELLAR_NETWORK=mainnet
 
 rm -rf target/stellar
 stellar scaffold build production
+stellar contract optimize --wasm target/stellar/mainnet/orchestrator.wasm
+stellar contract optimize --wasm target/stellar/mainnet/xasset.wasm
 # Deploy and initialize contracts for each asset
 DATAFEED="CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN"
 echo "Uploading xasset contract..."
-xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.wasm --source equitxmainnet)
+xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/mainnet/xasset.optimized.wasm --source equitxmainnet)
 echo "Deploying orchestrator contract..."
-contract_id=$(stellar contract deploy --wasm target/stellar/orchestrator.wasm --source equitxmainnet -- --admin equitxmainnet --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --xasset_wasm_hash "$xasset_wasm_hash")
+contract_id=$(stellar contract deploy --wasm target/stellar/mainnet/orchestrator.optimized.wasm --source equitxmainnet --fee 100000000 -- --admin equitxmainnet --xlm_sac "$(stellar contract id asset --asset native)" --xlm_contract "$DATAFEED" --xasset_wasm_hash "$xasset_wasm_hash")
 
 # Declare a regular array to store asset-to-contract mappings
 asset_contract_map=()
