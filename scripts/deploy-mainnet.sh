@@ -27,7 +27,7 @@ deploy_xasset() {
   local name="$asset xAsset"
   echo "Deploying $symbol. FYI: Error #3 is AssetAlreadyDeployed if it appears"
   # Capture the result of the contract invoke call
-  local contract_result=$(stellar contract invoke --id $contract_id -- deploy_asset_contract --asset_contract "$DATAFEED" --pegged_asset "$asset" --min_collat_ratio 11000 --symbol "$symbol" --name "$name" --decimals 7 --annual_interest_rate 100)
+  local contract_result=$(stellar contract invoke --id $contract_id --fee 100000000 -- deploy_asset_contract --asset_contract "$DATAFEED" --pegged_asset "$asset" --min_collat_ratio 11000 --symbol "$symbol" --name "$name" --decimals 7 --annual_interest_rate 100)
   # Store the result in the array as "key=value"
   asset_contract_map+=("$asset=$contract_result")
 }
