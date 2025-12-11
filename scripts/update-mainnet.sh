@@ -4,14 +4,15 @@
 # Update existing assets to use the new xasset wasm
 
 export STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
+# Note: You may need to update the RPC URL to a pro Lightsail endpoint for mainnet deploys
 export STELLAR_RPC_URL="https://rpc.lightsail.network/"
 export STELLAR_ACCOUNT=equitxmainnet
 export STELLAR_NETWORK=mainnet
 
 rm -rf target/stellar
 stellar scaffold build production
-stellar contract optimize --wasm target/stellar/orchestrator.wasm
-stellar contract optimize --wasm target/stellar/xasset.wasm
+stellar contract optimize --wasm target/stellar/mainnet/orchestrator.wasm
+stellar contract optimize --wasm target/stellar/mainnet/xasset.wasm
 
 # Find orchestrator contract ID in environments.toml
 orchestrator_id=$(awk -F'"' '/^\[production\.contracts\]/ {found=1} found && /orchestrator = { id = / {print $2; exit}' environments.toml)
@@ -23,13 +24,17 @@ fi
 
 # Upload new wasm and redeploy orchestrator
 echo "Uploading orchestrator wasm..."
-orchestrator_wasm_hash=$(stellar contract upload --wasm target/stellar/orchestrator.optimized.wasm --source equitxmainnet)
+orchestrator_wasm_hash=$(stellar contract upload --wasm target/stellar/mainnet/orchestrator.optimized.wasm --source equitxmainnet)
 echo "Redeploying orchestrator with wasm hash: $orchestrator_wasm_hash"
-orchestrator_result=$(stellar contract invoke --id $orchestrator_id -- redeploy --wasm_hash $orchestrator_wasm_hash)
+if [[ -z "$orchestrator_wasm_hash" ]]; then
+  echo "Error: orchestrator wasm hash not found"
+  exit 1
+fi
+orchestrator_result=$(stellar contract invoke --id $orchestrator_id -- upgrade --wasm_hash $orchestrator_wasm_hash)
 echo $orchestrator_result
 
 echo "Uploading xasset contract..."
-xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/xasset.optimized.wasm --source equitxmainnet)
+xasset_wasm_hash=$(stellar contract upload --wasm target/stellar/mainnet/xasset.optimized.wasm --source equitxmainnet) # may need to set --fee for transaction to succeed
 if [[ -z "$xasset_wasm_hash" ]]; then
   echo "Error: xasset wasm hash not found"
   exit 1
@@ -43,7 +48,7 @@ update_xasset() {
   local asset=$1
   local symbol="x$asset"
   echo "Updating $symbol."
-  stellar contract invoke --id $orchestrator_id -- upgrade_existing_asset_contract --asset_symbol "$symbol"
+  stellar contract invoke --id $orchestrator_id --fee 10000000 -- upgrade_existing_asset_contract --asset_symbol "$symbol"
 }
 
 # Update mainnet assets
