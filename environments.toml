@@ -79,5 +79,5 @@ rpc-url = "https://rpc.lightsail.network/"
 network-passphrase = "Public Global Stellar Network ; September 2015"
 
 [production.contracts]
-orchestrator = { id = "CDD62UWKR7ATDZPQUJR63PLXHCVVPNN7M53UCW7K3GDCJFOMUTDYQ4RT" }
+orchestrator = { id = "CBZQ35CRM44HBNUFRENFHZ7IB3AW447MQ2EOQ77MDJYXXXR7CFVDIANW" }
 xBTC = { id = "CA3BB35F2EK4ADN4SI3QJAKWG2OQ3S5NKLFRV4H24FEHZ3CA2GHNDGAK" }
