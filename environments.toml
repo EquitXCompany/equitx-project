@@ -21,8 +21,8 @@ client = true
 constructor_args = """
 --admin equitx
 --xlm_sac "$(stellar contract id asset --asset native)"
---xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")"
---asset_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")" 
+--xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017" --rpc-url http://localhost:8000)"
+--asset_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017" --rpc-url http://localhost:8000)"
 --pegged_asset USDT --min_collat_ratio 11000
 --symbol xUSD --name "United States Dollar xAsset"
 --decimals 7
@@ -40,11 +40,11 @@ client = true
 constructor_args = """
 --admin equitx  
 --xlm_sac "$(stellar contract id asset --asset native)"
---xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017")"
---xasset_wasm_hash ced079be88e32cf1260b216c5dbefa5d1073704aa0cac0f8dbd3e422e02672ce
+--xlm_contract "$(stellar contract alias show data_feed --network-passphrase "Standalone Network ; February 2017" --rpc-url http://localhost:8000)"
+--xasset_wasm_hash 711ade63298b4bb60a463ebd35c505b86c6d3f38c2fd7373f8364b7ed2f72c1d
 """
 init = """
-set_existing_asset_contract --asset_symbol xUSDT --asset_contract $(stellar contract alias show xasset --network-passphrase "Standalone Network ; February 2017") 
+set_existing_asset_contract --asset_symbol xUSDT --asset_contract $(stellar contract alias show xasset --network-passphrase "Standalone Network ; February 2017" --rpc-url http://localhost:8000)
 """
 
 [testing]
