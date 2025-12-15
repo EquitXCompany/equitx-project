@@ -1,15 +1,16 @@
 import {
-  Alert,
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  useTheme,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Alert,
+  Box,
+  Button,
+  Grid,
+  Paper,
+  Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Link } from "react-router-dom";
 import BigNumber from "bignumber.js";
 import { TVLChart } from "./charts/TVLChart";
 import { useLatestCdpMetrics } from "../hooks/useCdpMetrics";
@@ -22,7 +23,7 @@ import { formatCurrency } from "../../utils/formatters";
 interface AssetAccordionProps {
   asset: string;
   expanded: boolean;
-  onChange: (event: React.SyntheticEvent, isExpanded: boolean) => void;
+  onChange: VoidFunction;
   dateParams: { start_time: string; end_time: string };
 }
 
@@ -32,8 +33,6 @@ export function AssetAccordion({
   onChange,
   dateParams,
 }: AssetAccordionProps) {
-  const theme = useTheme();
-
   const cdpQuery = useLatestCdpMetrics(asset);
   const tvlQuery = useLatestTVLMetrics(asset);
   const { data: assetHistory, isLoading: assetHistoryLoading } =
@@ -122,6 +121,11 @@ export function AssetAccordion({
               m: "20px 0",
             },
           },
+          expandIconWrapper: {
+            sx: {
+              color: "var(--color-primary)",
+            },
+          },
         }}
       >
         <Typography
@@ -139,6 +143,25 @@ export function AssetAccordion({
           px: 3,
         }}
       >
+        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+          <Button
+            component={Link}
+            to={`/cdps/${asset}`}
+            variant="outlined"
+            size="small"
+          >
+            View CDPs
+          </Button>
+          <Button
+            component={Link}
+            to={`/stability-pool/${asset}`}
+            variant="outlined"
+            size="small"
+          >
+            View Stability Pool
+          </Button>
+        </Box>
+
         {/* Supply over time chart */}
         <Paper
           sx={{

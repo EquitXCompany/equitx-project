@@ -5,7 +5,7 @@ import { useContractCdp } from "../../hooks/useCdps";
 import ErrorMessage from "../../components/errorMessage";
 import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
-function Show() {
+export function Show() {
   const { assetSymbol, lender } = useParams();
   const contractMapping = useContractMapping();
 
@@ -27,8 +27,13 @@ function Show() {
     );
   }
 
-  const { data: metadata, isLoading: isLoadingMetadata } = useStabilityPoolMetadata(assetSymbol, contractMapping);
-  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(assetSymbol, contractMapping, lender);
+  const { data: metadata, isLoading: isLoadingMetadata } =
+    useStabilityPoolMetadata(assetSymbol, contractMapping);
+  const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(
+    assetSymbol,
+    contractMapping,
+    lender,
+  );
   const decimals = 7; // FIXME: get from xasset (to be implemented as part of ft)
 
   if (isLoadingMetadata || isLoadingCdp || !metadata) {
@@ -37,7 +42,9 @@ function Show() {
 
   return (
     <>
-      <Link to={`/cdps/${assetSymbol}`} className="back-link">← Back to List</Link>
+      <Link to={`/cdps/${assetSymbol}`} className="back-link">
+        ← Back to List
+      </Link>
       {cdp && (
         <>
           <CDPDisplay
@@ -49,11 +56,14 @@ function Show() {
             symbolAsset={metadata.symbolAsset}
             lender={lender}
           />
-          <Link to={`/cdps/${assetSymbol}/${lender}/edit`} className="edit-link">Edit CDP</Link>
+          <Link
+            to={`/cdps/${assetSymbol}/${lender}/edit`}
+            className="edit-link"
+          >
+            Edit CDP
+          </Link>
         </>
       )}
     </>
   );
 }
-
-export const element = <Show />;

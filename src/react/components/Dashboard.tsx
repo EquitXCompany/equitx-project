@@ -34,7 +34,16 @@ export default function Dashboard() {
   const theme = useTheme();
   const contractMapping = useContractMapping();
   const assetSymbols = Object.keys(contractMapping);
-  const [expandedAsset, setExpandedAsset] = useState<string | false>(false);
+  const [expandedAsset, setExpandedAsset] = useState<string[]>([
+    assetSymbols[0]!,
+  ]);
+  const createAccordionHandler = (selection: string) => () => {
+    setExpandedAsset((prev) =>
+      prev.includes(selection)
+        ? prev.filter((p) => p !== selection)
+        : [...prev, selection],
+    );
+  };
 
   const dateParams = useMemo(
     () => ({
@@ -145,18 +154,12 @@ export default function Dashboard() {
       {/* Asset Details Accordions */}
       <Box sx={{ mb: 4 }}>
         {assetSymbols.map((asset) => {
-          const handleAccordionChange =
-            (selection: string) =>
-            (_event: React.SyntheticEvent, isExpanded: boolean) => {
-              setExpandedAsset(isExpanded ? selection : false);
-            };
-
           return (
             <AssetAccordion
               key={asset}
               asset={asset}
-              expanded={expandedAsset === asset}
-              onChange={handleAccordionChange(asset)}
+              expanded={expandedAsset.includes(asset)}
+              onChange={createAccordionHandler(asset)}
               dateParams={dateParams}
             />
           );

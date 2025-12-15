@@ -3,37 +3,50 @@ import { Form, redirect, useParams } from "react-router-dom";
 import type { ActionFunction } from "react-router-dom";
 import { useWallet } from "../../../wallet";
 import { authenticatedContractCall } from "../../../utils/contractHelpers";
-import BigNumber from 'bignumber.js';
+import BigNumber from "bignumber.js";
 import { BASIS_POINTS } from "../../../constants";
-import { Box, Button, TextField, Typography } from '@mui/material';
+import { Box, Button, InputLabel, TextField, Typography } from "@mui/material";
 import { useStabilityPoolMetadata } from "../../hooks/useStabilityPoolMetadata";
 import ErrorMessage from "../../components/errorMessage";
 import { getContractBySymbol } from "../../../contracts/util";
 import { useContractMapping } from "../../../contexts/ContractMappingContext";
 
+const decimalsXLM = 7;
+const decimalsAsset = 7;
+const stepValueXLM = `0.${"0".repeat(decimalsXLM - 1)}1`;
+const stepValueAsset = `0.${"0".repeat(decimalsAsset - 1)}1`;
 
 export const action: ActionFunction = async ({ request, params }) => {
   const formData = Object.fromEntries(await request.formData());
   const assetSymbol = params.assetSymbol;
   const contractMapping = JSON.parse(formData.contractMapping as string); // Parse contractMapping from hidden input
 
+  console.log("=== 1 ===");
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     throw new Error("Invalid asset symbol");
   }
 
-  const contractClient = await getContractBySymbol(assetSymbol, contractMapping);
-  const decimalsXLM = 7;
-  const decimalsAsset = 7;
+  console.log("=== 2 ===");
+  const contractClient = getContractBySymbol(assetSymbol, contractMapping);
+  console.log("=== 3 ===");
   const cdp = {
     lender: formData.lender as string,
-    collateral: new BigNumber(formData.collateral?.toString() || '0').times(new BigNumber(10).pow(decimalsXLM)).toFixed(0),
-    asset_lent: new BigNumber(formData.asset_lent?.toString() || '0').times(new BigNumber(10).pow(decimalsAsset)).toFixed(0),
+    collateral: new BigNumber(formData.collateral?.toString() || "0")
+      .times(new BigNumber(10).pow(decimalsXLM))
+      .toFixed(0),
+    asset_lent: new BigNumber(formData.asset_lent?.toString() || "0")
+      .times(new BigNumber(10).pow(decimalsAsset))
+      .toFixed(0),
   };
+
+  console.log("=== 4 ===");
   await authenticatedContractCall(contractClient.open_cdp, cdp);
+
+  console.log("=== 5 ===");
   return redirect(`/cdps/${assetSymbol}`);
 };
 
-function New() {
+export function NewCdp(props: React.ComponentProps<typeof Box>) {
   const { assetSymbol } = useParams();
   const { account, isSignedIn } = useWallet();
   const [minRatio, setMinRatio] = useState(new BigNumber(0));
@@ -48,14 +61,13 @@ function New() {
     );
   }
 
-  const { data: metadata, isLoading } = useStabilityPoolMetadata(assetSymbol, contractMapping);
+  const { data: metadata, isLoading } = useStabilityPoolMetadata(
+    assetSymbol,
+    contractMapping,
+  );
   const [collateral, setCollateral] = useState(new BigNumber(100));
   const [toLend, setToLend] = useState(new BigNumber(0));
   const [ratio, setRatio] = useState(new BigNumber(110));
-  const decimalsXLM = 7;
-  const decimalsAsset = 7;
-  const stepValueXLM = `0.${'0'.repeat(decimalsXLM - 1)}1`;
-  const stepValueAsset = `0.${'0'.repeat(decimalsAsset - 1)}1`;
 
   useEffect(() => {
     const contractClient = getContractBySymbol(assetSymbol, contractMapping);
@@ -68,38 +80,53 @@ function New() {
     fetchMinRatio();
   }, [assetSymbol, contractMapping]);
 
-
   const updateRatio = (newCollateral: BigNumber, newToLend: BigNumber) => {
     if (newToLend.isZero() || !metadata) {
       setRatio(new BigNumber(0));
     } else {
-      const newRatio = newCollateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newToLend.times(metadata.lastpriceAsset)).decimalPlaces(0);
+      const newRatio = newCollateral
+        .times(metadata.lastpriceXLM)
+        .times(BASIS_POINTS)
+        .div(newToLend.times(metadata.lastpriceAsset))
+        .decimalPlaces(0);
       setRatio(newRatio);
     }
   };
 
-  const handleCollateralChange = (value: string) => {
-    const newCollateral = new BigNumber(value);
+  const handleCollateralChange: React.ChangeEventHandler<HTMLInputElement> = (
+    e,
+  ) => {
+    const newCollateral = new BigNumber(e.target.value);
     setCollateral(newCollateral);
     updateRatio(newCollateral, toLend);
   };
 
-  const handleToLendChange = (value: string) => {
-    const newToLend = new BigNumber(value);
+  const handleToLendChange: React.ChangeEventHandler<HTMLInputElement> = (
+    e,
+  ) => {
+    const newToLend = new BigNumber(e.target.value);
     setToLend(newToLend);
     updateRatio(collateral, newToLend);
   };
 
-  const handleRatioChange = (value: string) => {
+  const handleRatioChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     if (!metadata) return;
-    const valTo2Decimals = parseFloat(value).toFixed(2);
+    const valTo2Decimals = parseFloat(e.target.value).toFixed(2);
     const newRatio = new BigNumber(valTo2Decimals).times(BASIS_POINTS).div(100);
     setRatio(newRatio);
-    const newToLend = collateral.times(metadata.lastpriceXLM).times(BASIS_POINTS).div(newRatio).div(metadata.lastpriceAsset);
-    setToLend(newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN));
+    const newToLend = collateral
+      .times(metadata.lastpriceXLM)
+      .times(BASIS_POINTS)
+      .div(newRatio)
+      .div(metadata.lastpriceAsset);
+    setToLend(
+      newToLend.decimalPlaces(decimalsAsset, BigNumber.ROUND_HALF_EVEN),
+    );
   };
 
-  const displayRatio = ratio.isGreaterThan(0) ? ratio.times(100).div(BASIS_POINTS).toFixed(2) : 0;
+  const displayRatio = ratio.isGreaterThan(0)
+    ? ratio.times(100).div(BASIS_POINTS).toFixed(2)
+    : 0;
   const ratioBelowMinimum = ratio.isLessThan(minRatio);
 
   useEffect(() => {
@@ -111,36 +138,43 @@ function New() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Open a new Collateralized Debt Position (CDP)
-      </Typography>
-      <Form method="post" className="text-sm flex flex-col text-left">
+    <Box {...props} sx={{ textAlign: "left", ...props.sx }}>
+      <Form method="post" action={`/cdps/${assetSymbol}/new`}>
         <input type="hidden" name="lender" value={account} />
-        <input type="hidden" name="contractMapping" value={JSON.stringify(contractMapping)} />
+        <input
+          type="hidden"
+          name="contractMapping"
+          value={JSON.stringify(contractMapping)}
+        />
         <Box sx={{ mt: 2 }}>
+          <InputLabel htmlFor="xlmDeposit">How much XLM to deposit?</InputLabel>
           <TextField
             fullWidth
-            label="How much XLM to deposit?"
+            id="xlmDeposit"
             type="number"
             name="collateral"
             autoFocus
             value={collateral.toNumber()}
-            onChange={(e) => handleCollateralChange(e.target.value)}
+            onChange={handleCollateralChange}
             inputProps={{ step: stepValueXLM }}
             variant="outlined"
             margin="normal"
           />
         </Box>
         <Box sx={{ mt: 2 }} className="">
+          <InputLabel htmlFor="collateralizationRatio">
+            Set collateralization ratio (%)
+          </InputLabel>
           <TextField
+            id="collateralizationRatio"
             fullWidth
-            label="Set collateralization ratio (%)"
             type="number"
             error={ratioBelowMinimum}
-            helperText={ratioBelowMinimum ? "Ratio below minimum collateralization" : ""}
+            helperText={
+              ratioBelowMinimum ? "Ratio below minimum collateralization" : ""
+            }
             value={ratio.times(100).div(BASIS_POINTS)}
-            onChange={(e) => handleRatioChange(e.target.value)}
+            onChange={handleRatioChange}
             inputProps={{
               step: "0.01",
               min: minRatio.times(100).div(BASIS_POINTS),
@@ -150,13 +184,16 @@ function New() {
           />
         </Box>
         <Box sx={{ mt: 2 }}>
+          <InputLabel htmlFor="mintAmount">
+            Amount of {metadata.symbolAsset} you&apos;ll mint
+          </InputLabel>
           <TextField
             fullWidth
-            label={`Amount of ${metadata.symbolAsset} you'll mint:`}
+            id="mintAmount"
             type="number"
             name="asset_lent"
             value={toLend.toFixed(decimalsAsset)}
-            onChange={(e) => handleToLendChange(e.target.value)}
+            onChange={handleToLendChange}
             inputProps={{
               step: stepValueAsset,
               max: collateral
@@ -169,14 +206,18 @@ function New() {
             margin="normal"
           />
         </Box>
+
         <Typography variant="body1" gutterBottom sx={{ mt: 2 }}>
           Current collateralization ratio: {displayRatio}%
           {ratio.isLessThan(minRatio) && (
-            <Typography variant="body2" color="error">
-              (Below minimum ratio of {new BigNumber(minRatio).times(100).div(BASIS_POINTS).toFixed(2)}%)
+            <Typography component="span" variant="body2" color="error">
+              (Below minimum ratio of{" "}
+              {new BigNumber(minRatio).times(100).div(BASIS_POINTS).toFixed(2)}
+              %)
             </Typography>
           )}
         </Typography>
+
         <Button
           type="submit"
           variant="contained"
@@ -190,5 +231,3 @@ function New() {
     </Box>
   );
 }
-
-export const element = <New />;

@@ -58,7 +58,7 @@ export const action: ActionFunction = async ({ request, params }) => {
 
   const contractClient = await getContractBySymbol(
     assetSymbol,
-    contractMapping
+    contractMapping,
   );
 
   let tx;
@@ -125,7 +125,7 @@ export const action: ActionFunction = async ({ request, params }) => {
   }
 };
 
-function Edit() {
+export function Edit() {
   const { assetSymbol, lender } = useParams() as {
     lender: string;
     assetSymbol: string;
@@ -167,7 +167,7 @@ function Edit() {
   const { data: cdp, isLoading: isLoadingCdp } = useContractCdp(
     assetSymbol,
     contractMapping,
-    lender
+    lender,
   );
   const { data: metadata, isLoading: isLoadingMetadata } =
     useStabilityPoolMetadata(assetSymbol, contractMapping);
@@ -201,7 +201,7 @@ function Edit() {
 
     // Query backend for approvalAmount required for interest
     const accruedInterest = new BigNumber(
-      cdp.accrued_interest.amount.toString()
+      cdp.accrued_interest.amount.toString(),
     );
 
     if (accruedInterest.isGreaterThan(0)) {
@@ -213,7 +213,7 @@ function Edit() {
         // Initialize contract client
         const contractClient = await getContractBySymbol(
           assetSymbol,
-          contractMapping
+          contractMapping,
         );
 
         // Use contract view to get approval info
@@ -221,9 +221,7 @@ function Edit() {
           lender,
         });
         const approvalAmount = interestDetail.result.unwrap().amount.toString();
-        setApprovalAmount(
-          new BigNumber(approvalAmount)
-        );
+        setApprovalAmount(new BigNumber(approvalAmount));
         setShowInterestDialog(true);
       } catch (e) {
         setMessage({
@@ -239,7 +237,7 @@ function Edit() {
           amount,
           action: "repayDebt",
         },
-        { method: "post", action: "" }
+        { method: "post", action: "" },
       );
     }
   };
@@ -262,7 +260,7 @@ function Edit() {
         xassetContractId,
         account,
         approvalAmount.toString(),
-        signTransaction
+        signTransaction,
       );
 
       // Now submit the repay debt form
@@ -273,7 +271,7 @@ function Edit() {
           amount: repayAmount,
           action: "repayDebt",
         },
-        { method: "post", action: "" }
+        { method: "post", action: "" },
       );
     } catch (error) {
       console.error("Error during interest approval:", error);
@@ -454,7 +452,7 @@ function Edit() {
                   </Grid>
 
                   {new BigNumber(cdp.accrued_interest.amount.toString()).gt(
-                    0
+                    0,
                   ) && (
                     <Grid item xs={6} sm={4}>
                       <Form method="post">
@@ -468,7 +466,7 @@ function Edit() {
                           type="hidden"
                           name="amount"
                           value={new BigNumber(
-                            cdp.accrued_interest.amount.toString()
+                            cdp.accrued_interest.amount.toString(),
                           ).toString()}
                         />
                         <Button
@@ -595,5 +593,3 @@ function Edit() {
     </Container>
   );
 }
-
-export const element = <Edit />;
