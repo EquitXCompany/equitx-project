@@ -110,7 +110,6 @@ export default function StabilityPoolStats() {
       sx={{
         minHeight: "100vh",
         bgcolor: "background.default",
-        px: 3,
         pb: 4,
       }}
     >

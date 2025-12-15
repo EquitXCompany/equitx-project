@@ -23,6 +23,7 @@ import ErrorMessage from "../components/errorMessage";
 import { useAssets } from "../hooks/useAssets";
 import { useContractMapping } from "../../contexts/ContractMappingContext";
 import { getContractAddress } from "../../contracts/util";
+import { AssetLinks } from "./AssetLinks";
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -45,6 +46,86 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+const cdpColumns = [
+  {
+    field: "asset_symbol",
+    headerName: "xAsset",
+    width: 100,
+  },
+  {
+    field: "collateralRatio",
+    headerName: "Collateral Ratio",
+    width: 130,
+    valueFormatter: (value: number) => {
+      return `${value}%`;
+    },
+  },
+  {
+    field: "collateralXLM",
+    headerName: "Collateral (XLM)",
+    width: 130,
+  },
+  {
+    field: "debtAsset",
+    headerName: "Debt (xAsset)",
+    width: 130,
+  },
+  {
+    field: "debtValueXLM",
+    headerName: "Debt Value (XLM)",
+    width: 130,
+  },
+  {
+    field: "netValue",
+    headerName: "Net Value (XLM)",
+    width: 130,
+  },
+  {
+    field: "liquidationPriceXLM",
+    headerName: "Liquidation Price (XLM)",
+    width: 160,
+  },
+  { field: "status", headerName: "Status", width: 120 },
+];
+
+const liquidationColumns = [
+  {
+    field: "asset",
+    headerName: "xAsset",
+    width: 100,
+  },
+  {
+    field: "collateralLiquidated",
+    headerName: "Collateral Liquidated (XLM)",
+    width: 200,
+  },
+  {
+    field: "principalRepaid",
+    headerName: "Debt Burned",
+    width: 180,
+  },
+  {
+    field: "xAssetPrice",
+    headerName: "Oracle Price",
+    width: 150,
+  },
+  {
+    field: "xlmPrice",
+    headerName: "XLM Price",
+    width: 150,
+  },
+  {
+    field: "interest",
+    headerName: "Interest Collected",
+    width: 150,
+  },
+  {
+    field: "timestamp",
+    headerName: "Liquidated At",
+    width: 180,
+  },
+];
+
 export default function CDPStats() {
   const contractMapping = useContractMapping();
   const [tabValue, setTabValue] = useState(0);
@@ -57,13 +138,11 @@ export default function CDPStats() {
   const cdpMetricsResults = useLatestCdpMetricsForAllAssets(contractMapping);
   const { data: liquidations, isLoading: liquidationsLoading } =
     useLiquidations();
-  const {
-    data: userCdpsMap,
-    isLoading: userCdpsLoading,
-    error: userCdpsError,
-  } = useContractCdpForAllAssets(account || "", contractMapping, {
-    enabled: !!account,
-  });
+  const userCdpQueries = useContractCdpForAllAssets(
+    account || "",
+    contractMapping,
+  );
+  const userCdpsError = userCdpQueries.find((q) => q.error)?.error;
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -96,17 +175,21 @@ export default function CDPStats() {
     });
   }, [cdps, stabilityPoolData, spLoading]);
 
+  // isLoading: userCdpsLoading,
+  // error: ,
   const enrichedUserCdps = useMemo(() => {
-    if (!userCdpsMap || !stabilityPoolData) return [];
+    if (!userCdpQueries.length || !stabilityPoolData) return [];
 
-    return Object.entries(userCdpsMap)
-      .filter(([_, cdp]) => cdp !== null) // Filter out null CDPs
-      .map(([assetSymbol, contractCdp]) => {
+    return userCdpQueries
+      .map((query) => {
+        const [assetSymbol, contractCdp] = query.data ?? [];
+        if (!assetSymbol || !contractCdp) return null;
+
         const contractId = getContractAddress(assetSymbol, contractMapping);
         const asset = assets?.find((v) => v.symbol === assetSymbol);
         if (!asset) return null;
         const cdp = convertContractCDPtoClientCDP(
-          contractCdp!,
+          contractCdp,
           asset,
           contractId,
         );
@@ -138,7 +221,7 @@ export default function CDPStats() {
         };
       })
       .filter((cdp): cdp is NonNullable<typeof cdp> => cdp !== null);
-  }, [userCdpsMap, stabilityPoolData, assets]);
+  }, [userCdpQueries, stabilityPoolData, assets]);
 
   const enrichedLiquidations = useMemo(() => {
     if (liquidationsLoading || !liquidations || !stabilityPoolData) return [];
@@ -283,127 +366,25 @@ export default function CDPStats() {
       })
     : [];
 
-  const cdpColumns = [
-    {
-      field: "asset_symbol",
-      headerName: "xAsset",
-      width: 100,
-    },
-    {
-      field: "collateralRatio",
-      headerName: "Collateral Ratio",
-      width: 130,
-      valueFormatter: (value: number) => {
-        return `${value}%`;
-      },
-    },
-    {
-      field: "collateralXLM",
-      headerName: "Collateral (XLM)",
-      width: 130,
-    },
-    {
-      field: "debtAsset",
-      headerName: "Debt (xAsset)",
-      width: 130,
-    },
-    {
-      field: "debtValueXLM",
-      headerName: "Debt Value (XLM)",
-      width: 130,
-    },
-    {
-      field: "netValue",
-      headerName: "Net Value (XLM)",
-      width: 130,
-    },
-    {
-      field: "liquidationPriceXLM",
-      headerName: "Liquidation Price (XLM)",
-      width: 160,
-    },
-    { field: "status", headerName: "Status", width: 120 },
-  ];
-
-  const liquidationColumns = [
-    {
-      field: "asset",
-      headerName: "xAsset",
-      width: 100,
-    },
-    {
-      field: "collateralLiquidated",
-      headerName: "Collateral Liquidated (XLM)",
-      width: 200,
-    },
-    {
-      field: "principalRepaid",
-      headerName: "Debt Burned",
-      width: 180,
-    },
-    {
-      field: "xAssetPrice",
-      headerName: "Oracle Price",
-      width: 150,
-    },
-    {
-      field: "xlmPrice",
-      headerName: "XLM Price",
-      width: 150,
-    },
-    {
-      field: "interest",
-      headerName: "Interest Collected",
-      width: 150,
-    },
-    {
-      field: "timestamp",
-      headerName: "Liquidated At",
-      width: 180,
-    },
-  ];
-
   return (
     <Box>
+      <AssetLinks justifyContent="start" mb="2rem" />
+
       {/* System-wide metrics summary */}
-      <Paper
-        sx={{
-          mb: 4,
-          p: 4,
-          display: "grid",
-          justifyItems: "start",
-          borderRadius: "var(--radius-md)",
-        }}
+      <Grid2
+        container
+        spacing={3}
+        mb={2}
+        className="metric-card-grid"
+        id="cdp-cards"
       >
-        <Typography
-          variant="h5"
-          sx={{
-            mb: 3,
-            fontWeight: 600,
-            fontSize: "var(--font-size-xl)",
-          }}
-        >
-          CDP Statistics
-        </Typography>
-        <Grid
-          container
-          spacing={3}
-          mb={2}
-          className="metric-card-grid"
-          id="cdp-cards"
-          sx={{
-            display: "flex",
-            justifyContent: "space-around",
-            margin: 0,
-            width: 1,
-            gap: "var(--spacing-lg)",
-          }}
-        >
-          <StatCard title="Active CDPs" value={systemMetrics.totalActiveCdps} />
+        <Grid2 size={6}>
           <StatCard
             title="System Collateral Ratio"
             value={`${systemMetrics.systemCollateralRatio.toFixed(2)}%`}
           />
+        </Grid2>
+        <Grid2 size={6}>
           <StatCard
             title="Total Collateral"
             value={formatCurrency(
@@ -413,10 +394,14 @@ export default function CDPStats() {
               "XLM",
             )}
           />
+        </Grid2>
+        <Grid2 size={6}>
           <StatCard
             title="Total Debt Value"
             value={formatCurrency(systemMetrics.totalDebtValueXlm, 7, 2, "XLM")}
           />
+        </Grid2>
+        <Grid2 size={6}>
           <StatCard
             title="Outstanding Interest"
             value={formatCurrency(
@@ -426,8 +411,8 @@ export default function CDPStats() {
               "XLM",
             )}
           />
-        </Grid>
-      </Paper>
+        </Grid2>
+      </Grid2>
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
@@ -582,10 +567,6 @@ export default function CDPStats() {
               title="Wallet Not Connected"
               message="Please connect your wallet to view your CDPs."
             />
-          ) : userCdpsLoading ? (
-            <Box sx={{ p: 2 }}>
-              <Typography>Loading your CDPs...</Typography>
-            </Box>
           ) : userCdpsError ? (
             <ErrorMessage
               title="Error Loading CDPs"
@@ -601,7 +582,7 @@ export default function CDPStats() {
                 <DataGrid
                   rows={enrichedUserCdps}
                   columns={cdpColumns}
-                  loading={userCdpsLoading || spLoading}
+                  loading={spLoading}
                   getRowId={(row) => `${row.contract_id}-${row.lender}`}
                   pageSizeOptions={[10, 25, 50]}
                 />

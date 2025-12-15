@@ -23,34 +23,14 @@ export const StatCard = ({
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        alignItems: "center",
+        alignItems: "start",
         p: 3,
-        height: "165px",
-        minWidth: "240px",
         flexGrow: 1,
         borderRadius: "var(--radius-xl)",
+        border: 0,
       }}
     >
-      {isLoading ? (
-        <Skeleton variant="text" width="80%" height={60} />
-      ) : (
-        <>
-          <Typography
-            variant="h4"
-            component="p"
-            sx={{
-              mb: 1.5,
-              fontWeight: 700,
-              fontSize: "2.5rem",
-              lineHeight: 1.2,
-            }}
-          >
-            {value}
-          </Typography>
-        </>
-      )}
-
-      <Box display="flex" justifyContent="center" alignItems="center">
+      <Box display="flex" justifyContent="center" alignItems="center" mb="1rem">
         <Typography
           variant="subtitle2"
           component="h2"
@@ -63,6 +43,7 @@ export const StatCard = ({
         >
           {title}
         </Typography>
+
         {tooltip && (
           <Tooltip title={tooltip}>
             <InfoOutlined
@@ -75,6 +56,23 @@ export const StatCard = ({
           </Tooltip>
         )}
       </Box>
+
+      {isLoading ? (
+        <Skeleton variant="text" width="80%" height={60} />
+      ) : (
+        <Typography
+          variant="h4"
+          component="p"
+          sx={{
+            fontWeight: 700,
+            fontSize: "2.5rem",
+            lineHeight: 1.2,
+            mb: 0,
+          }}
+        >
+          {value}
+        </Typography>
+      )}
 
       {subtitle && (
         <Typography

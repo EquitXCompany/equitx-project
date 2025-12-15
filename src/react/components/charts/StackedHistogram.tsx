@@ -36,7 +36,7 @@ export function StackedHistogram({
   tooltipFormatter = (value: number) => formatCurrency(value, 0) + " XLM",
 }: StackedHistogramProps) {
   const theme = useTheme();
-  const assets = Object.keys(data)
+  const assets = Object.keys(data);
   if (assets.length === 0) return;
   const firstAsset = assets[0]!;
   const baseBucketSize = data[firstAsset]?.bucketSize ?? 1;
@@ -150,10 +150,10 @@ export function StackedHistogram({
   }
 
   return (
-    <Box 
-      sx={{ 
-        position: "relative", 
-        width: "100%", 
+    <Box
+      sx={{
+        position: "relative",
+        width: "100%",
         height: "100%",
         bgcolor: theme.palette.background.paper,
         borderRadius: 1,
