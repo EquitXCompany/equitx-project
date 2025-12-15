@@ -47,7 +47,7 @@ async function fetchTVLHistoryByAsset(
   if (timeRange?.end_time) params.append("end_time", timeRange.end_time);
 
   const { data } = await apiClient.get(
-    `/api/tvl-metrics/${assetSymbol}/history?${params.toString()}`
+    `/api/tvl/${assetSymbol}/history?${params.toString()}`
   );
   return data.map(transformTVLMetrics);
 }
