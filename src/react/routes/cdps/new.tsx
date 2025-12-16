@@ -21,14 +21,11 @@ export const action: ActionFunction = async ({ request, params }) => {
   const assetSymbol = params.assetSymbol;
   const contractMapping = JSON.parse(formData.contractMapping as string); // Parse contractMapping from hidden input
 
-  console.log("=== 1 ===");
   if (!assetSymbol || !contractMapping[assetSymbol]) {
     throw new Error("Invalid asset symbol");
   }
 
-  console.log("=== 2 ===");
   const contractClient = getContractBySymbol(assetSymbol, contractMapping);
-  console.log("=== 3 ===");
   const cdp = {
     lender: formData.lender as string,
     collateral: new BigNumber(formData.collateral?.toString() || "0")
@@ -39,10 +36,8 @@ export const action: ActionFunction = async ({ request, params }) => {
       .toFixed(0),
   };
 
-  console.log("=== 4 ===");
   await authenticatedContractCall(contractClient.open_cdp, cdp);
 
-  console.log("=== 5 ===");
   return redirect(`/cdps/${assetSymbol}`);
 };
 
