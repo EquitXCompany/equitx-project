@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import BigNumber from 'bignumber.js';
-import { getContractBySymbol } from '../../contracts/util';
-import { ErrorMessage, i128, Result } from '@stellar/stellar-sdk/contract';
+import { useEffect, useState } from "react";
+import BigNumber from "bignumber.js";
+import { getContractBySymbol } from "../../contracts/util";
+import { ErrorMessage, i128, Result } from "@stellar/stellar-sdk/contract";
 
 type lastPriceResult = { result: Result<{ price: i128 }, ErrorMessage> };
 
@@ -15,7 +15,10 @@ export interface StabilityPoolMetadata {
   sacAddress: string;
 }
 
-export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: Record<string, string>) {
+export function useStabilityPoolMetadata(
+  assetSymbol: string,
+  contractMapping: Record<string, string>
+) {
   const [data, setData] = useState<StabilityPoolMetadata | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,28 +27,32 @@ export function useStabilityPoolMetadata(assetSymbol: string, contractMapping: R
     const fetchData = async () => {
       try {
         const contract = getContractBySymbol(assetSymbol, contractMapping);
-        console.log("getting minimum collateralization ratio");
+        // console.log("getting minimum collateralization ratio");
         const tx = await contract.minimum_collateralization_ratio();
-        console.log("getting interest rate");
+        // console.log("getting interest rate");
         const interestRate = await contract.get_interest_rate();
-        console.log("getting last price XLM");
-        const lastpriceXLM = new BigNumber(await contract.lastprice_xlm().then((t: lastPriceResult) => {
-          if (t.result.isOk()) {
-            return t.result.unwrap().price.toString();
-          } else {
-            throw new Error("Failed to fetch XLM price");
-          }
-        })).div(10 ** 14);
-        console.log("getting last price asset");
+        // console.log("getting last price XLM");
+        const lastpriceXLM = new BigNumber(
+          await contract.lastprice_xlm().then((t: lastPriceResult) => {
+            if (t.result.isOk()) {
+              return t.result.unwrap().price.toString();
+            } else {
+              throw new Error("Failed to fetch XLM price");
+            }
+          })
+        ).div(10 ** 14);
+        // console.log("getting last price asset");
 
-        const lastpriceAsset = new BigNumber(await contract.lastprice_asset().then((t: lastPriceResult) => {
-          if (t.result.isOk()) {
-            return t.result.unwrap().price.toString();
-          } else {
-            throw new Error("Failed to fetch asset price");
-          }
-        })).div(10 ** 14);
-        console.log("getting sac address");
+        const lastpriceAsset = new BigNumber(
+          await contract.lastprice_asset().then((t: lastPriceResult) => {
+            if (t.result.isOk()) {
+              return t.result.unwrap().price.toString();
+            } else {
+              throw new Error("Failed to fetch asset price");
+            }
+          })
+        ).div(10 ** 14);
+        // console.log("getting sac address");
         const sacAddress = await contract.xlm_sac();
 
         setData({
@@ -74,7 +81,9 @@ type AllStabilityPoolMetadata = {
   [key in string]?: StabilityPoolMetadata;
 };
 
-export function useAllStabilityPoolMetadata(contractMapping: Record<string, string>) {
+export function useAllStabilityPoolMetadata(
+  contractMapping: Record<string, string>
+) {
   const [allData, setAllData] = useState<AllStabilityPoolMetadata>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -90,24 +99,25 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
           const assetSymbol = symbol;
           const contract = getContractBySymbol(assetSymbol, contractMapping);
 
-          const [minRatio, xlmPrice, assetPrice, interestRate, sacAddress] = await Promise.all([
-            contract.minimum_collateralization_ratio(),
-            contract.lastprice_xlm(),
-            contract.lastprice_asset(),
-            contract.get_interest_rate(),
-            contract.xlm_sac(),
-          ]);
+          const [minRatio, xlmPrice, assetPrice, interestRate, sacAddress] =
+            await Promise.all([
+              contract.minimum_collateralization_ratio(),
+              contract.lastprice_xlm(),
+              contract.lastprice_asset(),
+              contract.get_interest_rate(),
+              contract.xlm_sac(),
+            ]);
 
           const lastpriceXLM = new BigNumber(
-            ((xlmPrice as lastPriceResult).result.isOk()
+            (xlmPrice as lastPriceResult).result.isOk()
               ? (xlmPrice as lastPriceResult).result.unwrap().price.toString()
-              : "0")
+              : "0"
           ).div(10 ** 14);
 
           const lastpriceAsset = new BigNumber(
-            ((assetPrice as lastPriceResult).result.isOk()
+            (assetPrice as lastPriceResult).result.isOk()
               ? (assetPrice as lastPriceResult).result.unwrap().price.toString()
-              : "0")
+              : "0"
           ).div(10 ** 14);
 
           return {
@@ -148,6 +158,6 @@ export function useAllStabilityPoolMetadata(contractMapping: Record<string, stri
     data: allData,
     isLoading,
     error,
-    refetch: fetchAllData  // Expose the refetch function
+    refetch: fetchAllData, // Expose the refetch function
   };
 }
