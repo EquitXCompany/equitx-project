@@ -16,11 +16,10 @@ export default function Portfolio() {
     const contractMapping = useContractMapping();
     const cdpQueries = useContractCdpForAllAssets(
         account || "",
-        contractMapping,
+        contractMapping
     );
 
     const { data: spData } = useAllStabilityPoolMetadata(contractMapping);
-    console.log({ cdpQueries, spData });
     if (!account) {
         return (
             <ErrorMessage

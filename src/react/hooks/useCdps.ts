@@ -48,7 +48,7 @@ export type CDP = {
 export function CalculateCollateralizationRatio(
   cdp: CDP,
   xlm_price: BigNumber,
-  xasset_price: BigNumber,
+  xasset_price: BigNumber
 ): BigNumber {
   if (cdp.asset_lent.isEqualTo(0) || xasset_price.isEqualTo(0)) {
     return new BigNumber(Infinity);
@@ -86,10 +86,10 @@ async function fetchCdpsByAssetSymbol(assetSymbol: string): Promise<CDP[]> {
 
 async function fetchCdpByAssetAndAddress(
   assetSymbol: string,
-  address: string,
+  address: string
 ): Promise<CDP> {
   const { data } = await apiClient.get(
-    `/api/cdps/${assetSymbol}/lender/${address}`,
+    `/api/cdps/${assetSymbol}/lender/${address}`
   );
   return {
     ...data,
@@ -103,7 +103,7 @@ async function fetchCdpByAssetAndAddress(
 }
 
 export function useCdps(
-  options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">,
+  options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">
 ): UseQueryResult<CDP[], Error> {
   return useQuery<CDP[], Error>(["cdps"], fetchCdps, {
     refetchInterval: 300000,
@@ -115,7 +115,7 @@ export function useCdps(
 
 export function useCdpsByAssetSymbol(
   assetSymbol: string,
-  options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">,
+  options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">
 ): UseQueryResult<CDP[], Error> {
   return useQuery<CDP[], Error>(
     ["cdps-by-asset-symbol", assetSymbol],
@@ -126,14 +126,14 @@ export function useCdpsByAssetSymbol(
       retry: 3,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       ...options,
-    },
+    }
   );
 }
 
 export function useCdpByAssetAndAddress(
   assetSymbol: string,
   address: string,
-  options?: Omit<UseQueryOptions<CDP, Error>, "queryKey" | "queryFn">,
+  options?: Omit<UseQueryOptions<CDP, Error>, "queryKey" | "queryFn">
 ): UseQueryResult<CDP, Error> {
   return useQuery<CDP, Error>(
     ["cdp", assetSymbol, address],
@@ -143,7 +143,7 @@ export function useCdpByAssetAndAddress(
       retry: 3,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       ...options,
-    },
+    }
   );
 }
 
@@ -174,7 +174,7 @@ export function useContractCdp(
   options?: Omit<
     UseQueryOptions<ContractCDP | null, Error>,
     "queryKey" | "queryFn"
-  >,
+  >
 ): UseQueryResult<ContractCDP | null, Error> {
   const contract = getContractBySymbol(assetSymbol, contractMapping);
 
@@ -202,7 +202,7 @@ export function useContractCdp(
       enabled: !!lender,
       ...commonQueryOptions,
       ...options,
-    },
+    }
   );
 }
 
@@ -210,7 +210,7 @@ type AssetCdpTuple = [string, ContractCDP | null];
 
 export function useContractCdpForAllAssets(
   lender: string,
-  contractMapping: Record<string, string>,
+  contractMapping: Record<string, string>
 ) {
   const assets = Object.keys(contractMapping);
   let contracts: Record<string, any> = {};
@@ -246,7 +246,7 @@ export function useContractCdpForAllAssets(
       ...commonQueryOptions,
       enabled: !!lender,
       initialData: (): AssetCdpTuple => [asset, null],
-    })),
+    }))
   );
 }
 
@@ -276,7 +276,7 @@ export function useAllContractCdps(
   options?: Omit<
     UseQueryOptions<Record<string, ContractCDP>, Error>,
     "queryKey" | "queryFn"
-  >,
+  >
 ): UseQueryResult<Record<string, ContractCDP>, Error> {
   const contract = getContractBySymbol(assetSymbol, contractMapping);
 
@@ -299,7 +299,7 @@ export function useAllContractCdps(
 
           const cdp = unwrapResult(
             tx.result,
-            "Failed to retrieve CDP from contract",
+            "Failed to retrieve CDP from contract"
           );
           return [lender, cdp];
         } catch (error) {
@@ -315,14 +315,14 @@ export function useAllContractCdps(
       enabled: lenders.length > 0,
       ...commonQueryOptions,
       ...options,
-    },
+    }
   );
 }
 
 export function convertContractCDPtoClientCDP(
   contractCDP: ContractCDP,
   asset: Asset,
-  contractId: string,
+  contractId: string
 ): Omit<CDP, "createdAt" | "updatedAt"> {
   return {
     asset,
@@ -331,7 +331,7 @@ export function convertContractCDPtoClientCDP(
     xlm_deposited: new BigNumber(contractCDP.xlm_deposited.toString()),
     asset_lent: new BigNumber(contractCDP.asset_lent.toString()),
     accrued_interest: new BigNumber(
-      contractCDP.accrued_interest.amount.toString(),
+      contractCDP.accrued_interest.amount.toString()
     ),
     interest_paid: new BigNumber(contractCDP.accrued_interest.paid.toString()),
     last_interest_time: contractCDP.last_interest_time.toString(),
@@ -343,7 +343,7 @@ export function useMergedCdps(
   assetSymbol: string,
   contractMapping: Record<string, string>,
   userAddress?: string,
-  options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">,
+  options?: Omit<UseQueryOptions<CDP[], Error>, "queryKey" | "queryFn">
 ) {
   const { data: assets } = useAssets();
 
@@ -359,7 +359,7 @@ export function useMergedCdps(
     {
       enabled: !!userAddress,
       staleTime: 300000,
-    },
+    }
   );
 
   const mergedCDPs = useMemo(() => {
@@ -368,9 +368,8 @@ export function useMergedCdps(
     const indexedCDPs = [...indexedCDPsQuery.data];
 
     if (contractCDPQuery.data && userAddress) {
-      console.log(contractCDPQuery.data);
       const userCDPIndex = indexedCDPs.findIndex(
-        (cdp) => cdp.lender === userAddress,
+        (cdp) => cdp.lender === userAddress
       );
 
       const indexedCDP =
@@ -388,7 +387,7 @@ export function useMergedCdps(
         const contractCDP = convertContractCDPtoClientCDP(
           contractCDPQuery.data,
           asset,
-          indexedCDP?.contract_id ?? "",
+          indexedCDP?.contract_id ?? ""
         );
 
         if (userCDPIndex >= 0) {
