@@ -1,39 +1,42 @@
-import * as root from "./root";
-import * as show from "./show";
-import * as list from "./list";
-import * as newCDP from "./new";
-import * as editCDP from "./edit";
+import { type RouteObject } from "react-router-dom";
+import { Root } from "./root";
+import { Show } from "./show";
+import { List } from "./list";
+import { NewCdp, action as newCdpAction } from "./new";
+import { EditCdp, action as editCdpAction } from "./edit";
 import errorElement from "../error";
 
 export default {
-  ...root,
+  Component: Root,
   children: [
     {
       errorElement,
       children: [
         {
-          ...list,
           index: true,
           handle: { title: () => "CDP Overview" },
+          Component: List,
         },
         {
-          ...newCDP,
           path: "new",
           handle: { title: () => "New CDP" },
+          Component: NewCdp,
+          action: newCdpAction,
         },
         {
-          ...show,
           path: ":lender",
           handle: { title: ({ lender }: { lender: string }) => lender },
+          Component: Show,
         },
         {
-          ...editCDP,
           path: ":lender/edit",
           handle: {
             title: ({ lender }: { lender: string }) => `Edit ${lender}`,
           },
+          Component: EditCdp,
+          action: editCdpAction,
         },
       ],
     },
   ],
-};
+} satisfies RouteObject;

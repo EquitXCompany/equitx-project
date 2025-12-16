@@ -125,7 +125,7 @@ export const action: ActionFunction = async ({ request, params }) => {
   }
 };
 
-export function Edit() {
+export function EditCdp() {
   const { assetSymbol, lender } = useParams() as {
     lender: string;
     assetSymbol: string;
