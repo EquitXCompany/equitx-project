@@ -19,7 +19,7 @@ jobs:
     - uses: stellar/quickstart@main
       with:
           tag: testing
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: cargo-cache
       with:
           path: |
